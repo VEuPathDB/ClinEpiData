@@ -1,0 +1,86 @@
+<project name="ClinEpiData" default="Installation" basedir=".">
+
+  <!-- ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooo  Dependencies  oooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+  <import file="${projectsDir}/CBIL/build.xml" />
+
+
+  
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooo    Checkout    oooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+
+  <target name="ClinEpiData-ChildCheckout">
+    <available file="${projectsDir}/CBIL" type="dir" property="CBIL.present" />
+    <antcall target="CBIL-Checkout" />
+  </target>
+
+  
+  <target name="CBIL-Checkout" unless="CBIL.present">
+    <ant target="defaultProjectCheckout" inheritAll="false">
+      <property name="svnurl" value="https://cbilsvn.pmacs.upenn.edu/svn/gus/CBIL" />
+      <property name="project" value="CBIL"/>
+      <property name="version" value="internal/api-build-9"/>
+    </ant>
+  </target>
+  
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooo    Update    oooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+
+  <target name="ClinEpiData-ChildUpdate" >
+    <ant target="defaultProjectUpdate">
+      <property name="project" value="CBIL"/>
+    </ant>
+  </target>
+
+
+
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooo  Installation  oooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+  <target name="ClinEpiData-Installation" depends="CBIL/ISA-Installation">
+    <ant target="defaultComponentInstall">
+        <property name="project" value="ClinEpiData"/>
+        <property name="component" value="Load"/>
+    </ant>
+</target>  
+   
+
+  <!-- oooooooooooooooooo  Installation Postprocess  ooooooooooooooooooooo -->
+
+  <target name="ClinEpiData-Installation-postprocess"/>
+
+  <!-- ooooooooooooooooooooooo  Install Components  ooooooooooooooooooooooo -->
+
+  <target name="ClinEpiData/Load-Installation" depends="ProjectTree">
+    <ant target="defaultComponentInstall">
+      <property name="project" value="ClinEpiData"/>
+      <property name="component" value="Load"/>
+    </ant>
+  </target>  
+
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooo  Release  ooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+  <target name="ClinEpiData-Release"/>
+
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooo  Project tree  ooooooooooooooooooooooooooooo -->
+  <!-- oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo -->
+
+
+
+  <target name="ProjectTree" if="${checkout}">
+    <ant target="projectCheckOut"/>
+  </target>  
+
+</project>
+
+

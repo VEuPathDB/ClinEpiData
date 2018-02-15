@@ -5,7 +5,7 @@ use Getopt::Long;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
-use ApiCommonData::Load::MetadataHelper;
+use ClinEpiData::Load::MetadataHelper;
 
 use CBIL::Util::PropertySet;
 
@@ -105,12 +105,12 @@ if($parentMergedFile) {
 
 
 unless($packageName) {
-  $packageName = "ApiCommonData::Load::MetadataReader";
+  $packageName = "ClinEpiData::Load::MetadataReader";
 }
 
-my $metadataHelper = ApiCommonData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName);
+my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName);
 
-#my $validator = ApiCommonData::Load::MetadataValidator->new($parentMergedFile, $ontologyMappingXmlFile);
+#my $validator = ClinEpiData::Load::MetadataValidator->new($parentMergedFile, $ontologyMappingXmlFile);
 
 $metadataHelper->merge();
 if($metadataHelper->isValid()) {

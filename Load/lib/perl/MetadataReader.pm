@@ -1,4 +1,4 @@
-package ApiCommonData::Load::MetadataReader;
+package ClinEpiData::Load::MetadataReader;
 
 use strict;
 
@@ -229,8 +229,8 @@ sub getParentPrefix {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismDwellingReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::PrismDwellingReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use strict;
 
@@ -260,8 +260,8 @@ sub getPrimaryKeyPrefix {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismParticipantReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::PrismParticipantReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use strict;
 
@@ -290,8 +290,8 @@ sub getParentPrefix {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismClinicalVisitReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::PrismClinicalVisitReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use Data::Dumper;
 
@@ -386,12 +386,12 @@ sub cleanAndAddDerivedData {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismSampleReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::PrismSampleReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use strict;
 
-use ApiCommonData::Load::MetadataReader;
+use ClinEpiData::Load::MetadataReader;
 
 use Date::Manip qw(Date_Init ParseDate UnixDate);
 
@@ -459,26 +459,26 @@ sub read {
   my $metadataFile = $self->getMetadataFile();
   my $baseMetaDataFile = basename $metadataFile;
 
-  if($baseMetaDataFile eq "Prism_samples.txt" && ref($self) eq "ApiCommonData::Load::MetadataReader::PrismSampleReader") {
+  if($baseMetaDataFile eq "Prism_samples.txt" && ref($self) eq "ClinEpiData::Load::MetadataReader::PrismSampleReader") {
 
     my $colExcludes = $self->getColExcludes();
     my $rowExcludes = $self->getRowExcludes();
     my $parentParsedOutput = $self->getParentParsedOutput();
     my $clinicalVisitMapper = $self->getClinicalVisitMapper();
 
-    my $fp = ApiCommonData::Load::MetadataReader::PrismSampleReader::FP->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
+    my $fp = ClinEpiData::Load::MetadataReader::PrismSampleReader::FP->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
     $fp->read();
     $fp->addSpecimenType();
 
-    my $bc = ApiCommonData::Load::MetadataReader::PrismSampleReader::BC->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
+    my $bc = ClinEpiData::Load::MetadataReader::PrismSampleReader::BC->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
     $bc->read();
     $bc->addSpecimenType();
 
-    my $p1 = ApiCommonData::Load::MetadataReader::PrismSampleReader::P1->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
+    my $p1 = ClinEpiData::Load::MetadataReader::PrismSampleReader::P1->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
     $p1->read();
     $p1->addSpecimenType();
 
-    my $p2 = ApiCommonData::Load::MetadataReader::PrismSampleReader::P2->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
+    my $p2 = ClinEpiData::Load::MetadataReader::PrismSampleReader::P2->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $clinicalVisitMapper);
     $p2->read();
     $p2->addSpecimenType();
 
@@ -585,8 +585,8 @@ sub makePrimaryKey {
 1;
 
 
-package ApiCommonData::Load::MetadataReader::PrismLightTrapReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::PrismLightTrapReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use strict;
 
@@ -627,8 +627,8 @@ sub getParentPrefix {
 1;
 
 
-package ApiCommonData::Load::MetadataReader::PrismSampleReader::FP;
-use base qw(ApiCommonData::Load::MetadataReader::PrismSampleReader);
+package ClinEpiData::Load::MetadataReader::PrismSampleReader::FP;
+use base qw(ClinEpiData::Load::MetadataReader::PrismSampleReader);
 
 use strict;
 
@@ -643,8 +643,8 @@ sub makePrimaryKey {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismSampleReader::BC;
-use base qw(ApiCommonData::Load::MetadataReader::PrismSampleReader);
+package ClinEpiData::Load::MetadataReader::PrismSampleReader::BC;
+use base qw(ClinEpiData::Load::MetadataReader::PrismSampleReader);
 
 use strict;
 
@@ -659,8 +659,8 @@ sub makePrimaryKey {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismSampleReader::P1;
-use base qw(ApiCommonData::Load::MetadataReader::PrismSampleReader);
+package ClinEpiData::Load::MetadataReader::PrismSampleReader::P1;
+use base qw(ClinEpiData::Load::MetadataReader::PrismSampleReader);
 
 use strict;
 
@@ -675,8 +675,8 @@ sub makePrimaryKey {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::PrismSampleReader::P2;
-use base qw(ApiCommonData::Load::MetadataReader::PrismSampleReader);
+package ClinEpiData::Load::MetadataReader::PrismSampleReader::P2;
+use base qw(ClinEpiData::Load::MetadataReader::PrismSampleReader);
 
 use strict;
 
@@ -692,8 +692,8 @@ sub makePrimaryKey {
 1;
 
 
-package ApiCommonData::Load::MetadataReader::HbgdReader;
-use base qw(ApiCommonData::Load::MetadataReader);
+package ClinEpiData::Load::MetadataReader::HbgdReader;
+use base qw(ClinEpiData::Load::MetadataReader);
 
 use strict;
 
@@ -730,8 +730,8 @@ sub adjustHeaderArray {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::HbgdSitesReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdReader);
+package ClinEpiData::Load::MetadataReader::HbgdSitesReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdReader);
 
 use strict;
 
@@ -747,8 +747,8 @@ sub makeParent {}
 
 1;
 
-package ApiCommonData::Load::MetadataReader::HbgdDwellingReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdReader);
+package ClinEpiData::Load::MetadataReader::HbgdDwellingReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdReader);
 
 use strict;
 
@@ -800,12 +800,12 @@ sub cleanAndAddDerivedData {
 
 
 
-package ApiCommonData::Load::MetadataReader::HbgdSSReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdDwellingReader);
+package ClinEpiData::Load::MetadataReader::HbgdSSReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdDwellingReader);
 
 use strict;
 
-use ApiCommonData::Load::MetadataReader;
+use ClinEpiData::Load::MetadataReader;
 
 
 sub readAncillaryInputFile {
@@ -885,17 +885,17 @@ sub cleanAndAddDerivedData {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::HbgdParticipantSitesReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdDwellingReader);
+package ClinEpiData::Load::MetadataReader::HbgdParticipantSitesReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdDwellingReader);
 
 use strict;
 
-use ApiCommonData::Load::MetadataReader;
+use ClinEpiData::Load::MetadataReader;
 
 sub readAncillaryInputFile {
   my ($self, $file) = @_;
 
-  my $sitesReader = ApiCommonData::Load::MetadataReader::HbgdSitesReader->new($file, undef, undef, undef, undef);  
+  my $sitesReader = ClinEpiData::Load::MetadataReader::HbgdSitesReader->new($file, undef, undef, undef, undef);  
   return $sitesReader->read();
 }
 
@@ -923,8 +923,8 @@ sub cleanAndAddDerivedData {
 
 
 
-package ApiCommonData::Load::MetadataReader::HbgdParticipantReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdReader);
+package ClinEpiData::Load::MetadataReader::HbgdParticipantReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdReader);
 
 use strict;
 
@@ -975,8 +975,8 @@ sub getPrimaryKeyPrefix {
 
 1;
 
-package ApiCommonData::Load::MetadataReader::HbgdEventReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdReader);
+package ClinEpiData::Load::MetadataReader::HbgdEventReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdReader);
 
 use strict;
 
@@ -1113,11 +1113,11 @@ sub getPrimaryKeyPrefix {
 1;
 
 
-package ApiCommonData::Load::MetadataReader::HbgdDailyReader;
-use base qw(ApiCommonData::Load::MetadataReader::HbgdEventReader);
+package ClinEpiData::Load::MetadataReader::HbgdDailyReader;
+use base qw(ClinEpiData::Load::MetadataReader::HbgdEventReader);
 
 use strict;
-use ApiCommonData::Load::MetadataReader;
+use ClinEpiData::Load::MetadataReader;
 
 
 sub read {

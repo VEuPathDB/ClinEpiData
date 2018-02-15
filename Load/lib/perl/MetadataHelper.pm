@@ -1,14 +1,14 @@
-package ApiCommonData::Load::MetadataHelper;
+package ClinEpiData::Load::MetadataHelper;
 
 use strict;
 
 use JSON;
 
-use ApiCommonData::Load::MetadataReader;
+use ClinEpiData::Load::MetadataReader;
 
 use Statistics::Descriptive;
 
-use ApiCommonData::Load::OntologyDAGNode;
+use ClinEpiData::Load::OntologyDAGNode;
 
 use XML::Simple;
 
@@ -361,7 +361,7 @@ sub makeTreeObjFromOntology {
 
   my $rootSourceId = "http://www.w3.org/2002/07/owl#Thing";
 
-  my $root = ApiCommonData::Load::OntologyDAGNode->new({name => $rootSourceId, attributes => {"displayName" => "Thing"} });
+  my $root = ClinEpiData::Load::OntologyDAGNode->new({name => $rootSourceId, attributes => {"displayName" => "Thing"} });
 
   $nodeLookup{$rootSourceId} = $root;
 
@@ -371,7 +371,7 @@ sub makeTreeObjFromOntology {
 
     unless($parentNode) {
       my $parentDisplayName = $propertyNames->{$parentSourceId}->[0];
-      $parentNode = ApiCommonData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName}});
+      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName}});
       $nodeLookup{$parentSourceId} = $parentNode;
     }
 
@@ -382,7 +382,7 @@ sub makeTreeObjFromOntology {
 
       unless($childNode) {
         my $childDisplayName = $propertyNames->{$childSourceId}->[0];
-        $childNode = ApiCommonData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName} }) ;
+        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName} }) ;
         $nodeLookup{$childSourceId} = $childNode;
       }
 
@@ -494,7 +494,7 @@ sub writeInvestigationTree {
       my $maxdate = $sorted[scalar(@sorted)];
       my $display = "DATE_RANGE=$mindate-$maxdate";
 
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1} })) ;
     }
     elsif($count{"number"} == $count{"total"}) {
       # use stats package to get quantiles and mean
@@ -507,12 +507,12 @@ sub writeInvestigationTree {
       my $max = $stat->quantile(4);
       my $mean = $stat->mean();
 
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "MIN=$min", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.2", attributes => {"displayName" => "MAX=$max", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.3", attributes => {"displayName" => "MEAN=$mean", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.4", attributes => {"displayName" => "MEDIAN=$median", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.5", attributes => {"displayName" => "LOWER_QUARTILE=$firstQuantile", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.6", attributes => {"displayName" => "UPPER_QUARTILE=$thirdQuantile", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "MIN=$min", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.2", attributes => {"displayName" => "MAX=$max", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.3", attributes => {"displayName" => "MEAN=$mean", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.4", attributes => {"displayName" => "MEDIAN=$median", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.5", attributes => {"displayName" => "LOWER_QUARTILE=$firstQuantile", "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.6", attributes => {"displayName" => "UPPER_QUARTILE=$thirdQuantile", "isLeaf" => 1, "keep" => 1} })) ;
 
     }
     else {
@@ -523,7 +523,7 @@ sub writeInvestigationTree {
 
       my $ct = 1;
       foreach my $value (sort keys %values) {
-        $parentNode->add_daughter(ApiCommonData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($values{$value})", "isLeaf" => 1, "keep" => 1} })) ;
+        $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($values{$value})", "isLeaf" => 1, "keep" => 1} })) ;
         $ct++;
       }
     }

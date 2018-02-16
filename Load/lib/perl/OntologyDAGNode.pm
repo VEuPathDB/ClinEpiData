@@ -1,4 +1,4 @@
-package ApiCommonData::Load::OntologyDAGNode;
+package ClinEpiData::Load::OntologyDAGNode;
 use parent 'Tree::DAG_Node';
 
 use Data::Dumper;

@@ -360,10 +360,12 @@ sub makeTreeObjFromOntology {
   my %nodeLookup;
 
   my $rootSourceId = "http://www.w3.org/2002/07/owl#Thing";
+  my $altRootSourceId = "Thing";
 
   my $root = ClinEpiData::Load::OntologyDAGNode->new({name => $rootSourceId, attributes => {"displayName" => "Thing"} });
 
   $nodeLookup{$rootSourceId} = $root;
+  $nodeLookup{$altRootSourceId} = $root;
 
   foreach my $parentSourceId (keys %$propertySubclasses) {
 
@@ -390,7 +392,6 @@ sub makeTreeObjFromOntology {
     }
   }
 
-#  print map("$_\n", @{$root->tree2string({no_attributes => 0})});
   return ($root, \%nodeLookup);
 }
 

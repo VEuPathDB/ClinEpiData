@@ -365,7 +365,7 @@ sub makeTreeObjFromOntology {
   my $root = ClinEpiData::Load::OntologyDAGNode->new({name => $rootSourceId, attributes => {"displayName" => "Thing"} });
 
   $nodeLookup{$rootSourceId} = $root;
-  $nodeLookup{$altRootSourceId} = $root;
+#  $nodeLookup{$altRootSourceId} = $root;
 
   foreach my $parentSourceId (keys %$propertySubclasses) {
 
@@ -435,6 +435,7 @@ sub writeInvestigationTree {
   my $studies = $investigation->getStudies();
 
   my %data;
+  my %qualifierToHeaderNames;
 
 
   foreach my $study (@$studies) {
@@ -457,8 +458,13 @@ sub writeInvestigationTree {
         my $characteristics = $node->getCharacteristics();
         foreach my $characteristic (@$characteristics) {
           my $qualifier = $characteristic->getQualifier();
+
+          my $altQualifier = $characteristic->getAlternativeQualifier();
+
+
           my $value = $characteristic->getValue();
-          push @{$data{$qualifier}}, $value if($value)
+          push @{$data{$qualifier}}, $value if($value);
+          push @{$qualifierToHeaderNames{$qualifier}}, $altQualifier;
         }
       }
     }
@@ -466,8 +472,12 @@ sub writeInvestigationTree {
 
 
   foreach my $sourceId (keys %data) {
+    my @altQualifiers = @{$qualifierToHeaderNames{$sourceId}};
 
     my $parentNode = $nodeLookup->{$sourceId};
+
+    $parentNode->attributes->{'alternativeQualifiers'} = \@altQualifiers;
+
     die "Source_id [$sourceId] is missing from the OWL file but used in data" unless($parentNode);
 
     my %count;
@@ -495,7 +505,7 @@ sub writeInvestigationTree {
       my $maxdate = $sorted[scalar(@sorted)];
       my $display = "DATE_RANGE=$mindate-$maxdate";
 
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1} })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 })) ;
     }
     elsif($count{"number"} == $count{"total"}) {
       # use stats package to get quantiles and mean

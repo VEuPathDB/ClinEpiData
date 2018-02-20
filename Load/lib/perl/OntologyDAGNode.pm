@@ -10,12 +10,18 @@ sub format_node {
   my $displayName = $node->{attributes}->{displayName};
   my $isLeaf = $node->{attributes}->{isLeaf};
 
+  my $altQualifiers = $node->{attributes}->{alternativeQualifiers};
 
+  my $altQualifiersString = join(",", @$altQualifiers);
 
   if($isLeaf) {
     return $displayName;
   }
   
+  if($altQualifiers) {
+    $name = "$name $altQualifiersString";
+  }
+
   if($displayName) {
     return "$displayName ($name)";
   }

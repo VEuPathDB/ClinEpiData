@@ -10,7 +10,7 @@ use ClinEpiData::Load::MetadataHelper;
 use CBIL::Util::PropertySet;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile);
+my ($help, $ontologyMappingXmlFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $TYPE = "type";
@@ -26,6 +26,7 @@ my $PACKAGE_NAME = "packageName";
 my $VALUE_MAPPING_FILE = "valueMappingFile";
 my $ONTOLOGY_OWL_FILE = "ontologyOwlFile";
 my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
+my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 
 &GetOptions('help|h' => \$help,
             'propFile=s' => \$propFile,
@@ -42,6 +43,7 @@ my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
             "$VALUE_MAPPING_FILE=s" => \$valueMappingFile,
             "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
             "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
+            "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
     );
 
 
@@ -69,6 +71,10 @@ if(-e $propFile) {
   unless(scalar @metadataFiles > 0) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};
     @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+  }
+  unless(scalar @filterParentSourceIds > 0) {
+    my $filterParentSourceIdsString = $properties->{props}->{$FILTER_PARENT_SOURCE_ID};
+    @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString);
   }
 }
 
@@ -121,7 +127,8 @@ else {
 }
 
 if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
-  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile);
+  my %filterParents = map { $_ => 1 } @filterParentSourceIds;
+  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents);
 }
 
 # check each row that has a parent matches in parent merged file

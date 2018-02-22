@@ -353,7 +353,7 @@ sub readPropertyFile {
 }
 
 sub makeTreeObjFromOntology {
-  my ($self, $owlFile) = @_;
+  my ($self, $owlFile, $filterParentSourceIds) = @_;
 
   my ($propertyNames, $propertySubclasses) = $self->readOntologyOwlFile($owlFile);
 
@@ -375,6 +375,9 @@ sub makeTreeObjFromOntology {
       my $parentDisplayName = $propertyNames->{$parentSourceId}->[0];
       $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName}});
       $nodeLookup{$parentSourceId} = $parentNode;
+      if($filterParentSourceIds->{$parentSourceId}){
+        $parentNode->{attributes}->{filter} = 1;
+      }
     }
 
     my $childrenSourceIds = $propertySubclasses->{$parentSourceId};
@@ -386,6 +389,9 @@ sub makeTreeObjFromOntology {
         my $childDisplayName = $propertyNames->{$childSourceId}->[0];
         $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName} }) ;
         $nodeLookup{$childSourceId} = $childNode;
+        if($filterParentSourceIds->{$childSourceId}){
+          $childNode->{attributes}->{filter} = 1;
+        }
       }
 
       $parentNode->add_daughter($childNode);
@@ -398,9 +404,9 @@ sub makeTreeObjFromOntology {
 
 
 sub writeInvestigationTree {
-  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile) = @_;
+  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds) = @_;
 
-  my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile);
+  my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
 
   my $dirname = dirname($mergedOutputFile);
 
@@ -463,8 +469,8 @@ sub writeInvestigationTree {
 
 
           my $value = $characteristic->getValue();
-          push @{$data{$qualifier}}, $value if($value);
-          push @{$qualifierToHeaderNames{$qualifier}}, $altQualifier;
+          push @{$data{$qualifier}}, $value if(defined $value);
+          $qualifierToHeaderNames{$qualifier}->{$altQualifier} = 1;
         }
       }
     }
@@ -472,7 +478,7 @@ sub writeInvestigationTree {
 
 
   foreach my $sourceId (keys %data) {
-    my @altQualifiers = @{$qualifierToHeaderNames{$sourceId}};
+    my @altQualifiers = sort keys %{$qualifierToHeaderNames{$sourceId}};
 
     my $parentNode = $nodeLookup->{$sourceId};
 
@@ -502,10 +508,10 @@ sub writeInvestigationTree {
       #sort and take first and last
       my @sorted = sort @values;
       my $mindate = $sorted[0];
-      my $maxdate = $sorted[scalar(@sorted)];
-      my $display = "DATE_RANGE=$mindate-$maxdate";
+      my $maxdate = $sorted[$#sorted];
+      my $display = "DATE_RANGE=$mindate...$maxdate";
 
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 })) ;
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 }})) ;
     }
     elsif($count{"number"} == $count{"total"}) {
       # use stats package to get quantiles and mean
@@ -518,12 +524,18 @@ sub writeInvestigationTree {
       my $max = $stat->quantile(4);
       my $mean = $stat->mean();
 
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "MIN=$min", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.2", attributes => {"displayName" => "MAX=$max", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.3", attributes => {"displayName" => "MEAN=$mean", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.4", attributes => {"displayName" => "MEDIAN=$median", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.5", attributes => {"displayName" => "LOWER_QUARTILE=$firstQuantile", "isLeaf" => 1, "keep" => 1} })) ;
-      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.6", attributes => {"displayName" => "UPPER_QUARTILE=$thirdQuantile", "isLeaf" => 1, "keep" => 1} })) ;
+      my $displayName = sprintf("MIN=%s MAX=%s MEDIAN=%0.1f MEAN=%0.1f LOWER_Q=%0.1f UPPER_Q=%0.1f", $min, $max, $median, $mean, $firstQuantile, $thirdQuantile);
+
+      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.stats", attributes => {"displayName" => $displayName, "isLeaf" => 1, "keep" => 1} })) ;
+
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "MIN=$min", "isLeaf" => 1, "keep" => 1} })) ;
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.2", attributes => {"displayName" => "MAX=$max", "isLeaf" => 1, "keep" => 1} })) ;
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.3", attributes => {"displayName" => "MEAN=$mean", "isLeaf" => 1, "keep" => 1} })) ;
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.4", attributes => {"displayName" => "MEDIAN=$median", "isLeaf" => 1, "keep" => 1} })) ;
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.5", attributes => {"displayName" => "LOWER_QUARTILE=$firstQuantile", "isLeaf" => 1, "keep" => 1} })) ;
+#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.6", attributes => {"displayName" => "UPPER_QUARTILE=$thirdQuantile", "isLeaf" => 1, "keep" => 1} })) ;
+
+
 
     }
     else {
@@ -543,6 +555,10 @@ sub writeInvestigationTree {
 
   }
 
+  if(0 < scalar keys %{$filterParentSourceIds}){
+    print STDERR "Here are the headers to be excluded\n";
+    $treeObjRoot->printNonFilteredAlternativeQualifiers();
+  }
 
   open(TREE, ">$treeStringOutputFile") or die "Cannot open file $treeStringOutputFile for writing:$!";
   open(JSON, ">$jsonStringOutputFile") or die "Cannot open file $jsonStringOutputFile for writing:$!";
@@ -551,7 +567,7 @@ sub writeInvestigationTree {
 
   my $treeHashRef = $treeObjRoot->transformToHashRef();
 
-  my $json_text = encode_json($treeHashRef);
+  my $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
 
   print JSON "$json_text\n";
 

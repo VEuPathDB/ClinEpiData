@@ -6,6 +6,14 @@ use base qw(ClinEpiData::Load::MetadataReader);
 package ClinEpiData::Load::MALEDReader::ParticipantReader;
 use base qw(ClinEpiData::Load::MALEDReader);
 
+sub makeParent {
+  return undef; 
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  return $hash->{pid};
+}
+
 1;
 
 package ClinEpiData::Load::MALEDReader::StoolSampleReader;

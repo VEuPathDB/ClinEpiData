@@ -365,7 +365,7 @@ sub makeTreeObjFromOntology {
   my $root = ClinEpiData::Load::OntologyDAGNode->new({name => $rootSourceId, attributes => {"displayName" => "Thing"} });
 
   $nodeLookup{$rootSourceId} = $root;
-#  $nodeLookup{$altRootSourceId} = $root;
+  $nodeLookup{$altRootSourceId} = $root;
 
   foreach my $parentSourceId (keys %$propertySubclasses) {
 

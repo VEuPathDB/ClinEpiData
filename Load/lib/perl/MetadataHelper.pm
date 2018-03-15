@@ -404,7 +404,7 @@ sub makeTreeObjFromOntology {
 
 
 sub writeInvestigationTree {
-  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds) = @_;
+  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $investigationFile) = @_;
 
   my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
 
@@ -415,19 +415,22 @@ sub writeInvestigationTree {
 
 
   my $mergedOutputBaseName = basename($mergedOutputFile);
-  my $investigationFile = "$dirname/tempInvestigation.xml";
 
-  open(FILE, ">$investigationFile") or die "Cannot open file $investigationFile for writing: $!";
+  unless($investigationFile) {
+    $investigationFile = "$dirname/tempInvestigation.xml";
+
+    open(FILE, ">$investigationFile") or die "Cannot open file $investigationFile for writing: $!";
   
 
-  print FILE "<investigation identifier=\"DUMMY\" identifierIsDirectoryName=\"false\">
+    print FILE "<investigation identifier=\"DUMMY\" identifierIsDirectoryName=\"false\">
   <study fileName=\"$mergedOutputBaseName\" identifierSuffix=\"-1\">
     <node isaObject=\"Source\" name=\"ENTITY\" type=\"INTERNAL\" suffix=\"\" useExactSuffix=\"true\" idColumn=\"PRIMARY_KEY\"/>  
   </study>
 </investigation>
 ";
 
-  close FILE;
+    close FILE;
+  }
 
   my $investigation = CBIL::ISA::InvestigationSimple->new($investigationFile, $ontologyMappingFile, undef, $valueMappingFile, undef, 0, $dateObfuscationFile);
   eval {
@@ -460,22 +463,22 @@ sub writeInvestigationTree {
 
 
       foreach my $node (@$nodes) {
+        if($node->hasAttribute("MaterialType")) {
+          my $characteristics = $node->getCharacteristics();
+          foreach my $characteristic (@$characteristics) {
+            my $qualifier = $characteristic->getQualifier();
 
-        my $characteristics = $node->getCharacteristics();
-        foreach my $characteristic (@$characteristics) {
-          my $qualifier = $characteristic->getQualifier();
+            my $altQualifier = $characteristic->getAlternativeQualifier();
 
-          my $altQualifier = $characteristic->getAlternativeQualifier();
-
-
-          my $value = $characteristic->getValue();
-          push @{$data{$qualifier}}, $value if(defined $value);
-          $qualifierToHeaderNames{$qualifier}->{$altQualifier} = 1;
+            
+            my $value = $characteristic->getValue();
+            push @{$data{$qualifier}}, $value if(defined $value);
+            $qualifierToHeaderNames{$qualifier}->{$altQualifier} = 1;
+          }
         }
       }
     }
   }
-
 
   foreach my $sourceId (keys %data) {
     my @altQualifiers = sort keys %{$qualifierToHeaderNames{$sourceId}};

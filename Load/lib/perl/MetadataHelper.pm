@@ -12,7 +12,7 @@ use ClinEpiData::Load::OntologyDAGNode;
 
 use XML::Simple;
 
-use Data::Dumper;
+# use Data::Dumper;
 
 use File::Basename;
 
@@ -145,7 +145,7 @@ sub isValid {
 
       unless($parentOutput->{lc($parentId)}) {
         print STDERR "PRIMARY_KEY=$pk\n";
-        print STDERR Dumper $mergedOutput->{$pk};
+      # print STDERR Dumper $mergedOutput->{$pk};
         die "Parent $parentId not defined as primary key in parent file" ;
       }
 
@@ -407,6 +407,7 @@ sub writeInvestigationTree {
   my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $investigationFile) = @_;
 
   my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
+# print Dumper $treeObjRoot; exit;
 
   my $dirname = dirname($mergedOutputFile);
 
@@ -485,9 +486,9 @@ sub writeInvestigationTree {
 
     my $parentNode = $nodeLookup->{$sourceId};
 
-    $parentNode->attributes->{'alternativeQualifiers'} = \@altQualifiers;
-
     die "Source_id [$sourceId] is missing from the OWL file but used in data" unless($parentNode);
+
+    $parentNode->attributes->{'alternativeQualifiers'} = \@altQualifiers;
 
     my %count;
 

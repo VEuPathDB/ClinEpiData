@@ -29,7 +29,7 @@ my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 
 &GetOptions('help|h' => \$help,
-            'propFile=s' => \$propFile,
+            'p|propFile=s' => \$propFile,
 	    "$TYPE=s" => \$type,
 	    "$PARENT_TYPE=s" => \$parentType,
             "$PARENT_MERGED_FILE=s" => \$parentMergedFile,

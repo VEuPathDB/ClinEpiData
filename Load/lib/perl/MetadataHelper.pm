@@ -1,6 +1,7 @@
 package ClinEpiData::Load::MetadataHelper;
 
 use strict;
+use warnings;
 
 use JSON;
 
@@ -319,7 +320,7 @@ sub readOntologyOwlFile {
      die "Could not Parse OWL file $owlFile";
    }
 
-   my $systemResult = system("java -classpath $classpath org.gusdb.gus.supported.IsA_Axioms $owlFile");
+   $systemResult = system("java -classpath $classpath org.gusdb.gus.supported.IsA_Axioms $owlFile");
    unless($systemResult / 256 == 0) {
      die "Could not Parse OWL file $owlFile";
    }
@@ -407,7 +408,6 @@ sub writeInvestigationTree {
   my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $investigationFile) = @_;
 
   my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
-# print Dumper $treeObjRoot; exit;
 
   my $dirname = dirname($mergedOutputFile);
 
@@ -508,7 +508,7 @@ sub writeInvestigationTree {
       $count{"total"}++;
     }
 
-    if($count{"date"} == $count{"total"}) {
+    if(defined($count{"date"}) && defined($count{"total"}) && $count{"date"} == $count{"total"}) {
       #sort and take first and last
       my @sorted = sort @values;
       my $mindate = $sorted[0];
@@ -517,7 +517,7 @@ sub writeInvestigationTree {
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 }})) ;
     }
-    elsif($count{"number"} == $count{"total"}) {
+    elsif(defined($count{"number"}) && defined($count{"total"}) &&  ($count{"number"} == $count{"total"})) {
       # use stats package to get quantiles and mean
       my $stat = Statistics::Descriptive::Full->new();
       $stat->add_data(@values);
@@ -531,13 +531,6 @@ sub writeInvestigationTree {
       my $displayName = sprintf("MIN=%s MAX=%s MEDIAN=%0.1f MEAN=%0.1f LOWER_Q=%0.1f UPPER_Q=%0.1f", $min, $max, $median, $mean, $firstQuantile, $thirdQuantile);
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.stats", attributes => {"displayName" => $displayName, "isLeaf" => 1, "keep" => 1} })) ;
-
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "MIN=$min", "isLeaf" => 1, "keep" => 1} })) ;
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.2", attributes => {"displayName" => "MAX=$max", "isLeaf" => 1, "keep" => 1} })) ;
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.3", attributes => {"displayName" => "MEAN=$mean", "isLeaf" => 1, "keep" => 1} })) ;
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.4", attributes => {"displayName" => "MEDIAN=$median", "isLeaf" => 1, "keep" => 1} })) ;
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.5", attributes => {"displayName" => "LOWER_QUARTILE=$firstQuantile", "isLeaf" => 1, "keep" => 1} })) ;
-#     $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.6", attributes => {"displayName" => "UPPER_QUARTILE=$thirdQuantile", "isLeaf" => 1, "keep" => 1} })) ;
 
 
 
@@ -559,7 +552,7 @@ sub writeInvestigationTree {
 
   }
 
-  if(0 < scalar keys %{$filterParentSourceIds}){
+  if(0 < scalar values %{$filterParentSourceIds}){
     print STDERR "Here are the headers to be excluded\n";
     $treeObjRoot->printNonFilteredAlternativeQualifiers();
   }
@@ -567,7 +560,7 @@ sub writeInvestigationTree {
   open(TREE, ">$treeStringOutputFile") or die "Cannot open file $treeStringOutputFile for writing:$!";
   open(JSON, ">$jsonStringOutputFile") or die "Cannot open file $jsonStringOutputFile for writing:$!";
 
-  print TREE map { "$_\n" if($_) } @{$treeObjRoot->tree2string({no_attributes => 0})};
+  print TREE map { "$_\n" if(defined($_)) } @{$treeObjRoot->tree2string({no_attributes => 0})};
 
   my $treeHashRef = $treeObjRoot->transformToHashRef();
 

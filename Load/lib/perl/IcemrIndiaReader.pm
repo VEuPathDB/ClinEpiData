@@ -59,17 +59,22 @@ package ClinEpiData::Load::IcemrIndiaReader::ObservationReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
 ## This object is for census data
 use Data::Dumper;
-## sub cleanAndAddDerivedData {
-##   my ($self, $hash) = @_;
-##   $self->SUPER::cleanAndAddDerivedData($hash);
-##   if(!defined($hash->{cen_fid}) || $hash->{cen_fid} eq "" ){
-##     my $parent = $self->getParentParsedOutput();
-##     $hash->{cen_fid} = $parent->{parent};
-##   }
-##   if(!defined($hash->{cen_fid})){
-##     return 'NONE';
-##   }
-## }
+ sub cleanAndAddDerivedData {
+   my ($self, $hash) = @_;
+   $self->SUPER::cleanAndAddDerivedData($hash);
+  if(!defined($hash->{age_fu}) || $hash->{age_fu} eq "" ){
+    if(defined($hash->{age_en}) && $hash->{age_en} ne ""){
+      $hash->{age_fu} = $hash->{age_en};
+    }
+    else{
+#     print "Get data for parent $hash->{sid}\n";
+      my $parent = $self->getParentParsedOutput()->{$hash->{sid}};
+      if(defined($parent->{age_en}) && $parent->{age_en} ne ""){
+        $hash->{age_fu} = $parent->{age_en};
+      }
+    }
+  }
+}
 
 sub makeParent {
   ## returns a Participant ID
@@ -90,10 +95,5 @@ sub makePrimaryKey {
   }
   die "Cannot make primary key:\n" . Dumper($hash);
 }
-
-# sub cleanAndAddDerivedData {
-#   my ($self, $hash) = @_;
-#   $self->SUPER::cleanAndAddDerivedData($hash);
-# }
 
 1;

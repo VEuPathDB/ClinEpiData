@@ -11,48 +11,63 @@ use warnings;
 use XML::Simple;
 use Getopt::Long;
 use Data::Dumper;
+use File::Basename;
 
+unless(0 < @ARGV){
+	my $scr = basename($0);
+	print join(" ", $scr, 
+  'o|ontologyXmlFile',
+  's|sourceIdFile',
+  'f|functionName') . "\n";
+	exit;
+}
 
 
 my ($xmlFile,$sourceIdFile,$functionName);
 GetOptions(
-  'ontologyXmlFile=s' => \$xmlFile,
-  'sourceIdFile=s' => \$sourceIdFile,
-  'functionName=s' => \$functionName,
+  'o|ontologyXmlFile=s' => \$xmlFile,
+  's|sourceIdFile=s' => \$sourceIdFile,
+  'f|functionName=s' => \$functionName,
 );
 
+my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
+
+unless($sourceIdFile || $functionName){ ## print functions and exit
+	foreach my $root ( @{$xml->{ontologymappings}} ) {
+	  foreach my $term ( @{$root->{ontologyTerm}} ) {
+			printf("%s\t%s\n", $term->{source_id}, join(",", @{$term->{function} || [] }));
+		}
+	}
+	exit;
+}
+	
 
 my %sourceIds;
 my %missingIds;
+my %funcToAdd;
 open(FH, "<$sourceIdFile") or die "Cannot read $sourceIdFile:$!\n";
 while(my $line = <FH>){
   chomp $line;
-  my @row = split(/\s*,\s*/, $line);
-  if(1<@row){
-    $sourceIds{$row[1]} = $row[0];
-    $missingIds{$row[1]} = $row[0];
+	my($sid, @func) = split(/\t/, $line);
+	if(0 < @func){ $funcToAdd{$sid} = \@func; }
+	elsif ($functionName) {
+		$funcToAdd{$sid} = [ $functionName ];
   }
-  else {
-    $sourceIds{$row[0]} = 1;
-    $missingIds{$row[0]} = 1;
-  }
+  $sourceIds{$sid} = 1; 
+  $missingIds{$sid} = 1;
 }
 close(FH);
 
-my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 
 foreach my $root ( @{$xml->{ontologymappings}} ) {
   foreach my $term ( @{$root->{ontologyTerm}} ) {
     my $sid = $term->{source_id};
     if($sourceIds{$sid}){
-      if( $term->{name} ){
-        my ($name) = @{$term->{name}};
-        if($sourceIds{$sid} ne $name){
-          printf STDERR ("Discrepency %s %s(from %s) != %s(from %s)\n", $sid, $name, $xmlFile, $sourceIds{$sid}, $sourceIdFile);
-        }
-        push(@{$term->{function}}, $functionName );
-        delete $missingIds{$term->{source_id}};
-      }
+			if($funcToAdd{$sid}){
+				my $list = uniq( $term->{function} || [], $funcToAdd{$sid});
+				$term->{function} = $list;
+			}
+      delete $missingIds{$term->{source_id}};
     }
   }
 }
@@ -64,3 +79,16 @@ printf STDERR ("Not found in %s:\n%s\n", $xmlFile, join("\n", map {"$_\t$missing
 
 
 
+## return a flat list, preserving order
+sub uniq {
+	my %h;
+	my $i = 0; 
+	foreach my $list ( @_ ){
+		foreach my $item ( @$list ){
+			$h{$item} ||= $i;
+			$i++;
+		}
+	}
+	my @final = sort { $h{$a} <=> $h{$b} } keys %h;
+	return \@final;
+}

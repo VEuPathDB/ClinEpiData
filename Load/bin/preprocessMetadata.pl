@@ -123,6 +123,7 @@ if($metadataHelper->isValid()) {
   $metadataHelper->writeMergedFile($outputFile);
 }
 else {
+  $metadataHelper->writeMergedFile($outputFile);
   die "ERRORS Found.  Please fix and try again.";
 }
 

@@ -103,6 +103,12 @@ sub cleanAndAddDerivedData {
     #die Dumper($hash) unless defined $hash->{"agedays"};
     die "agedays value missing\n" unless defined $hash->{"agedays"};
   }
+  if(defined($hash->{"agemonths"}) && $hash->{"agemonths"} =~ /\./){
+    my $intval = int($hash->{"agemonths"});
+    my $frac = $hash->{"agemonths"} - $intval;
+    my $val = $intval + $frac;
+    $hash->{"agemonths"} = $val;
+  }
 }
 
 1;

@@ -6,35 +6,21 @@ sub cleanAndAddDerivedData {
 }
 1;
 
-package ClinEpiData::Load::IcemrIndiaReader::ParticipantReader;
-use base qw(ClinEpiData::Load::IcemrIndiaReader);
-
-sub makeParent {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $hash->{cen_fid};
-}
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  my ($self, $hash) = @_;
-
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-
-  return $hash->{sid};
-}
-
-1;
-
 package ClinEpiData::Load::IcemrIndiaReader::HouseholdReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
 # use Data::Dumper;
 ## loads file micro_x24m.csv
 use strict;
 use warnings;
+
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+	my $file = $self->getMetadataFile();
+	if(defined($hash->{redcap_event_name}) && $hash->{redcap_event_name} =~ /^houseinfo/){
+		$hash = {};
+	}
+}
 
 sub makeParent {
   my ($self, $hash) = @_;
@@ -55,14 +41,45 @@ sub makePrimaryKey {
 # }
 1;
 
+package ClinEpiData::Load::IcemrIndiaReader::ParticipantReader;
+use base qw(ClinEpiData::Load::IcemrIndiaReader);
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+	my $file = $self->getMetadataFile();
+	$hash->{study_design} = "Cross-sectional";
+	if($file =~ /longitud/i){
+		$hash->{study_design} = "Longitudinal";
+	}
+}
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  return $hash->{cen_fid};
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+
+  return $hash->{sid};
+}
+
+1;
+
 package ClinEpiData::Load::IcemrIndiaReader::ObservationReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
 ## This object is for census data
 use Data::Dumper;
 use Scalar::Util qw/looks_like_number/;
- sub cleanAndAddDerivedData {
-   my ($self, $hash) = @_;
-   $self->SUPER::cleanAndAddDerivedData($hash);
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
   ## get a value for age at time of visit
   if(!defined($hash->{age_fu}) || $hash->{age_fu} eq "" ){
     if(defined($hash->{age_en}) && $hash->{age_en} ne ""){
@@ -81,51 +98,35 @@ use Scalar::Util qw/looks_like_number/;
     }
   }
 
-  if(defined($hash->{fever_2k_yn})){
+  if(1){
     my $score = 0;
     my @vars = grep { /^fever_2wk_where_chk___/ } keys %$hash;
-    if($hash->{fever_2k_yn} eq '1'){
+    if($hash->{fever_2wk_yn} eq '1'){
     # fever_2wk_where_chk__* 
     # if all are '0', change all 4 to "N/A"
     # may have to add rows to valueMap.txt
       map { $score += $hash->{$_} } @vars;
       unless( $score ){
-        map {$hash->{$_} = "N/A" } @vars;
+        delete($hash->{$_}) for @vars;
       }
     }
     else {
     # do not load any of these
-      map {$hash->{$_} = "N/A" } @vars;
+      delete($hash->{$_}) for @vars;
     }
   }
 # pastyear_treatdrugs_chk__* 
 # if all are '0', change all 4 to "N/A"
 # may have to add rows to valueMap.txt
   if($hash->{pastyear_treat_rad} eq '1' || $hash->{pastyear_treat_rad} eq '3'){
-    setIfZero($hash, '^pastyear_treatdrugs_chk___\d+$', 'NA');
-    setIfZero($hash, '^pastyear_treatwhere_chk___\d+$', 'NA');
-  # my $score = 0;
-  # my @vars = grep { /^pastyear_treatdrugs_chk___/ } keys %$hash;
-  # foreach my $var (@vars){
-  #   unless(looks_like_number($hash->{$_} || 0)){
-  #     die "ERROR value in '$_' is not a number\n";
-  #   }
-  # }
-  # map { $score += $hash->{$_} } @vars;
-  # unless( $score ){
-  #   map {$hash->{$_} = "N/A" } @vars;
-  # }
-  # $score = 0;
-  # @vars = grep { /^pastyear_treatwhere_chk___/ } keys %$hash;
-  # foreach my $var (@vars){
-  #   unless(looks_like_number($hash->{$_} || 0)){
-  #     die "ERROR value in '$_' is not a number\n";
-  #   }
-  # }
-  # map { $score += $hash->{$_} } @vars;
-  # unless( $score ){
-  #   map {$hash->{$_} = "N/A" } @vars;
-  # }
+    setIfZero($hash, '^pastyear_treatdrugs_chk___\d+$', 'NULL');
+    setIfZero($hash, '^pastyear_treatwhere_chk___\d+$', 'NULL');
+  }
+  else {
+    my @vars = grep { /^pastyear_treatdrugs_chk___/ } keys %$hash;
+    delete($hash->{$_}) for @vars;
+    @vars = grep { /^pastyear_treatwhere_chk___/ } keys %$hash;
+    delete($hash->{$_}) for @vars;
   }
 
 # sprayed_chk___1-4
@@ -139,26 +140,45 @@ use Scalar::Util qw/looks_like_number/;
 # pcr_species_chk___1-5
   setIfZero($hash, '^pcr_species_chk___\d$', 'NULL');
 # rdt_op_chk___1-4
-  setIfZero($hash, '^rdt_op_chk___\d$', '1');
-# rdt_fv_chk___1-4
-  setIfZero($hash, '^rdt_fv_chk___\d$', '1');
-# mx_species_chk___1-5
-  setIfZero($hash, '^mx_species_chk___\d$', '1');
-
-
-  foreach my $var (qw/height weight temp_celcius hemocue/){
-    if(defined($hash->{$var}) && $hash->{$var} !~ /\d/){
-      delete($hash->{$var});
+  if(defined($hash->{rdt_op_chk___4})){
+    unless(setIfZero($hash, '^rdt_op_chk___\d$')){
+      $hash->{rdt_op_chk___4} = 1;
     }
+  }
+    
+# rdt_fv_chk___1-4
+  if(defined($hash->{rdt_fv_chk___4})){
+    unless(setIfZero($hash, '^rdt_fv_chk___\d$')){
+      $hash->{rdt_fv_chk___4} = 1;
+    }
+  }
+# mx_species_chk___1-5
+  unless(setIfZero($hash, '^mx_species_chk___\d$')){
+    print STDERR "DEBUG mx_species_chk___5 = 1 at $hash->{sid}\n";
+    $hash->{mx_species_chk___5} = 1;
+  }
+
+
+  foreach my $var (qw/height weight temp_celsius hemocue/){
+    delete($hash->{$var}) unless(looks_like_number($hash->{$var}));
   }
   if(defined($hash->{pastyear_treatdate})){
     my $val = $hash->{pastyear_treatdate};
     $val =~ tr/_/ /; ## some dates look like mmm_YYYY
-    $val =~ s/^(\d\d)-(...)$/$2 $1/; ## some dates look like YY-mmm
+    $val =~ s/^(\d\d)-([a-zA-Z]{3})$/$2 20$1/; ## some dates look like YY-mmm
+    $val =~ s/^([a-zA-Z]{3})-(\d\d)$/$1 20$2/; ## some dates look like mmm-YY
     $val =~ s/^(\d+)$/1-1-$1/; ## just a year
-
+		$val =~ s/^(\d+)\W(\d+)(\W)(\d+)$/$2$3$4/; ## strip day of month !!! ASSUMES D-M-Y
     $hash->{pastyear_treatdate} = $val;
   }
+	if(defined($hash->{bp})){
+		if($hash->{bp} !~ /^\d+\/\d+$/){
+			delete($hash->{bp});
+		}
+		else{
+			($hash->{systolic_bp},$hash->{diastolic_bp}) = split(/\//, $hash->{bp});
+		}
+	}
 }
 
 ## if all hash vars matching pattern are zero, delete them
@@ -172,6 +192,9 @@ sub setIfZero {
     }
     $score += $hash->{$var};
   }
+  unless(defined($value)){
+    return $score;
+  }
   unless( $score ){
     if($value eq 'NULL'){
       delete($hash->{$_}) for @vars;
@@ -181,6 +204,7 @@ sub setIfZero {
     }
   # printf STDERR ("All set to %s: %s\n", $value, join(",", @vars));
   }
+  return 1;
 }
 
 

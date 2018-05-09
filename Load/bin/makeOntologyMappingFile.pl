@@ -8,7 +8,7 @@ use File::Basename qw/basename/;
 use Env qw/PROJECT_HOME/;
 use XML::Simple;
 use Data::Dumper;
-
+use File::Temp qw/tempfile/;
 my $dataset = shift @ARGV;
 
 my $base='http://purl.obolibrary.org/obo/';
@@ -24,11 +24,8 @@ close(FH);
 $sparql = join("", @rq);
 my $query = RDF::Query->new($sparql);
 my $name = basename($owl, '.owl');
-my $dbfile = sprintf('/tmp/%s.sqlite', $name);
-
-if(-e $dbfile) {
-  unlink $dbfile;
-}
+#my $dbfile = sprintf('/tmp/%s.sqlite', $name);
+my ($dbfn, $dbfile) = tempfile($name. "XXXX", SUFFIX => '.sqlite', DIR => '/tmp', UNLINK => 1);
 
 my $model = RDF::Trine::Model->new(
     RDF::Trine::Store::DBI->new(
@@ -113,4 +110,4 @@ my $xml = {
 };
 print XMLout($xml, KeepRoot => 1, AttrIndent => 0);
 
-unlink $dbfile;
+

@@ -26,7 +26,10 @@ my $query = RDF::Query->new($sparql);
 my $name = basename($owl, '.owl');
 my $dbfile = sprintf('/tmp/%s.sqlite', $name);
 
-my $exists = -e $dbfile;
+if(-e $dbfile) {
+  unlink $dbfile;
+}
+
 my $model = RDF::Trine::Model->new(
     RDF::Trine::Store::DBI->new(
         $name,
@@ -36,15 +39,10 @@ my $model = RDF::Trine::Model->new(
     ),
 );
 print STDERR ("model created\n");
-unless( $exists ) { ## assume existing file is populated
-	my $parser = RDF::Trine::Parser->new('rdfxml');
-	print STDERR ("parser created\n");
-	$parser->parse_file_into_model($base, $owl, $model);
-	print STDERR ("db created\n");
-}
-
-
-
+my $parser = RDF::Trine::Parser->new('rdfxml');
+print STDERR ("parser created\n");
+$parser->parse_file_into_model($base, $owl, $model);
+print STDERR ("db created\n");
 
 print STDERR ("query created\n");
 # print STDERR Dumper $sparql;
@@ -115,4 +113,4 @@ my $xml = {
 };
 print XMLout($xml, KeepRoot => 1, AttrIndent => 0);
 
-
+unlink $dbfile;

@@ -31,7 +31,6 @@ sub loadQueries{
 	my %queries;
 	foreach my $file (@files){
 		my $name = basename($file, '.rq');
-		printf STDERR ("SPARQL: loading query $name\n");
 		open(FH, "<$SPARQLPATH/$file") or die "Cannot read $file: $!\n";
 		my @lines = <FH>;
 		close(FH);

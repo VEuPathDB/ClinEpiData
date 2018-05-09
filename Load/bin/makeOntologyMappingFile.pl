@@ -42,9 +42,11 @@ while (my $row = $it->next) {
 	my $sid = basename($iri); 	
 	my $name = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
 	unshift(@sorted, 
-		{ 'source_id' => $sid, 'name'=>  [ $name ], 'type'=> 'materialType', 'parent' => 'ENTITY' }
+		{ 'source_id' => $sid, 'name'=>  [ $name ], 'type'=> 'materialType' }
 	);
 }
+
+unshift(@sorted, { source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] }); 
 
 my $xml = {
   ontologymappings => [

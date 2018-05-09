@@ -4,6 +4,7 @@ use base qw(ClinEpiData::Load::MetadataReader);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 }
+
 1;
 
 package ClinEpiData::Load::IcemrIndiaReader::HouseholdReader;
@@ -51,6 +52,7 @@ sub cleanAndAddDerivedData {
 	if($file =~ /longitud/i){
 		$hash->{study_design} = "Longitudinal";
 	}
+	$hash->{state_birth} =~ s/^-$/Missing/;
 }
 
 sub makeParent {
@@ -97,6 +99,8 @@ sub cleanAndAddDerivedData {
       ## set an impossible value
     }
   }
+	$hash->{travel_2wk_district} =~ s/^-$/Missing/;
+	$hash->{travel_2wk_state} =~ s/^-$/Missing/;
 
   if(1){
     my $score = 0;
@@ -154,7 +158,6 @@ sub cleanAndAddDerivedData {
   }
 # mx_species_chk___1-5
   unless(setIfZero($hash, '^mx_species_chk___\d$')){
-    print STDERR "DEBUG mx_species_chk___5 = 1 at $hash->{sid}\n";
     $hash->{mx_species_chk___5} = 1;
   }
 
@@ -167,8 +170,9 @@ sub cleanAndAddDerivedData {
     $val =~ tr/_/ /; ## some dates look like mmm_YYYY
     $val =~ s/^(\d\d)-([a-zA-Z]{3})$/$2 20$1/; ## some dates look like YY-mmm
     $val =~ s/^([a-zA-Z]{3})-(\d\d)$/$1 20$2/; ## some dates look like mmm-YY
-    $val =~ s/^(\d+)$/1-1-$1/; ## just a year
-		$val =~ s/^(\d+)\W(\d+)(\W)(\d+)$/$2$3$4/; ## strip day of month !!! ASSUMES D-M-Y
+    $val =~ s/^\W+(\d+)\W+$/1-1-$1/; ## just a year
+    $val =~ s/^(\d{1,2})-(\d+)$/1-$1-$2/; ## mm-yyyy
+#		$val =~ s/^(\d+)\W(\d+)(\W)(\d+)$/$2$3$4/; ## strip day of month !!! ASSUMES D-M-Y
     $hash->{pastyear_treatdate} = $val;
   }
 	if(defined($hash->{bp})){
@@ -181,7 +185,7 @@ sub cleanAndAddDerivedData {
 	}
 }
 
-## if all hash vars matching pattern are zero, delete them
+## if all hash vars matching pattern are zero, delete them, or set to $value if provided
 sub setIfZero {
   my ($hash, $pattern, $value) =  @_;
   my $score = 0;

@@ -11,9 +11,7 @@ use XML::Simple;
 use File::Basename;
 use CBIL::ISA::InvestigationSimple;
 use Scalar::Util qw(looks_like_number); 
-use Digest::MD5;
-use RDF::Trine;
-use RDF::Query;
+use ClinEpiData::Load::Owl;
 
 sub getReaders { $_[0]->{_readers} }
 sub setReaders { $_[0]->{_readers} = $_[1] }
@@ -298,7 +296,8 @@ sub writeMergedFile {
 sub makeTreeObjFromOntology {
   my ($self, $owlFile, $filterParentSourceIds) = @_;
 
-  my ($propertyNames, $propertySubclasses) = $self->readOntologyOwlFile($owlFile);
+	my $owl = ClinEpiData::Load::Owl->new($owlFile);
+  my ($propertyNames, $propertySubclasses) = $owl->getLabelsAndParentsHashes($owlFile);
 
   my %nodeLookup;
 
@@ -561,107 +560,5 @@ sub getDistinctLowerCaseValues {
 
   return $rv;
 }
-
-sub readOntologyOwlFile {
-  my ($self, $owlFile) = @_;
-	my $dbfile = sprintf('%s.sqlite', $owlFile);
-	my $exists = -e $dbfile; ## manually delete if owl was updated!
-	my $name = basename($owlFile);
-	if($exists && ! $self->fileIsCurrent($owlFile)){
-		print STDERR "OWL DB out of date, rebuilding\n";
-		$exists = 0;
-		unlink($dbfile);
-		$self->writeMD5($owlFile);
-	}
-	else{
-		print STDERR "OWL DB is up to date\n";
-	}
-	my $model = RDF::Trine::Model->new(
-	    RDF::Trine::Store::DBI->new(
-	        $name,
-	        "dbi:SQLite:dbname=$dbfile",
-	        '',  # no username
-	        '',  # no password
-	    ),
-	);
-	unless( $exists ) { ## assume existing file is populated
-		my $parser = RDF::Trine::Parser->new('rdfxml');
-		$parser->parse_file_into_model(undef, $owlFile, $model);
-		print STDERR ("OWL DB ready\n");
-	}
-	my $sparql = '
-	PREFIX owl: <http://www.w3.org/2002/07/owl#>
-	PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-	PREFIX obo: <http://purl.obolibrary.org/obo/>
-	
-	SELECT distinct ?entity ?parent ?column ?label
-	WHERE { 
-		?entity a owl:Class .
-		OPTIONAL {
-    	?entity obo:EUPATH_0000755 ?column . 
-		}
-		OPTIONAL {
-    	?entity rdfs:label ?slabel. 
-		}
-		OPTIONAL {
-			?entity rdfs:subClassOf ?parent_entity .
-		}
-		BIND (IF(BOUND(?parent_entity), ?parent_entity, "Thing") AS ?parent) .
-		BIND (str(?slabel) AS ?label) .
-	}
-	';
-	my $query = RDF::Query->new($sparql);
-	my $it = $query->execute( $model );
-  my $propertyNames = {};
-  my $propertySubclasses = {};
-	while (my $row = $it->next) {
-		my $sourceid = basename($row->{entity}->as_hash()->{iri});
-		my $parentid = basename($row->{parent}->as_hash()->{iri});
-		$parentid =~ s/^.*#(.+)$/$1/; ## handle owl#Thing
-		$propertySubclasses->{$parentid} ||= [];
-		push(@{$propertySubclasses->{$parentid}}, $sourceid);
-		my $col = $row->{column} ? $row->{column}->as_hash()->{literal} : "";
-		my $label = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
-		$propertyNames->{$sourceid} ||= $label; ## do not overwrite first label, use label that appears first in the OWL
-	}
-  return($propertyNames, $propertySubclasses);
-}
-
-sub writeMD5 {
-	my ($self, $file) = @_;
-	my $md5file = "$file.md5";
-	my $ctx = Digest::MD5->new;
-	open(my $fh, $file);
-	$ctx->addfile($fh);
-	my $md5 = $ctx->hexdigest();
-	close($fh);
-	open(FH, ">$md5file") or die "Cannot write $md5file:$!\n";
-	print FH "$md5\n";
-	close(FH);
-}
-
-sub fileIsCurrent {
-	my ($self, $file) = @_;
-	my $md5file = "$file.md5";
-	unless (-e $md5file){
-		return 0;
-	}
-	open(FH, "<$md5file") or die "Cannot read $md5file:$!\n";
-	my $oldmd5 = <FH>; 
-	chomp $oldmd5;
-	my $ctx = Digest::MD5->new;
-	open(my $fh, $file);
-	$ctx->addfile($fh);
-	my $md5 = $ctx->hexdigest();
-	close($fh);
-	if($md5 ne $oldmd5){
-		return 0;
-	}
-	return 1;
-}
-
-
-
-
 
 1;

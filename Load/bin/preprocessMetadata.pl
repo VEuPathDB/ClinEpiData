@@ -145,7 +145,17 @@ sub usage {
   my $msg = shift;
 
   print STDERR "$msg\n" if($msg);
+  print STDERR "This script can be run with the prop file or with all with command line arguements.  Command lines values will override the values come from the prop  file.
 
+
+
+mode 1:
+preprocessMetadata.pl --p|propFile=<FILE>
+
+
+mode 2:
+preprocessMetadata.pl --metadataFile fileA.csv --metadataFile fileB.csv --type Dwelling --ontologyMappingXmlFile XML --rowExcludeFile FILE --colExcludeFile FILE
+";
 #TODO:  fix error message here
-  die "perl preprocessMetadata.pl --metadataFile fileA.csv --metadataFile fileB.csv --type Dwelling --ontologyMappingXmlFile XML --rowExcludeFile FILE --colExcludeFile FILE";
+  die "error running preprocessMetadata.pl ";
 }

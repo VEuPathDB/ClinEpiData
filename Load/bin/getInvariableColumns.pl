@@ -27,7 +27,7 @@ $fsrx = '\t' if($tab);
 # read column headers
 open(FH, "<$file") or die "Cannot read $file:$!\n";
 my $headrow = <FH>;
-chomp $headrow;
+$headrow =~ s/\n|\r//g;
 my (@fields) = split($fsrx, $headrow);
 
 my %data;

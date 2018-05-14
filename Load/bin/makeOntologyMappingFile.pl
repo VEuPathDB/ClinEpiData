@@ -11,7 +11,19 @@ use Env qw/PROJECT_HOME/;
 use XML::Simple;
 my $dataset = shift @ARGV;
 
+unless( -d $PROJECT_HOME){
+	print "\$PROJECT_HOME must be set\n";
+	exit;
+}
+unless($dataset){
+	print "Usage: makeOntoloyMappingFile.pl [ontology] > ontologyMapping.xml\n\twhere the file exists \$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/[ontology].owl\n";
+	exit;
+}
 my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
+unless(-f $owlFile){
+	print "Error: $owlFile does not exist\n";
+	exit;
+}
 
 my $owl = ClinEpiData::Load::Owl->new($owlFile);
 my $it = $owl->execute('get_column_sourceID');

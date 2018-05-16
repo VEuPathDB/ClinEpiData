@@ -6,9 +6,20 @@ use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ClinEpiData::Load::Owl;
 use Env qw/PROJECT_HOME SPARQLPATH/;
-use Data::Dumper;
+use File::Basename;
+
 
 my ($dataset,$filter, @files) = @ARGV;
+
+unless($dataset){
+	printf(join("\n\n",
+		"Usage:\n\t%s [dataset] [[filter]] [[data files ...]]",
+		"Owl file must exist:\$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/[dataset].owl",
+		"Run without [[filter]] to see a list of options for this dataset",
+		"Run without [[data files ...]] to print only columns that are mapped in this dataset\n"
+	), basename($0));
+	exit;
+}
 
 my %columns; ## all columns in data files
 foreach my $file (@files){

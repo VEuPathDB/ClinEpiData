@@ -18,7 +18,7 @@ sub new {
 	};
 	$self->loadOwl();
 	unless ($SPARQLPATH){
-		$SPARQLPATH = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/SPARQL";
+		$SPARQLPATH = "$PROJECT_HOME/ApiCommonData/Load/lib/SPARQL";
 	}
 	$self->loadQueries();
 	return $self;

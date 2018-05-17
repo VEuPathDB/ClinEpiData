@@ -58,7 +58,22 @@ while (my $row = $it->next) {
 	);
 }
 
-unshift(@sorted, { source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] }); 
+
+my @manualAdditions = (["INTERNAL_X","materialType", "INTERNAL"],
+		       ["OBI_0100051","materialType","sample"],
+		      
+		      
+    );
+foreach my $row (@manualAdditions) {
+    my $sourceId = $row->[0];
+    my $type = $row->[1];
+    my $name = $row->[2];
+
+    unshift(@sorted, { source_id => $sourceId, type => $type, name => [ $name ] }); 
+    
+}
+
+
 
 my $xml = {
   ontologymappings => [
@@ -68,5 +83,4 @@ my $xml = {
   ]
 };
 print XMLout($xml, KeepRoot => 1, AttrIndent => 0);
-
 

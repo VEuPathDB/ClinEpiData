@@ -26,8 +26,9 @@ sub new {
 
 sub loadQueries{
 	my ($self) = @_;
+	print STDERR "Loading queries in $SPARQLPATH\n";
 	opendir(DH, $SPARQLPATH) or die "Cannot open directory $SPARQLPATH: $!\n";
-	my @files = grep { ! /^\./ } readdir(DH);
+	my @files = grep { /\.rq$/i } readdir(DH);
 	my %queries;
 	foreach my $file (@files){
 		my $name = basename($file, '.rq');
@@ -38,6 +39,7 @@ sub loadQueries{
 		$queries{$name} = $sparql;
 	}
 	$self->{config}->{queries} = \%queries;
+	# printf STDERR ("Queries available:\n\t%s\n", join("\n\t", keys %queries));
 }
 
 sub loadOwl {
@@ -93,10 +95,22 @@ sub getLabelsAndParentsHashes {
 }
 
 sub execute {
-	my ($self, $queryname) = @_;
-	die("$queryname cannot be loaded!\n") unless(defined($self->{config}->{queries}->{$queryname}));
+	my ($self, $queryname, $bind) = @_;
+	die("$queryname missing, query file was not loaded: $SPARQLPATH/$queryname.rq\n") unless(defined($self->{config}->{queries}->{$queryname}));
 	my $sparql = $self->{config}->{queries}->{$queryname};
-	my $query = RDF::Query->new($sparql);
+	if($bind && ref($bind) eq 'HASH'){
+		while(my ($key, $val) = each %$bind){
+			$sparql =~ s/\{$key\}/$val/g;
+		}
+	}
+	my $query;
+	eval{ $query = RDF::Query->new($sparql); };
+	unless($query){
+		print STDERR "Cannot create query from $queryname:\n$sparql\nCheck query syntax\n";
+		exit;
+	}
+		
+		
 	return $query->execute( $self->{config}->{model} );
 }
 

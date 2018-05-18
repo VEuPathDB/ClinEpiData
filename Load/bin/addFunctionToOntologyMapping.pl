@@ -48,26 +48,39 @@ my %funcToAdd;
 open(FH, "<$sourceIdFile") or die "Cannot read $sourceIdFile:$!\n";
 while(my $line = <FH>){
   chomp $line;
-	my($sid, @func) = split(/\t/, $line);
-	if(0 < @func){ $funcToAdd{$sid} = \@func; }
-	elsif ($functionName) {
-		$funcToAdd{$sid} = [ $functionName ];
+  my($sid, @func) = split(/\t/, $line);
+
+  $sid = lc $sid;
+  if(0 < @func){ $funcToAdd{$sid} = \@func; }
+  elsif ($functionName) {
+    $funcToAdd{$sid} = [ $functionName ];
   }
   $sourceIds{$sid} = 1; 
   $missingIds{$sid} = 1;
 }
 close(FH);
 
-
 foreach my $root ( @{$xml->{ontologymappings}} ) {
   foreach my $term ( @{$root->{ontologyTerm}} ) {
-    my $sid = $term->{source_id};
-    if($sourceIds{$sid}){
-			if($funcToAdd{$sid}){
-				my $list = uniq( $term->{function} || [], $funcToAdd{$sid});
-				$term->{function} = $list;
-			}
-      delete $missingIds{$term->{source_id}};
+
+    my $sourceId = $term->{source_id};
+
+    my $names = $term->{name};
+    my @names = @$names;
+
+    push @names, $sourceId;
+
+    my @lcNames = map {lc $_} @names;
+
+    foreach my $sid (@lcNames) {
+      if($sourceIds{$sid}){
+        if($funcToAdd{$sid}){
+
+          my $list = uniq( $term->{function} || [], $funcToAdd{$sid});
+          $term->{function} = $list;
+        }
+        delete $missingIds{$term->{source_id}};
+      }
     }
   }
 }

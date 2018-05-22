@@ -132,6 +132,13 @@ if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
   $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents);
 }
 
+else {
+	print "$ontologyMappingXmlFile missing\n" unless(-e $ontologyMappingXmlFile);
+	print "$valueMappingFile missing\n" unless(-e $valueMappingFile);
+	print "$ontologyOwlFile missing\n" unless(-e $ontologyOwlFile);
+}
+	
+
 # check each row that has a parent matches in parent merged file
 # check for "USER ERRORS" in any value; keep record of columns and primary keys
 # check that each header/qualifier is handled in the ontologymapping xml.  report new and missing

@@ -47,25 +47,8 @@ sub getPrimaryKeyPrefix {
 1;
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader;
-use base qw(ClinEpiData::Load::MetadataReader);
-use strict;
-
-sub makeParent {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return undef;
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  
-  return $hash->{"primary_key"};
-}
-
+use base qw(ClinEpiData::Load::OutputFileReader);
 1;
-
 
 
 package ClinEpiData::Load::GatesGEMSReader::ParticipantReader;

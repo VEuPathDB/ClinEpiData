@@ -28,10 +28,7 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesGEMSReader::HouseholdReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
-# use Data::Dumper;
-## loads file micro_x24m.csv
 use strict;
-use warnings;
 
 sub makeParent {
   my ($self, $hash) = @_;
@@ -40,44 +37,57 @@ sub makeParent {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
-  }
   return $hash->{childid};
 }
 
 sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-
-  unless($hash->{"primary_key"}) {
-    return "HH";
-  }
-  return "";
+    return "HH"; 
 }
-# sub cleanAndAddDerivedData {
-#   my ($self, $hash) = @_;
-#   $self->SUPER::cleanAndAddDerivedData($hash);
-# }
+
 1;
 
-package ClinEpiData::Load::GatesGEMSReader::ParticipantReader;
-use base qw(ClinEpiData::Load::GatesGEMSReader);
+package ClinEpiData::Load::GatesGEMSReader::OutputReader;
+use base qw(ClinEpiData::Load::MetadataReader);
+use strict;
 
 sub makeParent {
   my ($self, $hash) = @_;
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  return $hash->{center};
+  return undef;
 }
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  
+  return $hash->{"primary_key"};
+}
+
+1;
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::ParticipantReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+sub makeParent {
+  my ($self, $hash) = @_;
+
+  return $hash->{childid};
+}
+
 sub makePrimaryKey {
   my ($self, $hash) = @_;
 
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-
   return $hash->{childid};
+}
+
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  return "HH";
 }
 
 1;

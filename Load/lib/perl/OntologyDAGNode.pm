@@ -62,21 +62,24 @@ sub transformToHashRef {
   return $hashref;
 }
 
-sub printNonFilteredAlternativeQualifiers {
-  my ($self) = @_;
+sub getNonFilteredAlternativeQualifiers {
+  my ($self, $print) = @_;
 
   return undef if $self->{attributes}->{filter};
   return undef if $self->{attributes}->{isLeaf};
   my $altQualifiers = $self->{attributes}->{alternativeQualifiers};
   if($altQualifiers){
-    my $altQualifiersString = join("\n", @$altQualifiers);
-    print STDERR "$altQualifiersString\n";
+		if($print){
+  	  my $altQualifiersString = join("\n", @$altQualifiers);
+  	  print STDERR "$altQualifiersString\n";
+		}
   }
 
   foreach my $daughter ($self->daughters()) {
-    $daughter->printNonFilteredAlternativeQualifiers();
+    my $more = $daughter->getNonFilteredAlternativeQualifiers();
+		push(@$altQualifiers, @$more);
   }
 
-  return undef;
+	return $altQualifiers;
 }
 1;

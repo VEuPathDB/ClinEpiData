@@ -494,10 +494,18 @@ sub writeInvestigationTree {
   }
 
   if(0 < scalar values %{$filterParentSourceIds}){
-    print STDERR "Here are the headers to be excluded\n";
-    $treeObjRoot->printNonFilteredAlternativeQualifiers();
+		printf STDERR ("Scanning for column headers to filter under %s\n", join(", ", sort keys %$filterParentSourceIds)) ;
+  	my $filterColumns = $treeObjRoot->getNonFilteredAlternativeQualifiers();
+		if(0 < scalar @$filterColumns){
+    	printf STDERR ("Here are the column headers to be excluded\n%s\n", join("\n", sort @$filterColumns));
+		}
+		printf STDERR "\t...done\n";
+  }
+	else {
+		printf STDERR "\nNo filterParentSourceId, skipping scan for column headers to exclude\n\n";
   }
 
+	printf STDERR "printing tree files\n";
   open(TREE, ">$treeStringOutputFile") or die "Cannot open file $treeStringOutputFile for writing:$!";
   open(JSON, ">$jsonStringOutputFile") or die "Cannot open file $jsonStringOutputFile for writing:$!";
 
@@ -511,6 +519,7 @@ sub writeInvestigationTree {
 
   close TREE;
   close JSON;
+		printf STDERR "\t...done\n";
 }
 
 

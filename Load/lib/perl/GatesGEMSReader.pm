@@ -75,25 +75,65 @@ sub getParentPrefix {
 
 1;
 
-package ClinEpiData::Load::GatesGEMSReader::ObservationReader;
+package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
 sub makeParent {
   ## returns a Participant ID
   my ($self, $hash) = @_;
-  if($hash->{"parent"}) {
-    return $hash->{"parent"};
-  }
+  
   return $hash->{childid};
 }
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
+  my $date;
+  if ($hash->{f4a_date}){
+      $date=$hash->{f4a_date};
   }
-	return $hash->{caseid};
+  elsif ($hash->{f4b_date}){
+      $date=$hash->{f4b_date};
+  }
+  elsif ($hash->{f7_date}){
+      $date=$hash->{f7_date};
+  }
+  else {
+      
+      die 'Could not find the enrollment date';
+           
+  }
+  $date=~s/\//-/g;
+  return $hash->{childid} . "_" . $date;
 }
+1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+sub makeParent {
+  ## returns a Participant ID
+  my ($self, $hash) = @_;
+  
+  return $hash->{childid};
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  my $date;
+  if ($hash->{f5_date}){
+      $date=$hash->{f5_date};
+  }
+  
+  else {
+      
+      die 'Could not find the followup date';
+           
+  }
+  $date=~s/\//-/g;
+  return $hash->{childid} . "_" . $date;
+}
+1;
 
 package ClinEpiData::Load::GatesGEMSReader::SampleReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);

@@ -27,7 +27,8 @@ sub new {
   my $self = $class->SUPER::new(@_);
 
   my $csv = Text::CSV->new({ binary => 1, 
-                               sep_char => "," 
+                               sep_char => ",", 
+				   quote_char => '"'
                            }) 
       or die "Cannot use CSV: ".Text::CSV->error_diag ();  
 
@@ -46,7 +47,8 @@ sub splitLine {
     @columns = $csv->fields();
   }
   else {
-    die "Could not parse line: $line";
+      my $error= "".$csv->error_diag;
+    die "Could not parse line: $error";
   }
 
   return wantarray ? @columns : \@columns;

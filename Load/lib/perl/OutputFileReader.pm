@@ -16,4 +16,11 @@ sub makePrimaryKey {
   return $hash->{"primary_key"};
 }
 
+sub getColExcludes {
+    my ($self)=@_;
+    my $colExcludes = $self->SUPER::getColExcludes();
+     $colExcludes->{'__ALL__'}->{primary_key} = 1;
+     $colExcludes->{'__ALL__'}->{parent} = 1;
+    return $colExcludes;
+}
 1;

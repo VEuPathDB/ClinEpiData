@@ -13,6 +13,9 @@ use CBIL::ISA::InvestigationSimple;
 use Scalar::Util qw(looks_like_number); 
 use ClinEpiData::Load::Owl;
 
+use Data::Dumper;
+
+
 sub getReaders { $_[0]->{_readers} }
 sub setReaders { $_[0]->{_readers} = $_[1] }
 
@@ -512,8 +515,19 @@ sub writeInvestigationTree {
   print TREE map { "$_\n" if(defined($_)) } @{$treeObjRoot->tree2string({no_attributes => 0})};
 
   my $treeHashRef = $treeObjRoot->transformToHashRef();
+  
+  #print Dumper $treeHashRef;
+  my $json_text;
+  eval {
+      $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
+  };
+  if ($@){
+       print STDERR  Dumper $treeHashRef;
+       die "could not make tree.";     
+}
 
-  my $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
+
+ # my $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
 
   print JSON "$json_text\n";
 

@@ -1,6 +1,12 @@
 package ClinEpiData::Load::GatesGEMSReader;
 use base qw(ClinEpiData::Load::MetadataReaderCSV);
 
+sub formatdate{
+    my ($self,$date) = @_;
+    $date =~ s/\//-/g;
+    return $date;
+}
+
 
 sub clean {
   my ($self, $ar) = @_;
@@ -78,6 +84,8 @@ sub getParentPrefix {
 package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
+use Data::Dumper;
+
 sub makeParent {
   ## returns a Participant ID
   my ($self, $hash) = @_;
@@ -88,23 +96,47 @@ sub makeParent {
 sub makePrimaryKey {
   my ($self, $hash) = @_;
   my $date;
-  if ($hash->{f4a_date}){
-      $date=$hash->{f4a_date};
-  }
-  elsif ($hash->{f4b_date}){
-      $date=$hash->{f4b_date};
-  }
-  elsif ($hash->{f7_date}){
-      $date=$hash->{f7_date};
+  if ($hash->{enrolldate}){
+      $date=$hash->{enrolldate};
   }
   else {
       
       die 'Could not find the enrollment date';
            
   }
-  $date=~s/\//-/g;
+  $date= $self->formatdate($date);
   return $hash->{childid} . "_" . $date;
 }
+
+#we are appending to col_exclude based on the header
+sub adjustHeaderArray { 
+  my ($self, $ha) = @_;
+  my $colExcludes = $self->getColExcludes();
+  #$colExcludes->{'__ALL__'}->{$key}
+
+  my @find = grep (/_find_/i,@$ha);
+  my @last = grep (/_last_/i,@$ha);
+  my @out = grep (/_out_/i,@$ha);
+  my @rehyd = grep (/_rehyd_/i,@$ha);
+  my @newcolExcludes=(@find,@last,@out,@rehyd);
+  #print Dumper \@newcolExcludes;
+  
+  #exit;
+
+  foreach my $newcol (@newcolExcludes){
+      $newcol=lc($newcol);
+      $colExcludes->{'__ALL__'}->{$newcol}=1;
+  }
+  #print Dumper $colExcludes;
+  return $ha;
+}
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="enrollment";
+
+}
+
 1;
 
 
@@ -120,39 +152,180 @@ sub makeParent {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  my $date;
-  if ($hash->{f5_date}){
-      $date=$hash->{f5_date};
-  }
-  
-  else {
-      
-      die 'Could not find the followup date';
-           
-  }
-  $date=~s/\//-/g;
-  return $hash->{childid} . "_" . $date;
+  my  $date=$hash->{f5_date};
+ 
+   $date= $self->formatdate($date); 
+  return $date ? $hash->{childid} . "_" . $date : $hash->{childid};
 }
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="60 day follow-up";
+
+}
+
 1;
 
-package ClinEpiData::Load::GatesGEMSReader::SampleReader;
+
+
+package ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
+sub getDateColumn{
+    return "enrolldate";
+}
+sub getSuffix{}
+
 sub makeParent {
-  ## returns a Participant ID
+  ## returns a Participant ID 
   my ($self, $hash) = @_;
-  if($hash->{"parent"}) {
-    return $hash->{"parent"};
-  }
-	return $hash->{caseid};
+  my $dateColumn = $self->getDateColumn();
+  my $date = $self->formatdate($hash->{$dateColumn});
+  return $hash->{childid} . "_" . $date;
 }
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
-  }
-	return $hash->{lab_specimen_id};
+  my $dateColumn = $self->getDateColumn();
+  my  $date=$hash->{$dateColumn};
+  return undef unless $date;
+  my $suffix = $self->getSuffix();
+  $date= $self->formatdate($date);
+  return $hash->{childid} . "_" . $date .  "_" . $suffix;
 }
 
 1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::MedicalFindObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "find";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+
+}
+
+1;
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::MedicalLASTObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "last";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Last Outcome";
+
+}
+
+1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::MedicalOUTObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "out";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome leaving hospital/health center";
+
+}
+
+1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::MedicalREHYDObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "rehyd";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome if additional rehydration needed";
+
+}
+
+1;
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::SampleReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+sub getDateColumn{
+    return "enrolldate";
+}
+
+sub makeParent {
+    ## returns a Participant ID + ENROLLDATE
+    my ($self, $hash) = @_;
+    my $dateColumn_sample = $self->getDateColumn();
+    my $date = $self->formatdate($hash->{$dateColumn_sample});
+    return $hash->{childid} . "_" . $date;
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    if(exists($hash->{f11_specimen_id})) {
+	return $hash->{f11_specimen_id};
+    }else {
+	my $child=$hash->{childid};
+	#print STDERR "childid=$child\n";	
+        die "Could not find the specimen_id for participant:  $child";
+	
+    }
+}
+
+1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

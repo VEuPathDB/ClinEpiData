@@ -270,6 +270,7 @@ sub cleanAndAddDerivedData{
 
 package ClinEpiData::Load::GatesGEMSReader::SampleReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
+use File::Basename;
 
 sub getDateColumn{
     return "enrolldate";
@@ -278,6 +279,8 @@ sub getDateColumn{
 sub makeParent {
     ## returns a Participant ID + ENROLLDATE
     my ($self, $hash) = @_;
+    my $file = basename $self->getMetadataFile();
+    return undef if ($file eq "TAC.csv");
     my $dateColumn_sample = $self->getDateColumn();
     my $date = $self->formatdate($hash->{$dateColumn_sample});
     return $hash->{childid} . "_" . $date;
@@ -285,6 +288,29 @@ sub makeParent {
 
 sub makePrimaryKey {
     my ($self, $hash) = @_;
+    my $file = basename $self->getMetadataFile();
+    #print $file . "\n";
+    #exit;
+    
+    if ($file eq "GEMS1_Case_control_Study_data.csv"){
+	return $hash->{f11_specimen_id};
+    }elsif ($file eq "TAC.csv"){
+	return $hash->{sid};
+    }else{
+	die "could not find sid and f11_specimen_id (or lab_specimen_id)";
+    }
+    
+}
+
+
+
+
+
+
+
+
+
+=pod
     if(exists($hash->{f11_specimen_id})) {
 	return $hash->{f11_specimen_id};
     }else {
@@ -297,7 +323,7 @@ sub makePrimaryKey {
 
 1;
 
-
+=cut
 
 
 

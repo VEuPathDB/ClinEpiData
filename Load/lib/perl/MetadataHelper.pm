@@ -267,6 +267,7 @@ sub readColExcludeFile {
       chomp;
 
       my @a = split(/\t/, $_);
+			next unless @a;
 
       my $file = $a[1];
       my $col = lc($a[0]);

@@ -303,6 +303,49 @@ sub makePrimaryKey {
 }
 
 
+1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+=pod
+
+
+
+sub adjustHeaderArray { 
+    my ($self, $ha) = @_;
+    my $colExcludes = $self->getColExcludes();
+    my $file = basename $self->getMetadataFile();
+    if ($file eq "GEMS1_Case_control_Study_data.csv"){
+	
+	$colExcludes->{'__ALL__'}->{aepec}=1;
+	$colExcludes->{'__ALL__'}->{eaec}=1;
+	$colExcludes->{'__ALL__'}->{stec}=1;
+	$colExcludes->{'__ALL__'}->{tepec}=1;
+    }
+    
+    return $ha;
+}
+
+
+1;
+
+
+=cut
+
+
 
 
 

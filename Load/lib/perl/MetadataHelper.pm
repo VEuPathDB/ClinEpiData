@@ -301,7 +301,7 @@ sub makeTreeObjFromOntology {
   my ($self, $owlFile, $filterParentSourceIds) = @_;
 
 	my $owl = ClinEpiData::Load::Owl->new($owlFile);
-  my ($propertyNames, $propertySubclasses) = $owl->getLabelsAndParentsHashes($owlFile);
+  my ($propertyNames, $propertySubclasses, $propertyOrder) = $owl->getLabelsAndParentsHashes($owlFile);
 
   my %nodeLookup;
 
@@ -313,7 +313,7 @@ sub makeTreeObjFromOntology {
   $nodeLookup{$rootSourceId} = $root;
   $nodeLookup{$altRootSourceId} = $root;
 
-  foreach my $parentSourceId (keys %$propertySubclasses) {
+  foreach my $parentSourceId (sort { $propertyOrder->{$a} <=> $propertyOrder->{$b} } keys %$propertySubclasses) {
 
     my $parentNode = $nodeLookup{$parentSourceId};
 
@@ -326,9 +326,9 @@ sub makeTreeObjFromOntology {
       }
     }
 
-    my $childrenSourceIds = $propertySubclasses->{$parentSourceId};
+    my @childrenSourceIds = sort { $propertyOrder->{$a} <=> $propertyOrder->{$b} } @{$propertySubclasses->{$parentSourceId}};
 
-    foreach my $childSourceId (@$childrenSourceIds) {
+    foreach my $childSourceId (@childrenSourceIds) {
       my $childNode = $nodeLookup{$childSourceId};
 
       unless($childNode) {

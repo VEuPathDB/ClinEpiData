@@ -76,11 +76,12 @@ sub loadOwl {
 
 
 sub getLabelsAndParentsHashes {
-  my ($self, $owlFile) = @_;
+  my ($self) = @_;
 
 	my $it = $self->execute('get_entity_parent_column_label');
   my $propertyNames = {};
   my $propertySubclasses = {};
+	my $propertyOrder = {};
 	while (my $row = $it->next) {
 		my $sourceid = $self->getSourceIdFromIRI($row->{entity}->as_hash()->{iri});
 		my $parentid = $self->getSourceIdFromIRI($row->{parent}->as_hash()->{iri});
@@ -89,9 +90,11 @@ sub getLabelsAndParentsHashes {
 		push(@{$propertySubclasses->{$parentid}}, $sourceid);
 		my $col = $row->{column} ? $row->{column}->as_hash()->{literal} : "";
 		my $label = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
+		my $rank = $row->{rank} ? $row->{rank}->as_hash()->{literal} : "";
+		$propertyOrder->{$sourceid} = $rank;
 		$propertyNames->{$sourceid} ||= $label; ## do not overwrite first label, use label that appears first in the OWL
 	}
-  return($propertyNames, $propertySubclasses);
+  return($propertyNames, $propertySubclasses, $propertyOrder);
 }
 
 sub execute {

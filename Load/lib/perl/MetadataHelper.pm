@@ -319,7 +319,7 @@ sub makeTreeObjFromOntology {
 
     unless($parentNode) {
       my $parentDisplayName = $propertyNames->{$parentSourceId};
-      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName}});
+      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName, "rank" => $propertyOrder->{$parentSourceId}}});
       $nodeLookup{$parentSourceId} = $parentNode;
       if($filterParentSourceIds->{$parentSourceId}){
         $parentNode->{attributes}->{filter} = 1;
@@ -333,7 +333,7 @@ sub makeTreeObjFromOntology {
 
       unless($childNode) {
         my $childDisplayName = $propertyNames->{$childSourceId};
-        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName} }) ;
+        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName, "rank" => $propertyOrder->{$childSourceId}}}) ;
         $nodeLookup{$childSourceId} = $childNode;
         if($filterParentSourceIds->{$childSourceId}){
           $childNode->{attributes}->{filter} = 1;
@@ -520,7 +520,7 @@ sub writeInvestigationTree {
   #print Dumper $treeHashRef;
   my $json_text;
   eval {
-      $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
+      $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1, canonical=>[0]});
   };
   if ($@){
        print STDERR  Dumper $treeHashRef;

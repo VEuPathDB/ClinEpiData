@@ -54,7 +54,7 @@ sub transformToHashRef {
 
   my $hashref = {id => $name, display => $displayName};
 
-  foreach my $daughter (sort { $a->{attributes}->{displayName} cmp $b->{attributes}->{displayName} } $self->daughters()) {
+  foreach my $daughter (sort { $a->{attributes}->{rank} cmp $b->{attributes}->{rank} } $self->daughters()) {
     my $child = $daughter->transformToHashRef();
     push @{$hashref->{children}}, $child if($child);
   }

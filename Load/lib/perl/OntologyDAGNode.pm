@@ -49,12 +49,13 @@ sub transformToHashRef {
 
   my $name = $self->{name};
   my $displayName = $self->{attributes}->{displayName};
+  my $order = $self->{attributes}->{order};
 
   $displayName = $name unless($displayName);
 
-  my $hashref = {id => $name, display => $displayName};
+  my $hashref = {id => $name, display => $displayName, order => $order};
 
-  foreach my $daughter (sort { $a->{attributes}->{rank} cmp $b->{attributes}->{rank} } $self->daughters()) {
+  foreach my $daughter (sort { $a->{attributes}->{order} cmp $b->{attributes}->{order} } $self->daughters()) {
     my $child = $daughter->transformToHashRef($force);
     push @{$hashref->{children}}, $child if($child);
   }
@@ -69,17 +70,17 @@ sub getNonFilteredAlternativeQualifiers {
   return undef if $self->{attributes}->{isLeaf};
   my $altQualifiers = $self->{attributes}->{alternativeQualifiers};
   if($altQualifiers){
-		if($print){
-  	  my $altQualifiersString = join("\n", @$altQualifiers);
-  	  print STDERR "$altQualifiersString\n";
-		}
+    if($print){
+      my $altQualifiersString = join("\n", @$altQualifiers);
+      print STDERR "$altQualifiersString\n";
+    }
   }
 
   foreach my $daughter ($self->daughters()) {
     my $more = $daughter->getNonFilteredAlternativeQualifiers();
-		push(@$altQualifiers, @$more);
+    push(@$altQualifiers, @$more);
   }
 
-	return $altQualifiers;
+  return $altQualifiers;
 }
 1;

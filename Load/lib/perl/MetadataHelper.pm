@@ -319,7 +319,7 @@ sub makeTreeObjFromOntology {
 
     unless($parentNode) {
       my $parentDisplayName = $propertyNames->{$parentSourceId};
-      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName, "rank" => $propertyOrder->{$parentSourceId}}});
+      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName, "order" => $propertyOrder->{$parentSourceId}}});
       $nodeLookup{$parentSourceId} = $parentNode;
       if($filterParentSourceIds->{$parentSourceId}){
         $parentNode->{attributes}->{filter} = 1;
@@ -333,7 +333,7 @@ sub makeTreeObjFromOntology {
 
       unless($childNode) {
         my $childDisplayName = $propertyNames->{$childSourceId};
-        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName, "rank" => $propertyOrder->{$childSourceId}}}) ;
+        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName, "order" => $propertyOrder->{$childSourceId}}}) ;
         $nodeLookup{$childSourceId} = $childNode;
         if($filterParentSourceIds->{$childSourceId}){
           $childNode->{attributes}->{filter} = 1;

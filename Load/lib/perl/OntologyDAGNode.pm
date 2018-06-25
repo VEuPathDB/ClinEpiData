@@ -43,9 +43,9 @@ sub node2string {
 
 
 sub transformToHashRef {
-  my ($self) = @_;
+  my ($self, $force) = @_;
 
-  return unless $self->{attributes}->{keep};
+  return unless $self->{attributes}->{keep} || $force;
 
   my $name = $self->{name};
   my $displayName = $self->{attributes}->{displayName};
@@ -55,7 +55,7 @@ sub transformToHashRef {
   my $hashref = {id => $name, display => $displayName};
 
   foreach my $daughter (sort { $a->{attributes}->{rank} cmp $b->{attributes}->{rank} } $self->daughters()) {
-    my $child = $daughter->transformToHashRef();
+    my $child = $daughter->transformToHashRef($force);
     push @{$hashref->{children}}, $child if($child);
   }
 

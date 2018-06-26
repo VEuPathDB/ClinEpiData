@@ -16,6 +16,16 @@ sub cleanAndAddDerivedData {
 package ClinEpiData::Load::MALEDReader::ParticipantReader;
 use base qw(ClinEpiData::Load::MALEDReader);
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+	if(defined($hash->{cafsex}) && !defined($hash->{gender})){
+		$hash->{gender} = $hash->{cafsex};
+		delete $hash->{cafsex};
+	}
+	delete $hash->{cafsex};
+}
+
 sub makeParent {
   return undef; 
 }

@@ -90,8 +90,8 @@ sub getLabelsAndParentsHashes {
 		push(@{$propertySubclasses->{$parentid}}, $sourceid);
 		my $col = $row->{column} ? $row->{column}->as_hash()->{literal} : "";
 		my $label = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
-		my $rank = $row->{rank} ? $row->{rank}->as_hash()->{literal} : 99;
-		$propertyOrder->{$sourceid} = $rank;
+		my $order = $row->{order} ? $row->{order}->as_hash()->{literal} : 99;
+		$propertyOrder->{$sourceid} = $order;
 		$propertyNames->{$sourceid} ||= $label; ## do not overwrite first label, use label that appears first in the OWL
 	}
 	foreach my $parentid (keys %$propertySubclasses){

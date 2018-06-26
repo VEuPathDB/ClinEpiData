@@ -313,7 +313,7 @@ sub makeTreeObjFromOntology {
   $nodeLookup{$rootSourceId} = $root;
   $nodeLookup{$altRootSourceId} = $root;
 
-  foreach my $parentSourceId (sort { $propertyOrder->{$a} <=> $propertyOrder->{$b} } keys %$propertySubclasses) {
+  foreach my $parentSourceId (sort { ($propertyOrder->{$a} <=> $propertyOrder->{$b})||($a cmp $b) } keys %$propertySubclasses) {
 
     my $parentNode = $nodeLookup{$parentSourceId};
 
@@ -326,7 +326,7 @@ sub makeTreeObjFromOntology {
       }
     }
 
-    my @childrenSourceIds = sort { $propertyOrder->{$a} <=> $propertyOrder->{$b} } @{$propertySubclasses->{$parentSourceId}};
+    my @childrenSourceIds = sort {($propertyOrder->{$a} <=> $propertyOrder->{$b})||($a cmp $b) } @{$propertySubclasses->{$parentSourceId}};
 
     foreach my $childSourceId (@childrenSourceIds) {
       my $childNode = $nodeLookup{$childSourceId};
@@ -481,14 +481,14 @@ sub writeInvestigationTree {
 
     }
     else {
-      my %values;
+      my %valueCount;
       foreach my $value(@values) {
-        $values{$value}++;
+        $valueCount{$value}++;
       }
 
       my $ct = 1;
-      foreach my $value (sort keys %values) {
-        $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($values{$value})", "isLeaf" => 1, "keep" => 1} })) ;
+      foreach my $value (keys %valueCount) {
+        $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($valueCount{$value})", "isLeaf" => 1, "keep" => 1} })) ;
         $ct++;
       }
     }

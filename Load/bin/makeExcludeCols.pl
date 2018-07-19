@@ -10,10 +10,10 @@ use File::Basename;
 use Getopt::Long;
 use Data::Dumper;
 
-my ($dataset, $filter, @files, $inverse);
+my ($dataset, @filters, @files, $inverse);
 GetOptions(
 	'o|owl=s' => \$dataset,
-	'f|filter=s' => \$filter,
+	'f|filter=s' => \@filters,
 	'i|input=s' => \@files,
 	'v|inverse' => \$inverse
 );
@@ -50,64 +50,58 @@ foreach my $file (@files){
 	} 
 }
 
+printf STDERR ("%d files, %d columns\n", scalar @files, scalar keys %columns);
+
 my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
 
 my $owl = ClinEpiData::Load::Owl->new($owlFile);
 
-my $it = $owl->execute('top_level_entities');
-
 my @entities;
-my $filterEntity;
 my %map;
-while (my $row = $it->next) {
-	my $label = pp($row->{label}->as_sparql);
-	my $entity = $row->{entity}->as_sparql;
-	if(defined($filter)){
-		if($label =~ /$filter/i){
-			$filterEntity = $entity;
-			printf STDERR ("$label will be saved\n");
-		}
-		else{
-			push(@entities, $entity);
-			printf STDERR ("$label will be excluded\n");
-		}
-	}
-	$map{$label} = $entity;
-}
-
-unless($filter){
-	printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", sort keys %map));
-	exit;
-} 
-
-die "Entity not found for $filter\nAvailable:\n\t" . join("\n\t", keys %map) . "\n" unless $filterEntity;
-
-# my @excludes;
-
-# foreach my $entity(@entities){
-# 	my $itr = $owl->execute('all_subclasses', { ENTITY => $entity });
-# 	my @keys = $itr->binding_names;
-# 	#printf ("%s\n", join("\t", @keys)) if @keys;
-# 	while (my $row = $itr->next) {
-# 		my $col = pp($row->{col}->as_sparql);
-# 		# push(@excludes, $row->{col}->as_sparql);
-# 		$columns{$col} = 1;
-# 	}
-# }
-
 my %saved;
-if($filterEntity){
+my %terms;
+
+foreach my $filter (@filters){
+	my $filterEntity;
+	my $it = $owl->execute('top_level_entities');
+	while (my $row = $it->next) {
+		my $label = pp($row->{label}->as_sparql);
+		my $entity = $row->{entity}->as_sparql;
+		if(defined($filter)){
+			if($label =~ /$filter/i){
+				$filterEntity = $entity;
+				printf STDERR ("$label will be saved\n");
+			}
+			else{
+				push(@entities, $entity);
+				printf STDERR ("$label will be excluded\n");
+			}
+		}
+		$map{$label} = $entity;
+	}
+	die "Entity not found for $filter\nAvailable:\n\t" . join("\n\t", keys %map) . "\n" unless $filterEntity;
+
 	my $itr = $owl->execute('all_subclasses', { ENTITY => $filterEntity });
 	#my @keys = $itr->binding_names;
 	#printf ("%s\n", join("\t", @keys)) if @keys;
 	while (my $row = $itr->next) {
 		my $col = pp($row->{col}->as_sparql);
+		$terms{$col} = 1;
 		if(defined($columns{$col})){
 			delete($columns{$col});
+			delete($index{$col});
 			$saved{$col} = 1;
 		}
 	}
+
+	printf STDERR ("on branch %s(%s) there are %d terms\n", $filter, $filterEntity, scalar keys %terms);
+	printf STDERR ("%d columns remain\n", scalar keys %columns);
 }
+
+unless(@filters){
+	printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", sort keys %map));
+	exit;
+} 
 
 print STDERR ("-------------------\n");
 
@@ -115,18 +109,15 @@ if($inverse){
 	foreach my $k (sort keys %saved){
 		print "$k\n";
 	}
-	print "___UNMAPPED_COLS___\n";
-	foreach my $col (sort keys %index){
-		print "$col\n" unless $saved{$col};
+	if( !  @files ){
+		foreach my $k (sort keys %terms){
+			print "$k\n";
+		}
 	}
 }
 else{
 	print "$_\n" for sort keys %columns;
 	## also exclude any columns not found in owl
-	print "___UNMAPPED_COLS___\n";
-	foreach my $col (sort keys %index){
-		print "$col\n" unless $columns{$col};
-	}
 }
 
 exit;

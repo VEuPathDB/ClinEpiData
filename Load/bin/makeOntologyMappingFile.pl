@@ -33,16 +33,26 @@ while (my $row = $it->next) {
 	my $names = $row->{vars}->as_hash()->{literal};
 	my $name = "";
 	if(ref($names) eq 'ARRAY'){
-		$name = $names->[0];
+		$name = lc($names->[0]);
 	}
 	else {
-		$name = $names;
+		$name = lc($names);
 		$names = [ $name ];
 	}
 	my $sid = basename($iri); 	
-  $terms{$name} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY' };
+	if(defined($terms{$sid})){
+		my %allnames;
+		for my $n (@$names){
+			$allnames{$n} = 1;
+		}
+		for my $n (@{ $terms{$sid}->{name} } ){ 
+			$allnames{$n} = 1;
+		}
+		@$names = sort keys %allnames;
+	}
+  $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY' };
 }
-my @sorted = map { $terms{$_} } sort keys %terms;
+my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
 ## add top level 
 unshift(@sorted, { source_id => 'OBI_0600004', type => 'protocol', name => [ 'enrollment' ] }); 
 unshift(@sorted, { source_id => 'BFO_0000015', type => 'protocol', name => [ 'observationProtocol' ] }); 
@@ -54,22 +64,19 @@ while (my $row = $it->next) {
 	my $sid = basename($iri); 	
 	my $name = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
 	unshift(@sorted, 
-		{ 'source_id' => $sid, 'name'=>  [ $name ], 'type'=> 'materialType' }
+		{ 'source_id' => $sid, 'name'=>  [ lc($name) ], 'type'=> 'materialType' }
 	);
 }
 
 
 my @manualAdditions = (["INTERNAL_X","materialType", "INTERNAL"],
-		       ["OBI_0100051","materialType","sample"],
-		      
-		      
     );
 foreach my $row (@manualAdditions) {
     my $sourceId = $row->[0];
     my $type = $row->[1];
     my $name = $row->[2];
 
-    unshift(@sorted, { source_id => $sourceId, type => $type, name => [ $name ] }); 
+    unshift(@sorted, { source_id => $sourceId, type => $type, name => [ lc($name) ] }); 
     
 }
 

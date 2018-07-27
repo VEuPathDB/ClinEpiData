@@ -49,8 +49,6 @@ sub makePrimaryKey {
 
 package ClinEpiData::Load::MALEDReader::SampleReader;
 use base qw(ClinEpiData::Load::MALEDReader);
-# use Data::Dumper;
-## loads file micro_x24m.csv
 use strict;
 use warnings;
 
@@ -60,6 +58,9 @@ sub makeParent {
     return $hash->{parent};
   }
   ## build the Observation primary key
+  if(defined $hash->{age}){ # illnessfull_24m 
+  	return join("_", $hash->{pid}, $hash->{age});
+	}
   return join("_", $hash->{pid}, $hash->{agedays});
 }
 
@@ -71,6 +72,9 @@ sub makePrimaryKey {
   my $mdfile = $self->getMetadataFile();
 	if($mdfile =~ /micro_x_24m/){
   	return $hash->{srfmbsampid};
+	}
+	elsif($mdfile =~ /illnessfull_24m/){
+		return sprintf("%s%04dS", $hash->{pid}, $hash->{age});
 	}
 	elsif($mdfile =~ /mn_blood_iar_24m/){
 		return sprintf("%s%04d%s", $hash->{pid}, $hash->{agedays}, substr($hash->{sampletype},0,1));
@@ -88,13 +92,11 @@ sub cleanAndAddDerivedData {
 	if($mdfile =~ /mpo_neo_ala_24m/){
 		$hash->{srfdate} =~ tr/\///d;
 	}
-#	if($mdfile =~ /micro_x_24m|mpo_neo_ala_24m/){
-#  	if(defined($hash->{srffrstsid}) && defined($hash->{srfmbsampid}) && ($hash->{srffrstsid} eq $hash->{srfmbsampid})){
-#			delete $hash->{srffrstsid};
-#		}
-#	}
 	if($mdfile =~ /micro_x_24m|mpo_neo_ala_24m/){
 		$hash->{sampletype} = 'stool';
+		if((defined($hash->{srffrstsid}) && defined($hash->{srffrstsid})) && (($hash->{srffrstsid} eq "na") || ($hash->{srffrstsid} eq $hash->{srfmbsampid}))){
+			delete $hash->{srffrstsid};
+		}
 	}
 	foreach my $k (qw/bllconc iarconc hb_adj iardate brfdate agpval1 adjzinc_mml urinevol adjfar adjrar adjtfr conc.ala conc.neo conc.mpo lnconc.ala lnconc.neo lnconc.mpo/){
 		if(defined($hash->{$k}) && ($hash->{$k} =~ /^na$/i || $hash->{$k} eq "")){
@@ -106,8 +108,6 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::MALEDReader::ObservationReader;
 use base qw(ClinEpiData::Load::MALEDReader);
-# use Data::Dumper;
-## loads files illnessfull_24m.csv, Zscores_24m.csv, micro_24m.csv
 
 sub makeParent {
   ## returns a Participant ID
@@ -150,15 +150,8 @@ sub cleanAndAddDerivedData {
         $hash->{"agedays"} = $age;
       }
     }
-    #die Dumper($hash) unless defined $hash->{"agedays"};
     die "agedays value missing\n" unless defined $hash->{"agedays"};
   }
-# if(defined($hash->{"agemonths"}) && $hash->{"agemonths"} =~ /\./){
-#   my $intval = int($hash->{"agemonths"});
-#   my $frac = $hash->{"agemonths"} - $intval;
-#   my $val = $intval + $frac;
-#   $hash->{"agemonths"} = $val;
-# }
 	if($metadataFile =~ /illnessfull/i){
 		if($hash->{dprev3} ||  $hash->{safcough} ||  $hash->{saffev} ||  $hash->{safvom}){
 			$hash->{ill} = 1;

@@ -12,10 +12,10 @@ unless(@ARGV){
 }
 
 
-my ($tab, $file, $idcol, $inverse);
+my ($tab, $file, @idcols, $inverse);
 GetOptions(
 	'f|file=s' => \$file,
-	'i|idcol=s' => \$idcol,
+	'i|idcol=s' => \@idcols,
 	't|tab' => \$tab,
 	'v|inverse' => \$inverse,
 );
@@ -28,13 +28,13 @@ $fsrx = '\t' if($tab);
 open(FH, "<$file") or die "Cannot read $file:$!\n";
 my $headrow = <FH>;
 $headrow =~ s/\n|\r//g;
-my (@fields) = split($fsrx, $headrow);
+my (@fields) = map { s/^"|"$//g; lc } split($fsrx, $headrow);
 
 my %data;
 my %bin;
 my %nobin;
 my $count;
-my $prev;
+my $prev = 0;
 my $n = 0;
 while(my $line = <FH>){
   $n++;
@@ -42,9 +42,9 @@ while(my $line = <FH>){
   my (@values) = split($fsrx, $line);
   my %row;
   @row{@fields} = @values;
-	my $id = $row{$idcol};
+	my $id = join("_", map { $row{$_} } @idcols);
   foreach my $field (@fields){
-		next if $field eq $idcol;
+		next if grep /^$field$/, @idcols;
     $data{$field}{$id} ||= $row{$field};
     if($data{$field}{$id} eq $row{$field}){
       $bin{$field} = 1 unless $nobin{$field};

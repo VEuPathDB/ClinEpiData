@@ -11,7 +11,7 @@ use XML::Simple;
 use File::Basename;
 use CBIL::ISA::InvestigationSimple;
 use Scalar::Util qw(looks_like_number); 
-use ClinEpiData::Load::Owl;
+use ApiCommonData::Load::OwlReader;
 
 use Data::Dumper;
 
@@ -300,7 +300,7 @@ sub writeMergedFile {
 sub makeTreeObjFromOntology {
   my ($self, $owlFile, $filterParentSourceIds) = @_;
 
-	my $owl = ClinEpiData::Load::Owl->new($owlFile);
+	my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
   my ($propertyNames, $propertySubclasses, $propertyOrder) = $owl->getLabelsAndParentsHashes($owlFile);
 
   my %nodeLookup;

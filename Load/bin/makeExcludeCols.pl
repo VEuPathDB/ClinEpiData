@@ -4,7 +4,7 @@ use warnings;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
-use ClinEpiData::Load::Owl;
+use ApiCommonData::Load::OwlReader;
 use Env qw/PROJECT_HOME SPARQLPATH/;
 use File::Basename;
 use Getopt::Long;
@@ -54,7 +54,7 @@ printf STDERR ("%d files, %d columns\n", scalar @files, scalar keys %columns);
 
 my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
 
-my $owl = ClinEpiData::Load::Owl->new($owlFile);
+my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 
 my @entities;
 my %map;

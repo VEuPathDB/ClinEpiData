@@ -30,6 +30,8 @@ unless($dataset){
 	exit;
 }
 
+unless (@files) { $inverse = 1; } 
+
 my %columns; ## all columns in data files
 my %index; ## col => file
 foreach my $file (@files){
@@ -61,25 +63,22 @@ my %map;
 my %saved;
 my %terms;
 
+my %filterOptions;
+my $it = $owl->execute('top_level_entities');
+while (my $row = $it->next) {
+	my $label = pp($row->{label}->as_sparql);
+	my $entity = $row->{entity}->as_sparql;
+	$filterOptions{$label} = $entity;
+}
+
+unless(@filters){
+	printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", sort keys %filterOptions));
+	exit;
+} 
+
 foreach my $filter (@filters){
-	my $filterEntity;
-	my $it = $owl->execute('top_level_entities');
-	while (my $row = $it->next) {
-		my $label = pp($row->{label}->as_sparql);
-		my $entity = $row->{entity}->as_sparql;
-		if(defined($filter)){
-			if($label =~ /$filter/i){
-				$filterEntity = $entity;
-				printf STDERR ("$label will be saved\n");
-			}
-			else{
-				push(@entities, $entity);
-				printf STDERR ("$label will be excluded\n");
-			}
-		}
-		$map{$label} = $entity;
-	}
-	die "Entity not found for $filter\nAvailable:\n\t" . join("\n\t", keys %map) . "\n" unless $filterEntity;
+	die "Entity not found for $filter\nAvailable:\n\t" . join("\n\t", keys %map) . "\n" unless defined $filterOptions{$filter};
+	my $filterEntity = $filterOptions{$filter};
 
 	my $itr = $owl->execute('all_subclasses', { ENTITY => $filterEntity });
 	#my @keys = $itr->binding_names;
@@ -98,10 +97,6 @@ foreach my $filter (@filters){
 	printf STDERR ("%d columns remain\n", scalar keys %columns);
 }
 
-unless(@filters){
-	printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", sort keys %map));
-	exit;
-} 
 
 print STDERR ("-------------------\n");
 

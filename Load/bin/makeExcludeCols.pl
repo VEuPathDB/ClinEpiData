@@ -85,7 +85,24 @@ foreach my $filter (@filters){
 	#printf ("%s\n", join("\t", @keys)) if @keys;
 	while (my $row = $itr->next) {
 		my $col = pp($row->{col}->as_sparql);
-		$terms{$col} = 1;
+		my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
+		if(ref($dataset) eq 'ARRAY'){
+			$dataset = join("\t", @$dataset);
+		}
+		if(defined($terms{$col})){
+			if($terms{$col} eq '1' && $dataset){
+				$terms{$col} = $dataset;
+			}
+			elsif($dataset){
+				$terms{$col} .= $dataset;
+			}
+		}
+		elsif($dataset){
+			$terms{$col} = $dataset;
+		}
+		else {
+			$terms{$col} = 1;
+		}
 		if(defined($columns{$col})){
 			delete($columns{$col});
 			delete($index{$col});
@@ -102,11 +119,21 @@ print STDERR ("-------------------\n");
 
 if($inverse){
 	foreach my $k (sort keys %saved){
-		print "$k\n";
+		if($terms{$k} eq '1'){
+			print "$k\n";
+		}
+		else {
+			print "$k\t$terms{$k}\n";
+		}
 	}
 	if( !  @files ){
 		foreach my $k (sort keys %terms){
-			print "$k\n";
+			if($terms{$k} eq '1'){
+				print "$k\n";
+			}
+			else {
+				print "$k\t$terms{$k}\n";
+			}
 		}
 	}
 }

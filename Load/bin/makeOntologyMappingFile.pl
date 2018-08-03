@@ -32,7 +32,7 @@ my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 my $it = $owl->execute('get_column_sourceID');
 my %terms;
 while (my $row = $it->next) {
-	my $iri = $row->{entity}->as_hash()->{iri};
+	my $iri = $row->{entity}->as_hash()->{iri}|| $row->{entity}->as_hash()->{URI};
 	my $names = $row->{vars}->as_hash()->{literal};
 	my $name = "";
 	if(ref($names) eq 'ARRAY'){
@@ -42,7 +42,7 @@ while (my $row = $it->next) {
 		$name = lc($names);
 		$names = [ $name ];
 	}
-	my $sid = basename($iri); 	
+	my $sid = $owl->getSourceIdFromIRI($iri); 	
 	if(defined($terms{$sid})){
 		my %allnames;
 		for my $n (@$names){

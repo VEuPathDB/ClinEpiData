@@ -169,7 +169,9 @@ sub read {
     $hash{'__PARENT__'} = $parentWithPrefix unless($parentPrefix && $parentWithPrefix eq $parentPrefix);
 
     next unless($primaryKey); # skip rows that do not have a primary key
-    next if($rowExcludes->{$primaryKey});
+    if(($rowExcludes->{$primaryKey} eq $fileBasename) || ($rowExcludes->{$primaryKey} eq '__ALL__')){
+			next;
+		}
 
     $primaryKey = $self->getPrimaryKeyPrefix(\%hash) . $primaryKey;
 
@@ -262,6 +264,7 @@ sub getPrimaryKeyPrefix {
 
 package ClinEpiData::Load::MetadataReader::PrismParticipantReader;
 use base qw(ClinEpiData::Load::MetadataReader);
+use POSIX;
 
 use strict;
 
@@ -285,6 +288,26 @@ sub getParentPrefix {
   my ($self, $hash) = @_;
 
   return "HH";
+}
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	
+	# deal with DD-Mmm-YY ... we have to assume no participants born 100 years ago
+	foreach my $field ( qw/lastdate enrolldate dob/ ){
+		next unless defined($hash->{$field});
+	  if($hash->{$field} =~ /^\d{1,2}-\w{3}-\d\d$/) {
+			my ($day,$month,$year) = split(/-/, $hash->{$field});
+			my ($cent, $dec) = split(/:/, strftime("%C:%y", localtime));
+			if($year > $dec){ $cent--; }
+			if(int($day) < 10){ $day = "0$day"; }
+			$hash->{$field} = join("", $day,lc($month),$cent,$year);
+		}
+	}
+	foreach my $field ( qw/age ageyrs/ ){
+		if(defined($hash->{$field})){
+			$hash->{$field} =~ s/^\./0./;
+		}
+	}
 }
 
 
@@ -321,17 +344,29 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 
-  # if($hash->{malariacat} eq "negative blood smear") {
-  #   if($hash->{lamp} eq 'positive') {
-  #     $hash->{malariacat} = "Sub-microscopic parasitemia";    
-  #   }
-  #   elsif($hash->{lamp} eq "negative") {
-  #     $hash->{malariacat} = "Negative blood smear and negative LAMP";    
-  #   }
-  #   else {
-  #     $hash->{malariacat} = "Negative blood smear and LAMP not done";
-  #   }
-  # }
+  if($hash->{malariacat} eq 'negative blood smear') {
+    if($hash->{lamp} eq 'positive') {
+      $hash->{malariacat} = 'Blood smear negative / LAMP positive';    
+    }
+    elsif($hash->{lamp} eq 'negative') {
+      $hash->{malariacat} = 'Blood smear negative / LAMP negative';    
+    }
+    else {
+      $hash->{malariacat} = 'Blood smear negative / LAMP not done';
+    }
+  }
+  elsif($hash->{malariacat} eq 'malaria') {
+		$hash->{malariacat} = 'Symptomatic malaria';
+	}
+  elsif($hash->{malariacat} eq 'asymptomatic parasitemia') {
+		$hash->{malariacat} = 'Blood smear positive / no malaria';
+	}
+  elsif($hash->{malariacat} eq 'blood smear not indicated') {
+		$hash->{malariacat} = 'Blood smear not indicated';
+	}
+  elsif($hash->{malariacat} eq 'blood smear should have been done') {
+		$hash->{malariacat} = 'Blood smear indicated but not done';
+	}
 
   my @symptomsAndSigns = (['abdominalpain', 'apainduration'],
                           ['anorexia', 'aduration'],

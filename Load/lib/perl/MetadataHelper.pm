@@ -222,10 +222,15 @@ sub readRowExcludeFile {
   if($file) {
     open(FILE, $file) or die "cannot open file $file for reading:$!";
 
-    while(<FILE>) {
-      chomp;
-
-      $hash{lc($_)}++;
+    while(my $line = <FILE>) {
+      chomp $line;
+			my ($id,$file) = split(/\t/, $line);
+			if($file){
+      	$hash{lc($id)} = basename($file);
+			}
+			else{
+      	$hash{lc($id)} = '__ALL__';
+			}
     }
     close FILE;
   }

@@ -9,8 +9,6 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::IcemrIndiaReader::HouseholdReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
-# use Data::Dumper;
-## loads file micro_x24m.csv
 use strict;
 use warnings;
 
@@ -18,7 +16,10 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
 	my $file = $self->getMetadataFile();
-	if(defined($hash->{redcap_event_name}) && $hash->{redcap_event_name} =~ /^houseinfo/){
+	if($file =~ /nadiad|raurkela|chennai/i){
+		($hash->{studysite}) = ($file =~ m/(nadiad|raurkela|chennai)/i);
+	}
+	if(defined($hash->{redcap_event_name}) && ($hash->{redcap_event_name} !~ /^houseinfo/)){
 		$hash = {};
 	}
 }
@@ -47,11 +48,11 @@ use base qw(ClinEpiData::Load::IcemrIndiaReader);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
-	my $file = $self->getMetadataFile();
-	$hash->{study_design} = "Cross-sectional";
-	if($file =~ /longitud/i){
-		$hash->{study_design} = "Longitudinal";
-	}
+#	my $file = $self->getMetadataFile();
+#	$hash->{study_design} = "Cross-sectional";
+#	if($file =~ /longitud/i){
+#		$hash->{study_design} = "Longitudinal";
+#	}
 	$hash->{state_birth} =~ s/^-$/Missing/;
 }
 
@@ -147,6 +148,12 @@ sub cleanAndAddDerivedData {
   if(defined($hash->{rdt_op_chk___4})){
     unless(setIfZero($hash, '^rdt_op_chk___\d$')){
       $hash->{rdt_op_chk___4} = 1;
+      $hash->{rdt_op_chk___1} = 'Not applicable';
+      $hash->{rdt_op_chk___2} = 'Not applicable';
+      $hash->{rdt_op_chk___3} = 'Not applicable';
+    }
+    elsif(($hash->{rdt_op_chk___4} == 1) && ($hash->{rdt_op_chk___3} == 0)){ 
+      $hash->{rdt_op_chk___3} = 'Not applicable';
     }
   }
     
@@ -154,6 +161,12 @@ sub cleanAndAddDerivedData {
   if(defined($hash->{rdt_fv_chk___4})){
     unless(setIfZero($hash, '^rdt_fv_chk___\d$')){
       $hash->{rdt_fv_chk___4} = 1;
+      $hash->{rdt_fv_chk___1} = 'Not applicable';
+      $hash->{rdt_fv_chk___2} = 'Not applicable';
+      $hash->{rdt_fv_chk___3} = 'Not applicable';
+    }
+    elsif(($hash->{rdt_fv_chk___4} == 1) && ($hash->{rdt_fv_chk___3} == 0)){ 
+      $hash->{rdt_fv_chk___3} = 'Not applicable';
     }
   }
 # mx_species_chk___1-5

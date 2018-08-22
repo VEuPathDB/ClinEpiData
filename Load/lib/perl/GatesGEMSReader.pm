@@ -1,6 +1,7 @@
 package ClinEpiData::Load::GatesGEMSReader;
 use base qw(ClinEpiData::Load::MetadataReaderCSV);
 
+
 sub formatdate{
     my ($self,$date) = @_;
     $date =~ s/\//-/g;
@@ -167,6 +168,50 @@ sub cleanAndAddDerivedData{
 
 1;
 
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+
+sub makeParent {
+  my ($self, $hash) = @_;
+
+  return $hash->{childid};
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  my $date;
+  if ($hash->{enrolldate}){
+      $date=$hash->{enrolldate};
+  }
+  else {
+      
+      die 'Could not find the enrollment date';
+           
+  }
+  $date= $self->formatdate($date);
+  return $hash->{childid} . "_" . $date;
+}
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  return "HH";
+}
+
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+  
+  return "HH";
+ 
+}
+
+
+1;
 
 
 package ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader;

@@ -11,13 +11,41 @@ package ClinEpiData::Load::IcemrIndiaReader::HouseholdReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
 use strict;
 use warnings;
+use Switch;
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
-	my $file = $self->getMetadataFile();
-	if($file =~ /nadiad|raurkela|chennai/i){
-		($hash->{studysite}) = ($file =~ m/(nadiad|raurkela|chennai)/i);
+	if(!defined($hash->{studysite})){
+		my $id = $hash->{cen_fid} || $hash->{sid};
+		switch(substr(lc($hash->{cen_fid}),0,2)){
+			case 'cc' { $hash->{studysite} = 'Chennai' }
+			case 'nc' { $hash->{studysite} = 'Nadiad' }
+			case 'rc' { $hash->{studysite} = 'Raurkela' }
+		}
+	}
+	if(!defined($hash->{studysite})){
+		my $file = $self->getMetadataFile();
+		switch (lc($file)){
+			case /nadiad/ { $hash->{studysite} = 'Nadiad' }
+			case /raurkela/ { $hash->{studysite} = 'Raurkela' }
+			case /chennai/ { $hash->{studysite} = 'Chennai' }
+		}
+	}
+	if(defined($hash->{cen_district}) && (!defined($hash->{studysite}) || $hash->{studysite} eq "")){
+		switch(lc($hash->{cen_district})){
+			case 'chennai' { $hash->{studysite} = 'Chennai' }
+			case 'kheda' { $hash->{studysite} = 'Nadiad' }
+			case 'sundergarh' { $hash->{studysite} = 'Raurkela' }
+			case 'sundargarh' { $hash->{studysite} = 'Raurkela' }
+		}
+	}
+	if((defined($hash->{studysite})) && (!defined($hash->{state}) || $hash->{state} eq "")){
+		switch(lc($hash->{studysite})){
+			case 'chennai' { $hash->{state} = 'tamil nadu' }
+			case 'raurkela' { $hash->{state} = 'odisha' }
+			case 'nadiad' { $hash->{state} = 'gujarat' }
+		}
 	}
 	if(defined($hash->{redcap_event_name}) && ($hash->{redcap_event_name} !~ /^houseinfo/)){
 		$hash = {};
@@ -37,10 +65,6 @@ sub makePrimaryKey {
   return $hash->{cen_fid};
 }
 
-# sub cleanAndAddDerivedData {
-#   my ($self, $hash) = @_;
-#   $self->SUPER::cleanAndAddDerivedData($hash);
-# }
 1;
 
 package ClinEpiData::Load::IcemrIndiaReader::ParticipantReader;

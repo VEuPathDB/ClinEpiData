@@ -30,6 +30,8 @@ GetOptions(
   'f|functionName=s' => \$functionName,
 );
 
+$xmlFile ||= '-';
+
 my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 
 unless($sourceIdFile || $functionName){ ## print functions and exit

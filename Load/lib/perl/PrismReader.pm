@@ -352,10 +352,10 @@ sub makeParent {
   my $baseMetaDataFile = basename $metadataFile;
 
   my $date;
-  if($baseMetaDataFile eq "Prism_tororo.txt") {
+  if($baseMetaDataFile eq "Prism_tororo.txt" || $baseMetaDataFile eq "Prism_tororo_update.txt") {
     $date = $hash->{date};
   }
-  elsif($baseMetaDataFile eq "Prism_samples.txt") {
+  elsif($baseMetaDataFile eq "Prism_samples.txt" || $baseMetaDataFile eq "Prism_samples_update.txt") {
     $date = $hash->{reqdate};
   }
   else {

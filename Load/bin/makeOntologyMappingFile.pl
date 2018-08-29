@@ -21,7 +21,7 @@ unless($dataset){
 }
 my $owlFile = $dataset;
 unless( -f $owlFile ){
-	$dataset =  "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
+	$owlFile =  "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
 }
 unless(-f $owlFile){
 	print "Error: $owlFile does not exist\n";

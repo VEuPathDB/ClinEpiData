@@ -266,8 +266,7 @@ sub read {
   my $metadataFile = $self->getMetadataFile();
   my $baseMetaDataFile = basename $metadataFile;
 
-  if($baseMetaDataFile eq "Prism_samples.txt" && ref($self) eq "ClinEpiData::Load::PrismReader::SampleReader") {
-
+  if(($baseMetaDataFile eq "Prism_samples.txt" || $baseMetaDataFile eq "Prism_samples_update.txt") && (ref($self) eq "ClinEpiData::Load::PrismReader::SampleReader")) {
     my $colExcludes = $self->getColExcludes();
     my $rowExcludes = $self->getRowExcludes();
     my $parentParsedOutput = $self->getParentParsedOutput();

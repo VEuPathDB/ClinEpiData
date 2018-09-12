@@ -19,21 +19,44 @@ sub cleanAndAddDerivedData {
 }
 1;
 
-package ClinEpiData::Load::MALEDReader::ParticipantReader;
+package ClinEpiData::Load::MALEDReader::HouseholdReader;
 use base qw(ClinEpiData::Load::MALEDReader);
-
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  $self->SUPER::cleanAndAddDerivedData($hash);
-	if(defined($hash->{cafsex}) && !defined($hash->{gender})){
-		$hash->{gender} = $hash->{cafsex};
-		delete $hash->{cafsex};
-	}
-	delete $hash->{cafsex};
-}
 
 sub makeParent {
   return undef; 
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+
+  if($hash->{"primary_key"}) {
+    return $hash->{"primary_key"};
+  }
+
+  return $hash->{pid};
+}
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+
+  unless($hash->{"primary_key"}) {
+    return "HH";
+  }
+  return "";
+}
+
+1;
+package ClinEpiData::Load::MALEDReader::ParticipantReader;
+use base qw(ClinEpiData::Load::MALEDReader);
+
+sub makeParent {
+  my ($self, $hash) = @_;
+	return $self->makePrimaryKey($hash);
+}
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  return "HH";
 }
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -82,6 +105,9 @@ sub makePrimaryKey {
 	elsif($mdfile =~ /mpo_neo_ala_24m/){
 		return $hash->{srfmbsampid};
 	}
+	elsif($mdfile =~ /MAL-ED TAC data/){
+		return $self->makeParent($hash) . "T";
+	}
 	die "$mdfile not recongnized, cannot make primary key\n";
 }
 
@@ -103,7 +129,19 @@ sub cleanAndAddDerivedData {
 			delete $hash->{$k};
 		}
 	}
+	if($mdfile =~ /TAC data/){
+		foreach my $k (qw/aeromonas eaec hnana lt_etec salmonella stec st_etec/){
+			$hash->{$k . "_tac"} = $hash->{$k};
+			delete $hash->{$k};
+		}
+		foreach my $k ( keys %$hash ){
+			if(defined($hash->{$k}) && ($hash->{$k} =~ /^na$/i || $hash->{$k} eq "")){
+				delete $hash->{$k};
+			}
+		}
+	}
 }
+
 1;
 
 package ClinEpiData::Load::MALEDReader::ObservationReader;

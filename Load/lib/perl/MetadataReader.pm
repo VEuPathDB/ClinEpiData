@@ -38,7 +38,7 @@ sub applyAncillaryData {
 }
 
 sub seen {
-  my ($ar, $v) = @_;
+  my ($self, $ar, $v) = @_;
 
   foreach(@$ar) {
     return 1 if($_ eq $v);
@@ -182,7 +182,7 @@ sub read {
       next unless defined $hash{$key}; # skip undef values
       next if($hash{$key} eq '');
 
-      next if(&seen($parsedOutput->{$primaryKey}->{$key}, $hash{$key}));
+      next if($self->seen($parsedOutput->{$primaryKey}->{$key}, $hash{$key}));
 
       push @{$parsedOutput->{$primaryKey}->{$key}}, $hash{$key};
     }

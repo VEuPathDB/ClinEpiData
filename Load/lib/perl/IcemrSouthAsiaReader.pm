@@ -80,10 +80,10 @@ sub makePrimaryKey {
 
 package ClinEpiData::Load::IcemrSouthAsiaReader::ObservationReader;
 use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
-use warnings;
 use strict;
 use Data::Dumper;
 use File::Basename;
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
@@ -103,7 +103,7 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  my $mdfile = $self->getMetadataFile();
+  my $mdfile = basename($self->getMetadataFile());
 	if($mdfile =~ /inpatient_treatment_drug/){
  	  my $rx_name = # $hash->{rx_name};
  	    $hash->{'x51._rx_name'} ||
@@ -114,22 +114,40 @@ sub makePrimaryKey {
 
  	  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
 	}
-  my $date;
-	foreach my $qual ( qw/date x12._temperature_reading_date x16._collection_date x68._date_of_observation_collection/ ){
-  	if(defined($hash->{$qual}) && ($hash->{$qual} ne "")){
-			$date = $hash->{$qual}; 
-			last;
-		}
+	elsif($mdfile eq 'sample_collection_form.rawdata'){
+		my $date = $hash->{'x16._collection_date'} || $hash->{'x12._temperature_reading_date'};
+		my $time = $hash->{'x15._collection_time_.24h.'} || $hash->{'x11._temperature_reading_time_.24h.'};
+		$time =~ s/^0:/12:/;
+		$time = UnixDate(ParseDate($time), "%H%M");
+		$time ||= '0000';
+  	return join("_", $hash->{participant_id}, $date, $time);
 	}
-  unless($date){
-  	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
-  	$date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
+	elsif($mdfile eq 'inpatient_care_chart_review.rawdata'){
+		my $date = $hash->{'x68._date_of_observation_collection'};
+		my $time = $hash->{'x69._time_of_observation'};
+		$time =~ s/^0:/12:/;
+		$time = UnixDate(ParseDate($time), "%H%M");
+  	return join("_", $hash->{participant_id}, $date, $time);
+	}
+	elsif($mdfile eq 'Diagnostics Assay.rawdata'){
+ 	  my $date = $hash->{date};
+ 	  return join("_", $hash->{participant_id}, $date, '0000');
+	}
+	else {
+ 	  my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+ 	  my $date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
  	  unless($date){
  	  	printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
  	  	print STDERR Dumper $parent; die;
  	  }
-  }
-  return join("_", $hash->{participant_id}, $date);
+ 	  return join("_", $hash->{participant_id}, $date, '0000');
+	}
+ 	 #	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+ 	 #	$date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
+ 	 #  unless($date){
+ 	 #  	printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
+ 	 #  	print STDERR Dumper $parent; die;
+ 	 #  }
 }
 
 # override read() only for inpatient_treatment_drug_[12345].rawdata
@@ -202,7 +220,7 @@ sub read {
 
    	  next if($self->skipIfNoParent() && !$parent);
 
-   	  my $parentPrefix = $self->getParentPrefix(\%hash);
+   	  my $parentPrefix = $self->getParentPrefix(\%hash) || "";
    	  my $parentWithPrefix = $parentPrefix . $parent;
 
    	  $hash{'__PARENT__'} = $parentWithPrefix unless($parentPrefix && $parentWithPrefix eq $parentPrefix);
@@ -227,8 +245,8 @@ sub read {
    	  }
 			## end of timepoints
 			my @tpkeys = qw/primary_key parent timepoint dose method/;
-			printf STDERR ("DEBUG: %s\n", join("\t", map { $hash{$_} || "" } @tpkeys ));
-			printf STDERR ("DEBUG: %d timepoints found for id\n", $countTimepoints, $hash{participant_id});
+			# printf STDERR ("DEBUG: %s\n", join("\t", map { $hash{$_} || "" } @tpkeys ));
+			# printf STDERR ("DEBUG: %d timepoints found for id\n", $countTimepoints, $hash{participant_id});
     }
   }
 
@@ -282,7 +300,6 @@ sub makePrimaryKey {
 	if($mdfile =~ /inpatient_care_chart_review/i){
   	my $time = $hash->{'x69._time_of_observation'};
 		$time =~ s/^0:/12:/;
-		printf STDERR ("%s\t%s\n", $hash->{participant_id}, $time);
 		$time = UnixDate(ParseDate($time), "%H%M");
 		$pk .= "_$time";
 	}

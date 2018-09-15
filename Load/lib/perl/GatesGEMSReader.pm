@@ -2,6 +2,7 @@ package ClinEpiData::Load::GatesGEMSReader;
 use base qw(ClinEpiData::Load::MetadataReaderCSV);
 
 
+
 sub formatdate{
     my ($self,$date) = @_;
     $date =~ s/\//-/g;
@@ -85,7 +86,13 @@ sub getParentPrefix {
 package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc Delta_Format);
+
+
 use Data::Dumper;
+
+
+
 
 sub makeParent {
   ## returns a Participant ID
@@ -134,11 +141,66 @@ sub adjustHeaderArray {
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{observationprotocol}="enrollment";
 
+    $hash->{observationprotocol}="enrollment";
+  
 }
 
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    
+    Date_Init("DateFormat=US");
+
+    my $type = $hash->{type};
+
+
+    if ($hash->{type} eq  'case'){
+
+
+	my $f3_date = $hash->{f3_date};
+	my $f3_childbirth = $hash->{f3_childbirth};
+	
+	my $parsed_f3_date = ParseDate($f3_date);
+	my $parsed_f3_childbirth = ParseDate($f3_childbirth);
+	
+
+	my $deltaCase = DateCalc($f3_childbirth, $f3_date);
+
+
+	my $hoursCase = Delta_Format($deltaCase,"%hv");  
+
+	
+	$hash->{enrollment_age_days} = int($hoursCase/24 + 0.5);
+	
+	
+	#print Dumper($hash->{f3_date})."\n";
+	#print Dumper($hash->{f3_childbirth}). "\n";
+	#print $parsed_f3_date . "\n";
+	#print $parsed_f3_childbirth ."\n";
+	#print $deltaCase . "\n";
+	#print $hoursCase;
+	#exit;
+
+    }
+
+
+    if ($hash->{type} eq 'control'){
+	my $f6_date=$hash->{f6_date};                                                                                                      my $f6_birth_date=$hash->{f6_birth_date};                                                                                    
+	my $parsed_f6_date = ParseDate($f6_date);                                                                                          my $parsed_f6_birth_date = ParseDate($f6_birth_date);                                                                              
+	my $deltaControl = DateCalc($f6_birth_date, $f6_date); 
+	
+	my $hoursControl = Delta_Format($deltaControl,"%hv");                                                                           
+	$hash->{enrollment_age_days} = int($hoursControl/24 + 0.5);     
+    }
+  
+}
+
+
+
 1;
+
+
 
 
 package ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader;

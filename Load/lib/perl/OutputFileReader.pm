@@ -23,4 +23,20 @@ sub getColExcludes {
      $colExcludes->{'__ALL__'}->{parent} = 1;
     return $colExcludes;
 }
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    
+    if (defined $hash->{f5_age}){
+	$hash->{age_days}= $hash->{f5_age};
+    }else{
+	$hash->{age_days}= $hash->{enrollment_age_days};
+    }
+    
+
+
+
+
+}
+
 1;

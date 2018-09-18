@@ -16,12 +16,12 @@ unless( -d $PROJECT_HOME){
 	exit;
 }
 unless($dataset){
-	print "Usage: makeOntoloyMappingFile.pl [ontology] > ontologyMapping.xml\n\twhere the file exists \$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/[ontology].owl\n";
+	print "Usage: makeOntoloyMappingFile.pl [ontology] > ontologyMapping.xml\n\twhere the file exists \$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/[ontology].owl\n";
 	exit;
 }
 my $owlFile = $dataset;
 unless( -f $owlFile ){
-	$owlFile =  "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
+	$owlFile =  "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
 }
 unless(-f $owlFile){
 	print "Error: $owlFile does not exist\n";

@@ -86,6 +86,16 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
     }
   }
 }
+
+my @sorted;
+foreach my $type (qw/materialType protocol characteristicQualifier/){
+	my @types;
+	foreach my $term ( @{ $xml->{ontologymappings}->[0]->{ontologyTerm} } ){
+		if($term->{type} eq $type){ push(@types, $term) }
+	}
+	push(@sorted, sort { $a->{name}->[0] cmp $b->{name}->[0] } @types);
+}
+$xml->{ontologymappings}->[0]->{ontologyTerm} = \@sorted;
 # print Dumper $xml;
 print XMLout($xml, KeepRoot => 1, AttrIndent => 0);
 printf STDERR ("Not found in %s:\n%s\n", $xmlFile, join("\n", map {"$_\t$missingIds{$_}"} sort keys %missingIds)) if (0 < scalar keys %missingIds);

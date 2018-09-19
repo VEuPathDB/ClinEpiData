@@ -23,18 +23,19 @@ unless(0 < @ARGV){
 }
 
 
-my ($xmlFile,$sourceIdFile,$functionName);
+my ($xmlFile,$sourceIdFile,$functionName,$dump);
 GetOptions(
   'o|ontologyXmlFile=s' => \$xmlFile,
   's|sourceIdFile=s' => \$sourceIdFile,
   'f|functionName=s' => \$functionName,
+	'd|dump' => \$dump
 );
 
 $xmlFile ||= '-';
 
 my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 
-unless($sourceIdFile || $functionName){ ## print functions and exit
+if($dump){ ## print functions and exit
 	foreach my $root ( @{$xml->{ontologymappings}} ) {
 	  foreach my $term ( @{$root->{ontologyTerm}} ) {
 			printf("%s\t%s\n", $term->{source_id}, join(",", @{$term->{function} || [] }));
@@ -47,20 +48,28 @@ unless($sourceIdFile || $functionName){ ## print functions and exit
 my %sourceIds;
 my %missingIds;
 my %funcToAdd;
-open(FH, "<$sourceIdFile") or die "Cannot read $sourceIdFile:$!\n";
-while(my $line = <FH>){
-  chomp $line;
-  my($sid, @func) = split(/\t/, $line);
-
-  $sid = lc $sid;
-  if(0 < @func){ $funcToAdd{$sid} = \@func; }
-  elsif ($functionName) {
-    $funcToAdd{$sid} = [ $functionName ];
-  }
-  $sourceIds{$sid} = 1; 
-  $missingIds{$sid} = 1;
+if($sourceIdFile){
+	open(FH, "<$sourceIdFile") or die "Cannot read $sourceIdFile:$!\n";
+	while(my $line = <FH>){
+	  chomp $line;
+	  my($sid, @funcs) = split(/\t/, $line);
+	
+	  $sid = lc $sid;
+	  if(0 < @funcs){
+			$funcToAdd{$sid} ||= {};
+			foreach my $func (@funcs){
+				$funcToAdd{$sid}->{$func} = 1;
+			}
+		}
+	  elsif ($functionName) {
+			$funcToAdd{$sid} ||= {};
+	    $funcToAdd{$sid}->{$functionName} = 1;
+	  }
+	  $sourceIds{$sid} = 1; 
+	  $missingIds{$sid} = 1;
+	}
+	close(FH);
 }
-close(FH);
 
 foreach my $root ( @{$xml->{ontologymappings}} ) {
   foreach my $term ( @{$root->{ontologyTerm}} ) {
@@ -68,17 +77,17 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
     my $sourceId = $term->{source_id};
 
     my $names = $term->{name};
-    my @names = @$names;
+    my @names = sort map { lc } @$names;
+		$term->{name} = \@names;
 
-    push @names, $sourceId;
+    my @ids = @names;
+		push(@ids, lc($sourceId));
 
-    my @lcNames = map {lc $_} @names;
-
-    foreach my $sid (@lcNames) {
-      if($sourceIds{$sid}){
-        if($funcToAdd{$sid}){
-
-          my $list = uniq( $term->{function} || [], $funcToAdd{$sid});
+    foreach my $id (@ids) {
+      if($sourceIds{$id}){
+        if($funcToAdd{$id}){
+					my @funcs = keys %{$funcToAdd{$id}};
+          my $list = uniq( $term->{function} || [], \@funcs );
           $term->{function} = $list;
         }
         delete $missingIds{$term->{source_id}};
@@ -89,16 +98,40 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
 
 my @sorted;
 foreach my $type (qw/materialType protocol characteristicQualifier/){
+	my %seen; ## hold references to terms indexed by source_id
 	my @types;
-	foreach my $term ( @{ $xml->{ontologymappings}->[0]->{ontologyTerm} } ){
-		if($term->{type} eq $type){ push(@types, $term) }
+	my $index = 0;
+	foreach my $term (  @{ $xml->{ontologymappings}->[0]->{ontologyTerm} } ){
+		unless($term->{type} eq $type){
+			$index++;
+			next;
+		}
+		my $sid = $term->{source_id};
+		my @names = $term->{name};
+		unless(defined($seen{$sid})){
+			$seen{$sid} = $index;
+			if($term->{type} eq $type){
+				push(@types, $index);
+			}
+		}
+		else{ ## remove multiple instances of a source id, add its names to the seen one 
+			# print STDERR "Sid = $sid, $seen{$sid}\n";
+			my %hash;
+			map { $hash{$_} = 1 } @{ $xml->{ontologymappings}->[0]->{ontologyTerm}->[$seen{$sid}]->{name} };
+			map { $hash{$_} = 1 } @{ $term->{name} };
+			my @names = sort keys %hash;
+			# $term->{name} = \@names; ## should work because $term is a reference
+			$xml->{ontologymappings}->[0]->{ontologyTerm}->[$seen{$sid}]->{name} = \@names;	
+		}
+		$index++;
 	}
-	push(@sorted, sort { $a->{name}->[0] cmp $b->{name}->[0] } @types);
+	printf STDERR ("Found %d of type %s\n", scalar keys %seen, $type);
+	push(@sorted, sort { $a->{name}->[0] cmp $b->{name}->[0] } map { $xml->{ontologymappings}->[0]->{ontologyTerm}->[$_] } @types);
 }
 $xml->{ontologymappings}->[0]->{ontologyTerm} = \@sorted;
 # print Dumper $xml;
 print XMLout($xml, KeepRoot => 1, AttrIndent => 0);
-printf STDERR ("Not found in %s:\n%s\n", $xmlFile, join("\n", map {"$_\t$missingIds{$_}"} sort keys %missingIds)) if (0 < scalar keys %missingIds);
+# printf STDERR ("Not found in %s:\n%s\n", $xmlFile, join("\n", map {"$_\t$missingIds{$_}"} sort keys %missingIds)) if (0 < scalar keys %missingIds);
 
 
 

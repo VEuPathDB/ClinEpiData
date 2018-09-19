@@ -139,20 +139,23 @@ sub adjustHeaderArray {
   return $ha;
 }
 
+=head
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
 
     $hash->{observationprotocol}="enrollment";
   
 }
-
+=cut
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
     
+    $hash->{observationprotocol}="enrollment";
+    
     Date_Init("DateFormat=US");
 
-    my $type = $hash->{type};
+    #my $type = $hash->{type};
 
 
     if ($hash->{type} eq  'case'){
@@ -172,15 +175,6 @@ sub cleanAndAddDerivedData{
 
 	
 	$hash->{enrollment_age_days} = int($hoursCase/24 + 0.5);
-	
-	
-	#print Dumper($hash->{f3_date})."\n";
-	#print Dumper($hash->{f3_childbirth}). "\n";
-	#print $parsed_f3_date . "\n";
-	#print $parsed_f3_childbirth ."\n";
-	#print $deltaCase . "\n";
-	#print $hoursCase;
-	#exit;
 
     }
 
@@ -193,7 +187,7 @@ sub cleanAndAddDerivedData{
 	my $hoursControl = Delta_Format($deltaControl,"%hv");                                                                           
 	$hash->{enrollment_age_days} = int($hoursControl/24 + 0.5);     
     }
-  
+
 }
 
 
@@ -378,6 +372,7 @@ sub cleanAndAddDerivedData{
 package ClinEpiData::Load::GatesGEMSReader::SampleReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 use File::Basename;
+use Data::Dumper;
 
 sub getDateColumn{
     return "enrolldate";
@@ -387,7 +382,7 @@ sub makeParent {
     ## returns a Participant ID + ENROLLDATE
     my ($self, $hash) = @_;
     my $file = basename $self->getMetadataFile();
-    return undef if ($file eq "TAC.csv");
+    return undef if (($file eq "TAC.csv") || ($file eq "microbiome.csv"));
     my $dateColumn_sample = $self->getDateColumn();
     my $date = $self->formatdate($hash->{$dateColumn_sample});
     return $hash->{childid} . "_" . $date;
@@ -403,25 +398,78 @@ sub makePrimaryKey {
 	return $hash->{f11_specimen_id};
     }elsif ($file eq "TAC.csv"){
 	return $hash->{sid};
+    }elsif ($file eq "microbiome.csv"){
+	return undef;
     }else{
-	die "could not find sid and f11_specimen_id (or lab_specimen_id)";
+	die "could not find sid and f11_specimen_id (or lab_specimen_id) and sample_id";
     }
     
 }
 
 
-1;
+
+sub readAncillaryInputFile {
+    my ($self, $file) = @_;
+    
+    my @sampleID;
+    my @Value;
+    my %hash;
+
+    open(FILE, $file) or die "Cannot open file $file for reading:$!";
+    my $dummy=<FILE>;
+    while (<FILE>){
+        chomp;
+        my ($sampleID,$Value) = split ",";
+        push @sampleID,$sampleID;
+       # push @Value,$Value;
+    }
+  
+    $hash{'Sample_ID'} = \@sampleID;
+    #$hash{'microbiome'} = \@Value;
+    
+#    foreach (@{$hash{'Sample_ID'}}) {
+#	print $_ . "\n";
+#   }
+ 
+    return \%hash;
+}
 
 
 
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    my @total_specimen_id;
+    my @total_sid;
+    my $f11_specimen_id;
+    my $sid; 
+    
+    my $file =  basename $self->getMetadataFile();    
+    my $ancillaryData =  $self->getAncillaryData();
+    
 
+    if ($file eq "GEMS1_Case_control_Study_data.csv"){
+	$f11_specimen_id =  $hash->{f11_specimen_id};
 
-
-
-
-
-
-
+	foreach (@{$ancillaryData->{'Sample_ID'}}){
+	    if ($_ == $f11_specimen_id){
+		$hash->{microbiome} = 1;
+	    }
+	
+	    
+	}
+    }elsif($file eq "TAC.csv"){
+	$sid =  $hash->{sid};
+	foreach(@{$ancillaryData->{'Sample_ID'}}){
+	    if ($_ == $sid){
+		$hash->{microbiome} = 1;
+	    }
+	}
+    }else{
+	die "could not find sid and f11_specimen_id (or lab_specimen_id) and sample_id";  
+    }
+    
+    $hash->{microbiome} = 0 unless defined($hash->{microbiome});
+}
 
 
 

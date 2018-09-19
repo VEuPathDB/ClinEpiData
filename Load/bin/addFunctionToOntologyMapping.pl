@@ -18,7 +18,8 @@ unless(0 < @ARGV){
 	print join(" ", $scr, 
   'o|ontologyXmlFile',
   's|sourceIdFile',
-  'f|functionName') . "\n";
+  'f|functionName',
+	'd|dump (print sorted xml)') . "\n";
 	exit;
 }
 

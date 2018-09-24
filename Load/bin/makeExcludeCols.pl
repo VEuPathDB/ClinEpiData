@@ -22,7 +22,7 @@ GetOptions(
 unless($dataset){
 	printf(join("\n\n",
 		"Usage:\n\t%s -o|owl [owl] -f|filter [[filter]] -i|input [data file] [ -i [data file ] ] [-v|inverse]",
-		"Owl file must exist:\$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/[owl].owl",
+		"Owl file must exist:\$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/[owl].owl",
 		"Run without [[filter]] to see a list of options for this dataset",
 		"Run without -i[[data files ...]] to print only columns that are mapped in this dataset",
 		"Run with -v to get only columns in [[filter]]\n"
@@ -54,7 +54,7 @@ foreach my $file (@files){
 
 printf STDERR ("%d files, %d columns\n", scalar @files, scalar keys %columns);
 
-my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/development/$dataset.owl";
+my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
 
 my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 

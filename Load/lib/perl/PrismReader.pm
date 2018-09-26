@@ -87,10 +87,13 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::PrismReader::ClinicalVisitReader;
 use base qw(ClinEpiData::Load::PrismReader);
+use File::Basename;
 
 use Data::Dumper;
 
 use strict;
+
+sub skipIfNoParent { return 0; }
 
 sub makeParent {
   my ($self, $hash) = @_;
@@ -98,7 +101,9 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  
+	unless(defined($hash->{id})){
+		$hash->{id} = substr( $hash->{uniqueid}, 0, 4 );
+	}
   return $hash->{id};
 }
 
@@ -115,30 +120,46 @@ sub makePrimaryKey {
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+	my $mdfile = basename($self->getMetadataFile());
+	my $lamp = $hash->{lamp};
+	my $mcat = $hash->{malariacat};
+	if($mdfile eq 'updated_lamp_results_with_uniqueid.txt'){
+		my %vmap = (
+			1 => 'Blood smear not indicated',
+			2 => 'Blood smear indicated but not done',
+			3 => 'Blood smear negative / LAMP negative',
+			4 => 'Blood smear negative / LAMP not done',
+			5 => 'Blood smear negative / LAMP positive',
+			6 => 'Blood smear positive / no malaria',
+			7 => 'Symptomatic malaria',
+		);
+		if(defined($vmap{$mcat})){ $mcat = $vmap{$mcat};}
+	}
 
-  if($hash->{malariacat} eq 'negative blood smear') {
-    if($hash->{lamp} eq 'positive') {
-      $hash->{malariacat} = 'Blood smear negative / LAMP positive';    
+  if($mcat eq 'negative blood smear') {
+    if($lamp eq 'positive') {
+      $mcat = 'Blood smear negative / LAMP positive';    
     }
-    elsif($hash->{lamp} eq 'negative') {
-      $hash->{malariacat} = 'Blood smear negative / LAMP negative';    
+    if($lamp eq 'negative') {
+      $mcat = 'Blood smear negative / LAMP negative';    
     }
     else {
-      $hash->{malariacat} = 'Blood smear negative / LAMP not done';
+      $mcat = 'Blood smear negative / LAMP not done';
     }
   }
-  elsif($hash->{malariacat} eq 'malaria') {
-		$hash->{malariacat} = 'Symptomatic malaria';
+  elsif($mcat eq 'malaria') {
+		$mcat = 'Symptomatic malaria';
 	}
-  elsif($hash->{malariacat} eq 'asymptomatic parasitemia') {
-		$hash->{malariacat} = 'Blood smear positive / no malaria';
+  elsif($mcat eq 'asymptomatic parasitemia') {
+		$mcat = 'Blood smear positive / no malaria';
 	}
-  elsif($hash->{malariacat} eq 'blood smear not indicated') {
-		$hash->{malariacat} = 'Blood smear not indicated';
+  elsif($mcat eq 'blood smear not indicated') {
+		$mcat = 'Blood smear not indicated';
 	}
-  elsif($hash->{malariacat} eq 'blood smear should have been done') {
-		$hash->{malariacat} = 'Blood smear indicated but not done';
+  elsif($mcat eq 'blood smear should have been done') {
+		$mcat = 'Blood smear indicated but not done';
 	}
+	$hash->{malariacat} = $mcat;
 
   my @symptomsAndSigns = (['abdominalpain', 'apainduration'],
                           ['anorexia', 'aduration'],
@@ -205,7 +226,7 @@ use Date::Manip qw(Date_Init ParseDate UnixDate);
 use File::Basename;
 
 
-sub skipIfNoParent { return 1; }
+sub skipIfNoParent { return 0; }
 
 sub getClinicalVisitMapper { $_[0]->{_clinical_visit_mapper} }
 sub setClinicalVisitMapper { $_[0]->{_clinical_visit_mapper} = $_[1] }
@@ -496,4 +517,3 @@ sub makePrimaryKey {
 }
 
 1;
-

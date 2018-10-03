@@ -137,10 +137,10 @@ sub cleanAndAddDerivedData {
 	}
 
   if($mcat eq 'negative blood smear') {
-    if($lamp eq 'positive') {
+    if(($lamp eq 'positive') || ($lamp eq '1')) {
       $mcat = 'Blood smear negative / LAMP positive';    
     }
-    if($lamp eq 'negative') {
+    elsif(($lamp eq 'negative') || ($lamp eq '0')) {
       $mcat = 'Blood smear negative / LAMP negative';    
     }
     else {

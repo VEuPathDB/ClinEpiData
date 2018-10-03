@@ -56,10 +56,19 @@ while (my $row = $it->next) {
   $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY' };
 }
 my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
-## add top level 
-unshift(@sorted, { source_id => 'OBI_0600004', type => 'protocol', name => [ 'enrollment' ] }); 
-unshift(@sorted, { source_id => 'BFO_0000015', type => 'protocol', name => [ 'observationProtocol' ] }); 
 
+## Protocols are "edges" between an entity type and its parent, as in;
+## Participant is an output of Household (participant->household).
+## Add all known protocols, though all may not be needed
+## Protocol for participant->household:
+unshift(@sorted, { source_id => 'OBI_0600004', type => 'protocol', name => [ 'enrollment' ] }); 
+## Protocol for observation->participant:
+unshift(@sorted, { source_id => 'BFO_0000015', type => 'protocol', name => [ 'observationProtocol' ] }); 
+## Protocol for sample->observation:
+unshift(@sorted, { source_id => 'OBI_0000659', type => 'protocol', name => [ 'specimen collection' ] }); 
+unshift(@sorted, { source_id => 'EUPATH_0000055', type => 'protocol', name => [ 'lightTrap' ] }); 
+
+## Add top level  entities as 'materialType' ontologyTerms (Household, Participant, etc)
 $it = $owl->execute('top_level_entities');
 
 while (my $row = $it->next) {

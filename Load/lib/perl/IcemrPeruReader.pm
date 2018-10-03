@@ -49,8 +49,8 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	delete $hash->{fec_naci} if($hash->{fec_naci} eq 'na');
-	delete $hash->{tieanop} if(($hash->{tieanop} eq 'not applicable') || ($hash->{tieanop} eq "don't know"));
-	delete $hash->{tieanol} if(($hash->{tieanol} eq 'not applicable') || ($hash->{tieanop} eq "don't know"));
+# delete $hash->{tieanop} if(($hash->{tieanop} eq 'not applicable') || ($hash->{tieanop} eq "don't know"));
+# delete $hash->{tieanol} if(($hash->{tieanol} eq 'not applicable') || ($hash->{tieanop} eq "don't know"));
 }
 
 1;
@@ -64,6 +64,7 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
+	die unless($hash->{cod_per});
   return $hash->{cod_per};
 }
 
@@ -72,8 +73,20 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-	
-	return sprintf("%s_%02d%02d%02d", $hash->{cod_uni}, $hash->{aa}, $hash->{mm}, $hash->{dd});
+	$self->cleanAndAddDerivedData($hash);
+	return sprintf("%s_%s", $hash->{cod_per}, $hash->{dateofobservation});
 }
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	if(defined($hash->{aa})){ ## Peru_F2
+		$hash->{dateofobservation} = sprintf("%02d-%02d-%02d", $hash->{aa}, $hash->{mm}, $hash->{dd});
+		## aa, mm, dd in exclude_cols.txt
+	}
+	elsif(defined($hash->{fec_enrol})){ ## Peru_individual
+		$hash->{dateofobservation} = $hash->{fec_enrol};
+		delete ($hash->{fec_enrol});
+	}
+	delete $hash->{temperatura} if($hash->{temperatura} eq 'not applicable');
+}
 1;

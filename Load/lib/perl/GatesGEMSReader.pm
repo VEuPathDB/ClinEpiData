@@ -2,13 +2,11 @@ package ClinEpiData::Load::GatesGEMSReader;
 use base qw(ClinEpiData::Load::MetadataReaderCSV);
 
 
-
 sub formatdate{
     my ($self,$date) = @_;
     $date =~ s/\//-/g;
     return $date;
 }
-
 
 sub clean {
   my ($self, $ar) = @_;
@@ -52,6 +50,13 @@ sub getPrimaryKeyPrefix {
     return "HH"; 
 }
 
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="enrollment";
+
+}
+
 1;
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader;
@@ -88,10 +93,7 @@ use base qw(ClinEpiData::Load::GatesGEMSReader);
 
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc Delta_Format);
 
-
 use Data::Dumper;
-
-
 
 
 sub makeParent {
@@ -139,15 +141,6 @@ sub adjustHeaderArray {
   return $ha;
 }
 
-=head
-sub cleanAndAddDerivedData{
-    my ($self,$hash)=@_;
-
-    $hash->{observationprotocol}="enrollment";
-  
-}
-=cut
-
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
     
@@ -155,8 +148,7 @@ sub cleanAndAddDerivedData{
     
     Date_Init("DateFormat=US");
 
-    #my $type = $hash->{type};
-
+   # my $type = $hash->{type};
 
     if ($hash->{type} eq  'case'){
 
@@ -164,7 +156,7 @@ sub cleanAndAddDerivedData{
 	my $f3_date = $hash->{f3_date};
 	my $f3_childbirth = $hash->{f3_childbirth};
 	
-	my $parsed_f3_date = ParseDate($f3_date);
+ 	my $parsed_f3_date = ParseDate($f3_date);
 	my $parsed_f3_childbirth = ParseDate($f3_childbirth);
 	
 
@@ -173,18 +165,20 @@ sub cleanAndAddDerivedData{
 
 	my $hoursCase = Delta_Format($deltaCase,"%hv");  
 
-	
-	$hash->{enrollment_age_days} = int($hoursCase/24 + 0.5);
 
+	$hash->{enrollment_age_days} = int($hoursCase/24 + 0.5);
+	
     }
 
 
     if ($hash->{type} eq 'control'){
+	
 	my $f6_date=$hash->{f6_date};                                                                                                      my $f6_birth_date=$hash->{f6_birth_date};                                                                                    
 	my $parsed_f6_date = ParseDate($f6_date);                                                                                          my $parsed_f6_birth_date = ParseDate($f6_birth_date);                                                                              
 	my $deltaControl = DateCalc($f6_birth_date, $f6_date); 
 	
 	my $hoursControl = Delta_Format($deltaControl,"%hv");                                                                           
+	
 	$hash->{enrollment_age_days} = int($hoursControl/24 + 0.5);     
     }
 
@@ -239,17 +233,11 @@ sub makeParent {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  my $date;
-  if ($hash->{enrolldate}){
-      $date=$hash->{enrolldate};
-  }
-  else {
-      
-      die 'Could not find the enrollment date';
-           
-  }
-  $date= $self->formatdate($date);
-  return $hash->{childid} . "_" . $date;
+  my $suffix = $self->getSuffix();
+
+ # next unless $hash->{f5_feces_visible}
+
+  return $hash->{childid} .  "_" . $suffix;
 }
 
 sub getParentPrefix {
@@ -266,6 +254,15 @@ sub getPrimaryKeyPrefix {
  
 }
 
+sub getSuffix{
+    return "followup";
+}
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="60 day follow-up";
+
+}
 
 1;
 
@@ -471,7 +468,7 @@ sub cleanAndAddDerivedData {
     $hash->{microbiome} = 0 unless defined($hash->{microbiome});
 }
 
-
+1;
 
 
 
@@ -502,12 +499,6 @@ sub adjustHeaderArray {
 
 
 
-
-
-
-
-
-
 =pod
     if(exists($hash->{f11_specimen_id})) {
 	return $hash->{f11_specimen_id};
@@ -529,27 +520,131 @@ sub adjustHeaderArray {
 
 
 
+####################### GEMS1A ################################################################################
+###############################################################################################################
+###############################################################################################################
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdReader::GEMS1aHouseholdReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdReader);
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::OutputReader::GEMS1aOutputReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::OutputReader);
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::ParticipantReader::GEMS1aParticipantReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::ParticipantReader);
+1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader::GEMS1aEnrollmentObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader);
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc Delta_Format);
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader::GEMS1aFollowupObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader);
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader::GEMS1aHouseholdObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader);
+
+
+package ClinEpiData::Load::GatesGEMSReader::GEMS1aMedicalFindObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "find";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+
+}
+
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::GEMS1aMedicalLastObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "last";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+
+}
+
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::GEMS1aMedicalOutObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "out";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+
+}
+
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::GEMS1aMedicalRehydObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader);
+
+sub getSuffix{
+    return "rehyd";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+
+}
+
+1;
 
 
 
 
 
+package ClinEpiData::Load::GatesGEMSReader::GEMS1aSampleReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+use File::Basename;
+use Data::Dumper;
 
+sub getDateColumn{
+    return "enrolldate";
+}
 
+sub makeParent {
+    ## returns a Participant ID + ENROLLDATE
+    my ($self, $hash) = @_;
+    my $dateColumn_sample = $self->getDateColumn();
+    my $date = $self->formatdate($hash->{$dateColumn_sample});
+    return $hash->{childid} . "_" . $date;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    my $file = basename $self->getMetadataFile();
+    #print $file . "\n";
+    #exit;
+    
+    if ($file eq "gems1a_case_control_study_data.csv"){
+	return $hash->{f11_specimen_id};
+    }else{
+	die "could not find sid and f11_specimen_id (or lab_specimen_id)";
+    }
+    
+}

@@ -6,26 +6,60 @@ use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ApiCommonData::Load::OwlReader;
 
-use File::Basename qw/basename/;
+use File::Basename qw/basename dirname/;
 use Env qw/PROJECT_HOME/;
 use XML::Simple;
-my $dataset = shift @ARGV;
+use Getopt::Long;
+
+my ($owlFile,$functionsFile,%funcToAdd);
+unless(0 < @ARGV){
+	my $scr = basename($0);
+	print join(" ", $scr, 
+  'o|owlFile',
+  'f|functionsFile') . "\n";
+	exit;
+}
+
+GetOptions(
+  'o|owlFile=s' => \$owlFile,
+  'f|functionsFile=s' => \$functionsFile
+);
 
 unless( -d $PROJECT_HOME){
 	print "\$PROJECT_HOME must be set\n";
 	exit;
 }
-unless($dataset){
-	print "Usage: makeOntoloyMappingFile.pl [ontology] > ontologyMapping.xml\n\twhere the file exists \$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/[ontology].owl\n";
-	exit;
-}
-my $owlFile = $dataset;
+
 unless( -f $owlFile ){
-	$owlFile =  "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
+	my $tmp = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$owlFile.owl";
+	if(-f $tmp){
+		$owlFile = $tmp;
+	}
+	else{
+		opendir(DH, dirname($tmp));
+		my @owls = grep { /\.owl$/i } readdir(DH);
+		close(DH);
+		print STDERR "Error: $owlFile does not exist\n";
+		printf STDERR ("Error: %s does not exist\nAvailable owl files in %s:\n%s\n",
+			$owlFile, dirname($tmp), join("\n", @owls));
+		exit;
+	}
 }
-unless(-f $owlFile){
-	print "Error: $owlFile does not exist\n";
-	exit;
+
+if($functionsFile){
+	open(FH, "<$functionsFile") or die "Cannot read $functionsFile:$!\n";
+	while(my $line = <FH>){
+	  chomp $line;
+	  my($sid, @funcs) = split(/\t/, $line);
+	  $sid = lc $sid;
+	  if(0 < @funcs){
+			$funcToAdd{$sid} ||= {};
+			foreach my $func (@funcs){
+				$funcToAdd{$sid}->{$func} = 1;
+			}
+		}
+	}
+	close(FH);
 }
 
 my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
@@ -53,7 +87,14 @@ while (my $row = $it->next) {
 		}
 		@$names = sort keys %allnames;
 	}
-  $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY' };
+	my %funcHash;
+	foreach my $id ($sid, @$names){
+    if($funcToAdd{$id}){
+			map { $funcHash{$_} = 1 } keys %{$funcToAdd{$id}};
+    }
+	}
+	my @funcs = sort keys %funcHash;
+  $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'function' => \@funcs };
 }
 my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
 

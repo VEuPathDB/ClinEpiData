@@ -48,6 +48,7 @@ unless( -f $owlFile ){
 
 if($functionsFile){
 	open(FH, "<$functionsFile") or die "Cannot read $functionsFile:$!\n";
+	my $rank = 1;
 	while(my $line = <FH>){
 	  chomp $line;
 	  my($sid, @funcs) = split(/\t/, $line);
@@ -55,7 +56,8 @@ if($functionsFile){
 	  if(0 < @funcs){
 			$funcToAdd{$sid} ||= {};
 			foreach my $func (@funcs){
-				$funcToAdd{$sid}->{$func} = 1;
+				$funcToAdd{$sid}->{$func} = $rank;
+				$rank += 1;
 			}
 		}
 	}
@@ -88,12 +90,15 @@ while (my $row = $it->next) {
 		@$names = sort keys %allnames;
 	}
 	my %funcHash;
-	foreach my $id ($sid, @$names){
+	my $rank = 1;
+	foreach my $id (map { lc } ($sid, @$names)){
     if($funcToAdd{$id}){
-			map { $funcHash{$_} = 1 } keys %{$funcToAdd{$id}};
+			foreach my $func ( keys %{$funcToAdd{$id}} ){
+				$funcHash{$func} = $funcToAdd{$id}->{$func};
+			}
     }
 	}
-	my @funcs = sort keys %funcHash;
+	my @funcs = sort { $funcHash{$a} <=> $funcHash{$b} } keys %funcHash;
   $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'function' => \@funcs };
 }
 my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;

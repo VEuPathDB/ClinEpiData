@@ -26,17 +26,13 @@ sub getColExcludes {
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    
+
     if (defined $hash->{f5_age}){
-	$hash->{age_days}= $hash->{f5_age};
+        $hash->{age_days}= $hash->{f5_age};
     }else{
-	$hash->{age_days}= $hash->{enrollment_age_days};
+        $hash->{age_days}= $hash->{enrollment_age_days};
     }
-    
-
-
-
-
 }
+
 
 1;

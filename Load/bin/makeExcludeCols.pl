@@ -54,7 +54,10 @@ foreach my $file (@files){
 
 printf STDERR ("%d files, %d columns\n", scalar @files, scalar keys %columns);
 
-my $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
+my $owlFile = $dataset;
+unless( -e $owlFile ){
+	$owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
+}
 
 my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 

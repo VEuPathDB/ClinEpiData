@@ -90,3 +90,16 @@ sub cleanAndAddDerivedData {
 	delete $hash->{temperatura} if($hash->{temperatura} eq 'not applicable');
 }
 1;
+package ClinEpiData::Load::IcemrPeruReader::SampleReader;
+use base qw(ClinEpiData::Load::IcemrPeruReader::ObservationReader);
+
+sub makeParent {
+  my ($self, $hash) = @_;
+	return $self->makePrimaryKey($hash);
+}
+
+sub getPrimaryKeyPrefix {
+	return "S_";
+}
+
+1;

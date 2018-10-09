@@ -34,11 +34,12 @@ sub makeParticipantDateKey {
 	$date ||= $hash->{'x12._temperature_reading_date'}; 
 	$date ||= $hash->{'x16._collection_date'};
 	$date ||= $hash->{'x68._date_of_observation_collection'};
+	$date ||= $hash->{'x30._antimalarial_therapy_initiation_at_gmc_date'};
 
-	unless($date){
+	unless($date || $date eq 'na'){
 		my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
 		$date = $parent->{'x8._date_enrolled'};
-		$date ||= $parent->{'x34._age_.at_enrollment.'};
+		# $date ||= $parent->{'x34._age_.at_enrollment.'};
 	}
 	unless($date){
 		printf STDERR ("No date available: %s: %s\n",
@@ -74,7 +75,17 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  return defined($hash->{'x1._participant_id'}) ? $hash->{'x1._participant_id'} : $hash->{'participant_id'};
+  if(defined($hash->{'x1._participant_id'})){
+		my $pid = $hash->{'x1._participant_id'};
+		if($pid !~ /^\d{7}$/){
+			$pid += 1010000;
+			if($pid !~ /^\d{7}$/){
+				die "Cannot make pid from $pid\n";
+			}
+			return $pid;
+		}
+	}
+  return $hash->{'participant_id'};
 }
 1;
 
@@ -131,6 +142,13 @@ sub makePrimaryKey {
 	}
 	elsif($mdfile eq 'Diagnostics Assay.rawdata'){
  	  my $date = $hash->{date};
+ 	  return join("_", $hash->{participant_id}, $date, '0000');
+	}
+	elsif($mdfile eq 'samp_coll_form_3.rawdata'){
+ 	  my $date = $hash->{'x30._antimalarial_therapy_initiation_at_gmc_date'};
+		unless($date){
+			$date = $self->makeParticipantDateKey($hash);
+		}
  	  return join("_", $hash->{participant_id}, $date, '0000');
 	}
 	else {
@@ -278,34 +296,29 @@ sub read {
 package ClinEpiData::Load::IcemrSouthAsiaReader::SampleReader;
 use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+}
 
 sub makeParent {
   my ($self, $hash) = @_;
   if($hash->{parent}) {
     return $hash->{parent};
   }
-	return $hash->{participant_id};
+	my $class = ref($self);
+	bless($self, 'ClinEpiData::Load::IcemrSouthAsiaReader::ObservationReader');
+	my $parent = $self->makePrimaryKey($hash);
+	bless($self, $class);
+	return $parent;
 }
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-	my $mdfile = $self->getMetadataFile();
-	if($mdfile =~ /^Diagnostic/i){
-		return $hash->{assay_id};
-	}
-	my $pk = $self->makeParticipantDateKey($hash);
-	
-	if($mdfile =~ /inpatient_care_chart_review/i){
-  	my $time = $hash->{'x69._time_of_observation'};
-		$time =~ s/^0:/12:/;
-		$time = UnixDate(ParseDate($time), "%H%M");
-		$pk .= "_$time";
-	}
-	else{
-		$pk .= "_S"; # for Sample
-	}
-	return $pk;
+	return $self->makeParent($hash);
 }
+
+sub getPrimaryKeyPrefix {
+	return 'S_';
+}
+
 1;

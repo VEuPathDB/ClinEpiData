@@ -123,7 +123,7 @@ sub cleanAndAddDerivedData {
 	my $mdfile = basename($self->getMetadataFile());
 	my $lamp = $hash->{lamp};
 	my $mcat = $hash->{malariacat};
-	if($mdfile eq 'updated_lamp_results_with_uniqueid.txt'){
+	if($mdfile eq 'updated_lamp_results_with_uniqueid_v2.txt'){
 		my %vmap = (
 			1 => 'Blood smear not indicated',
 			2 => 'Blood smear indicated but not done',

@@ -227,7 +227,6 @@ use base qw(ClinEpiData::Load::GatesGEMSReader);
 
 sub makeParent {
   my ($self, $hash) = @_;
-
   return $hash->{childid};
 }
 
@@ -246,16 +245,17 @@ sub getParentPrefix {
   return "HH";
 }
 
-
+=head
 sub getPrimaryKeyPrefix {
   my ($self, $hash) = @_;
   
   return "HH";
  
 }
+=cut
 
 sub getSuffix{
-    return "followup";
+    return "household_followup";
 }
 
 sub cleanAndAddDerivedData{

@@ -534,7 +534,33 @@ use base qw(ClinEpiData::Load::GatesGEMSReader::OutputReader);
 
 package ClinEpiData::Load::GatesGEMSReader::ParticipantReader::GEMS1aParticipantReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader::ParticipantReader);
+
+
+use Data::Dumper;
+
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    if ($hash->{f4b_date_death} eq "10/11/2012"){
+	$hash->{f5_date_death} = $hash->{f4b_date_death};
+	#print STDERR Dumper $f4_death . "\n";
+	#print STDERR Dumper $f5_death . "\n";
+	#exit;
+    }
+    
+    if ($hash->{f4b_date_death} eq "10/27/2012"){
+        $hash->{f5_date_death} = $hash->{f4b_date_death};
+        #print STDERR Dumper $f4_death . "\n";
+        #print STDERR Dumper $f5_death . "\n";
+        #exit;
+    }
+ }
+
+
+
 1;
+
 
 
 package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader::GEMS1aEnrollmentObservationReader;

@@ -10,11 +10,16 @@ use warnings;
 use XML::Simple;
 use Data::Dumper;
 use File::Basename;
+use Getopt::Long;
 
 unless (@ARGV){
 	printf("%s", join("\t\n", "Usage:", basename($0) . " ontologyMapping.xml merged-file1 merged-file2 ...", "scans for missing or duplicated fields in merged files", ""));
 	exit;
 }
+
+my $VERBOSE=0;
+GetOptions('v|verbose'=>\$VERBOSE);
+
 
 my ($ontofile, @outfiles) = @ARGV;
 
@@ -62,7 +67,7 @@ foreach my $file (@outfiles){
     unless(defined($mapped{$col})){
       push(@{$found{$col}}, 'UNMAPPED');
     }
-    else{
+    elsif($VERBOSE){
       printf STDERR ("%s mapped in %s\n", $col, $file);
     }
   }

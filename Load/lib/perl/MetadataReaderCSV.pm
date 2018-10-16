@@ -7,7 +7,7 @@ use ClinEpiData::Load::MetadataReader;
 
 use Data::Dumper;
 
-use Text::CSV;
+use Text::CSV_XS;
 
 sub getLineParser {
   my ($self) = @_;
@@ -26,11 +26,11 @@ sub new {
   my $class = shift;
   my $self = $class->SUPER::new(@_);
 
-  my $csv = Text::CSV->new({ binary => 1, 
+  my $csv = Text::CSV_XS->new({ binary => 1, 
                                sep_char => ",", 
 				   quote_char => '"'
                            }) 
-      or die "Cannot use CSV: ".Text::CSV->error_diag ();  
+      or die "Cannot use CSV: ".Text::CSV_XS->error_diag ();  
 
   $self->setLineParser($csv);
 

@@ -140,6 +140,10 @@ sub cleanAndAddDerivedData {
 			}
 		}
 	}
+	if($mdfile =~ /mn_blood_iar_24m|mpo_neo_ala_24m/){
+		$hash->{sample_target_month} = $hash->{target_month};
+	 	delete $hash->{target_month};
+	}
 }
 
 1;
@@ -158,8 +162,8 @@ sub makeParent {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
   }
   unless(defined($hash->{agedays}) || defined($hash->{age})){
     print STDERR "Cannot make primary key: agedays/age not defined\n";# . Dumper $hash;
@@ -196,6 +200,25 @@ sub cleanAndAddDerivedData {
 		}
 		else { $hash->{ill} = 0; }
 	}
+}
+
+package ClinEpiData::Load::MALEDReader::HouseholdObservationReader;
+use base qw(ClinEpiData::Load::MALEDReader::ObservationReader);
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+  unless($hash->{primary_key}) {
+		return "HO";
+  }
+  return "";
+}
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  unless($hash->{parent}) {
+    return "HH";
+  }
+  return "";
 }
 
 1;

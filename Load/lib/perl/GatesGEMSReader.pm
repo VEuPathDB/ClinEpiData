@@ -602,7 +602,7 @@ sub getSuffix{
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+    $hash->{observationprotocol}="Enrollment, Last Outcome";
 
 }
 
@@ -618,7 +618,7 @@ sub getSuffix{
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+    $hash->{observationprotocol}="Enrollment, Outcome leaving hospital/health center";
 
 }
 
@@ -634,7 +634,7 @@ sub getSuffix{
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{observationprotocol}="Enrollment, Outcome 4 hours after rehydration";
+    $hash->{observationprotocol}="Enrollment, Outcome if additional rehydration needed";
 
 }
 

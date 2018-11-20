@@ -50,6 +50,43 @@ sub getPrimaryKeyPrefix {
     return "HH"; 
 }
 
+=pod
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="enrollment";
+
+}
+=cut
+
+
+1;
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{childid};
+}
+
+sub getParentPrefix {                                                                                                                  my ($self, $hash) = @_;                                                                                                            return "HH";                                                                                                                   }
+
+sub makePrimaryKey {                                                                                                                
+    my ($self, $hash) = @_;                                                                                                           
+    my $suffix = $self->getSuffix();                                                                                               
+    return $hash->{childid} .  "_" . $suffix;                                                                                      }     
+
+sub getSuffix{                                                                                                                      
+    return "enrollment";                                                                                                    
+}
+
+sub getPrimaryKeyPrefix {
+    return "HH";
+}
+
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
@@ -58,6 +95,73 @@ sub cleanAndAddDerivedData{
 }
 
 1;
+
+=pop
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  my $suffix = $self->getSuffix();
+
+  return $hash->{childid} .  "_" . $suffix;
+}
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  return "HH";
+}
+
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+  
+  return "HH";
+ 
+}
+
+sub getSuffix{
+    return "household_followup";
+}
+=cut
+
+
+
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{childid};
+}
+
+sub getParentPrefix {                                                                                                                  my ($self, $hash) = @_;                                                                                                            return "HH";                                                                                                                   }
+
+sub makePrimaryKey {                                                                                                               
+																       my ($self, $hash) = @_;                                                                                                        
+																       my $suffix = $self->getSuffix();
+																       return $hash->{childid} .  "_" . $suffix;                                                                                    
+}
+
+sub getSuffix{                                                                                       
+																       return "followup";
+}
+
+sub getPrimaryKeyPrefix {
+    return "HH";
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="60 day follow-up";
+
+}
+
+1;
+
+
+
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader;
 use base qw(ClinEpiData::Load::OutputFileReader);
@@ -219,52 +323,6 @@ sub cleanAndAddDerivedData{
 1;
 
 
-
-
-package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader;
-use base qw(ClinEpiData::Load::GatesGEMSReader);
-
-
-sub makeParent {
-  my ($self, $hash) = @_;
-  return $hash->{childid};
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  my $suffix = $self->getSuffix();
-
- # next unless $hash->{f5_feces_visible}
-
-  return $hash->{childid} .  "_" . $suffix;
-}
-
-sub getParentPrefix {
-  my ($self, $hash) = @_;
-
-  return "HH";
-}
-
-=head
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  
-  return "HH";
- 
-}
-=cut
-
-sub getSuffix{
-    return "household_followup";
-}
-
-sub cleanAndAddDerivedData{
-    my ($self,$hash)=@_;
-    $hash->{hhobservationprotocol}="60 day follow-up";
-
-}
-
-1;
 
 
 package ClinEpiData::Load::GatesGEMSReader::MedicalObservationReader;

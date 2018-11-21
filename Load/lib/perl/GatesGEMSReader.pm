@@ -50,13 +50,6 @@ sub getPrimaryKeyPrefix {
     return "HH"; 
 }
 
-=pod
-sub cleanAndAddDerivedData{
-    my ($self,$hash)=@_;
-    $hash->{hhobservationprotocol}="enrollment";
-
-}
-=cut
 
 
 1;
@@ -586,6 +579,19 @@ package ClinEpiData::Load::GatesGEMSReader::HouseholdReader::GEMS1aHouseholdRead
 use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdReader);
 1;
 
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader::GEMS1aHouseholdObservationEnrolldateReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader);
+
+1;
+
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader::GEMS1aHouseholdObservationFollowdateReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader);
+
+1;
+
+
+
 package ClinEpiData::Load::GatesGEMSReader::OutputReader::GEMS1aOutputReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader::OutputReader);
 1;
@@ -630,8 +636,8 @@ package ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader::GEMS1aFol
 use base qw(ClinEpiData::Load::GatesGEMSReader::FollowupObservationReader);
 1;
 
-package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader::GEMS1aHouseholdObservationReader;
-use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader);
+
+
 
 
 package ClinEpiData::Load::GatesGEMSReader::GEMS1aMedicalFindObservationReader;

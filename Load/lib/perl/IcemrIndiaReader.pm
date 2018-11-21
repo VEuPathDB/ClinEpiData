@@ -3,6 +3,16 @@ use base qw(ClinEpiData::Load::MetadataReader);
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+  if(defined($hash->{pastyear_treatdate})){
+    my $val = $hash->{pastyear_treatdate};
+    $val =~ tr/_/ /; ## some dates look like mmm_YYYY
+    $val =~ s/^(\d\d)-([a-zA-Z]{3})$/$2 20$1/; ## some dates look like YY-mmm
+    $val =~ s/^([a-zA-Z]{3})-(\d\d)$/$1 20$2/; ## some dates look like mmm-YY
+    $val =~ s/^\W+(\d+)\W+$/1-1-$1/; ## just a year
+    $val =~ s/^(\d{1,2})-(\d+)$/1-$1-$2/; ## mm-yyyy
+#		$val =~ s/^(\d+)\W(\d+)(\W)(\d+)$/$2$3$4/; ## strip day of month !!! ASSUMES D-M-Y
+    $hash->{pastyear_treatdate} = $val;
+  }
 }
 
 1;
@@ -69,6 +79,7 @@ sub makePrimaryKey {
 
 package ClinEpiData::Load::IcemrIndiaReader::ParticipantReader;
 use base qw(ClinEpiData::Load::IcemrIndiaReader);
+use Scalar::Util qw/looks_like_number/;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
@@ -78,6 +89,22 @@ sub cleanAndAddDerivedData {
 #		$hash->{study_design} = "Longitudinal";
 #	}
 	$hash->{state_birth} =~ s/^-$/Missing/;
+	## pastyear_treatdrugs_chk_* only take visit_1_enrollment_arm_1
+  my @vars = grep { /^pastyear_treatdrugs_chk|^pastyear_treatwhere_chk|^pastyear_dx_chk/ } keys %$hash;
+	foreach my $var (@vars){
+		next unless defined($hash->{$var});
+		next unless defined($hash->{redcap_event_name});
+		delete($hash->{$var}) unless($hash->{redcap_event_name} eq 'visit_1_enrollment_arm_1');
+	}
+#	if(defined($hash->{pastyear_num_mo})){
+#		$hash->{pastyear_num_mo} =~ s/\s+.*$//;
+#  }
+#	unless(looks_like_number($hash->{pastyear_num_mo})){
+#		delete($hash->{pastyear_num_mo});
+#	}
+#	else{
+#		$hash->{pastyear_num_mo} = sprintf("%03d", $hash->{pastyear_num_mo}); # force numeric
+#	}
 }
 
 sub makeParent {
@@ -106,7 +133,11 @@ use Data::Dumper;
 use Scalar::Util qw/looks_like_number/;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+	return undef if(defined($hash->{primary_key})); ## already processed, do not run when loading parentMergedFile for Samples
   $self->SUPER::cleanAndAddDerivedData($hash);
+	if(defined($hash->{existing_illness_list}) && ($hash->{existing_illness_list} =~ /^3$/i)){
+		delete $hash->{existing_illness_list};
+	}
   ## get a value for age at time of visit
   if(!defined($hash->{age_fu}) || $hash->{age_fu} eq "" ){
     if(defined($hash->{age_en}) && $hash->{age_en} ne ""){
@@ -124,13 +155,13 @@ sub cleanAndAddDerivedData {
       ## set an impossible value
     }
   }
-	$hash->{travel_2wk_district} =~ s/^-$/Missing/;
-	$hash->{travel_2wk_state} =~ s/^-$/Missing/;
+	if(defined($hash->{travel_2wk_district})){ $hash->{travel_2wk_district} =~ s/^-$/Missing/; }
+	if(defined($hash->{travel_2wk_state})){ $hash->{travel_2wk_state} =~ s/^-$/Missing/; }
 
   if(1){
     my $score = 0;
     my @vars = grep { /^fever_2wk_where_chk___/ } keys %$hash;
-    if($hash->{fever_2wk_yn} eq '1'){
+    if(@vars && $hash->{fever_2wk_yn} eq '1'){
     # fever_2wk_where_chk__* 
     # if all are '0', change all 4 to "N/A"
     # may have to add rows to valueMap.txt
@@ -147,16 +178,18 @@ sub cleanAndAddDerivedData {
 # pastyear_treatdrugs_chk__* 
 # if all are '0', change all 4 to "N/A"
 # may have to add rows to valueMap.txt
-  if($hash->{pastyear_treat_rad} eq '1' || $hash->{pastyear_treat_rad} eq '3'){
-    setIfZero($hash, '^pastyear_treatdrugs_chk___\d+$', 'NULL');
-    setIfZero($hash, '^pastyear_treatwhere_chk___\d+$', 'NULL');
-  }
-  else {
-    my @vars = grep { /^pastyear_treatdrugs_chk___/ } keys %$hash;
-    delete($hash->{$_}) for @vars;
-    @vars = grep { /^pastyear_treatwhere_chk___/ } keys %$hash;
-    delete($hash->{$_}) for @vars;
-  }
+	if(defined($hash->{pastyear_treat_rad})){
+ 	  if($hash->{pastyear_treat_rad} eq '1' || $hash->{pastyear_treat_rad} eq '3'){
+ 	    setIfZero($hash, '^pastyear_treatdrugs_chk___\d+$', 'NULL');
+ 	    setIfZero($hash, '^pastyear_treatwhere_chk___\d+$', 'NULL');
+ 	  }
+ 	  else {
+ 	    my @vars = grep { /^pastyear_treatdrugs_chk___/ } keys %$hash;
+ 	    delete($hash->{$_}) for @vars;
+ 	    @vars = grep { /^pastyear_treatwhere_chk___/ } keys %$hash;
+ 	    delete($hash->{$_}) for @vars;
+ 	  }
+	}
 
 # sprayed_chk___1-4
   setIfZero($hash, '^sprayed_chk___\d$', 'NULL');
@@ -201,16 +234,6 @@ sub cleanAndAddDerivedData {
 
   foreach my $var (qw/height weight temp_celsius hemocue/){
     delete($hash->{$var}) unless(looks_like_number($hash->{$var}));
-  }
-  if(defined($hash->{pastyear_treatdate})){
-    my $val = $hash->{pastyear_treatdate};
-    $val =~ tr/_/ /; ## some dates look like mmm_YYYY
-    $val =~ s/^(\d\d)-([a-zA-Z]{3})$/$2 20$1/; ## some dates look like YY-mmm
-    $val =~ s/^([a-zA-Z]{3})-(\d\d)$/$1 20$2/; ## some dates look like mmm-YY
-    $val =~ s/^\W+(\d+)\W+$/1-1-$1/; ## just a year
-    $val =~ s/^(\d{1,2})-(\d+)$/1-$1-$2/; ## mm-yyyy
-#		$val =~ s/^(\d+)\W(\d+)(\W)(\d+)$/$2$3$4/; ## strip day of month !!! ASSUMES D-M-Y
-    $hash->{pastyear_treatdate} = $val;
   }
 	if(defined($hash->{bp})){
 		if($hash->{bp} !~ /^\d+\/\d+$/){
@@ -268,6 +291,78 @@ sub makePrimaryKey {
     return join("_", $hash->{sid}, $hash->{redcap_event_name});
   }
   die "Cannot make primary key:\n" . Dumper($hash);
+}
+
+1;
+package ClinEpiData::Load::IcemrIndiaReader::HouseholdObservationReader;
+use base qw(ClinEpiData::Load::IcemrIndiaReader::ObservationReader);
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  return $hash->{cen_fid};
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{"primary_key"}) {
+    return $hash->{"primary_key"};
+  }
+  if(defined($hash->{cen_fid}) && defined($hash->{redcap_event_name})){
+    return join("_", $hash->{cen_fid}, $hash->{redcap_event_name});
+  }
+  die "Cannot make primary key:\n" . Dumper($hash);
+}
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+	return undef if(defined($hash->{primary_key}));
+	return "HO";
+}
+
+sub cleanAndAddDerivedData {
+# sprayed_chk___1-4
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+	if(defined($hash->{redcap_event_name})){
+		$hash->{household_redcap_event_name} = $hash->{redcap_event_name};
+		delete($hash->{redcap_event_name});
+		unless ($hash->{household_redcap_event_name} =~ /houseinfo_arm_1|visit_1_enrollment_arm_1|visit 1|household census/i){
+			delete $hash->{$_} for keys %$hash;
+		}
+	}
+}
+1;
+
+package ClinEpiData::Load::IcemrIndiaReader::SampleReader;
+use base qw(ClinEpiData::Load::IcemrIndiaReader);
+use Scalar::Util qw/looks_like_number/;
+
+sub makeParent {
+  my ($self, $hash) = @_;
+	return shift->makePrimaryKey(shift);
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{"primary_key"}) {
+    return $hash->{"primary_key"};
+  }
+  if(defined($hash->{sid}) && defined($hash->{redcap_event_name})){
+    return join("_", $hash->{sid}, $hash->{redcap_event_name});
+  }
+  die "Cannot make primary key:\n" . Dumper($hash);
+}
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+	return undef if(defined($hash->{primary_key}));
+	return "SA";
+}
+sub cleanAndAddDerivedData {
+# sprayed_chk___1-4
+  my ($self, $hash) = @_;
+  delete($hash->{hemocue}) unless(looks_like_number($hash->{hemocue}));
 }
 
 1;

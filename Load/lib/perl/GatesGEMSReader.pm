@@ -50,12 +50,11 @@ sub getPrimaryKeyPrefix {
     return "HH"; 
 }
 
-
-
 1;
 
-
-
+=pop
+HouseholdObservations.txt is merged by(rbind) HHObservationEnrolldate and HHObservationFollowup (PKs are different). Each file has all HH variables.  
+=cut
 package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
@@ -88,35 +87,6 @@ sub cleanAndAddDerivedData{
 }
 
 1;
-
-=pop
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  my $suffix = $self->getSuffix();
-
-  return $hash->{childid} .  "_" . $suffix;
-}
-
-sub getParentPrefix {
-  my ($self, $hash) = @_;
-
-  return "HH";
-}
-
-
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  
-  return "HH";
- 
-}
-
-sub getSuffix{
-    return "household_followup";
-}
-=cut
-
-
 
 
 package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader;
@@ -194,7 +164,6 @@ use Data::Dumper;
 
 
 sub makeParent {
-  ## returns a Participant ID
   my ($self, $hash) = @_;
   
   return $hash->{childid};
@@ -546,11 +515,6 @@ sub adjustHeaderArray {
 1;
 
 
-=cut
-
-
-
-=pod
     if(exists($hash->{f11_specimen_id})) {
 	return $hash->{f11_specimen_id};
     }else {
@@ -598,8 +562,6 @@ use base qw(ClinEpiData::Load::GatesGEMSReader::OutputReader);
 
 package ClinEpiData::Load::GatesGEMSReader::ParticipantReader::GEMS1aParticipantReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader::ParticipantReader);
-
-
 use Data::Dumper;
 
 
@@ -608,16 +570,10 @@ sub cleanAndAddDerivedData {
 
     if ($hash->{f4b_date_death} eq "10/11/2012"){
 	$hash->{f5_date_death} = $hash->{f4b_date_death};
-	#print STDERR Dumper $f4_death . "\n";
-	#print STDERR Dumper $f5_death . "\n";
-	#exit;
     }
     
     if ($hash->{f4b_date_death} eq "10/27/2012"){
         $hash->{f5_date_death} = $hash->{f4b_date_death};
-        #print STDERR Dumper $f4_death . "\n";
-        #print STDERR Dumper $f5_death . "\n";
-        #exit;
     }
  }
 

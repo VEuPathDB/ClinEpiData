@@ -84,6 +84,13 @@ sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
     $hash->{hhobservationprotocol}="enrollment";
 
+
+    if ($hash->{parent}){
+	$hash->{parent} =~ s/^([a-z])/\u$1/;
+    }
+
+    
+
 }
 
 1;
@@ -119,6 +126,10 @@ sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
     $hash->{hhobservationprotocol}="60 day follow-up";
 
+    
+    if ($hash->{parent}){
+        $hash->{parent} =~ s/^([a-z])/\u$1/;
+    }
 }
 
 1;
@@ -128,6 +139,8 @@ sub cleanAndAddDerivedData{
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader;
 use base qw(ClinEpiData::Load::OutputFileReader);
+
+
 1;
 
 

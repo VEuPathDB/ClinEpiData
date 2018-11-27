@@ -15,8 +15,10 @@ sub makeParent {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
+
+      return $hash->{primary_key};
   
-  return $hash->{"primary_key"};
+
 }
 
 

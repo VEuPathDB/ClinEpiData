@@ -31,7 +31,8 @@ sub cleanAndAddDerivedData {
 }
 
 1;
-
+=head **HH.txt will include all enrollment variables (f4a, f4b, f7)
+=cut
 package ClinEpiData::Load::GatesGEMSReader::HouseholdReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 use strict;
@@ -50,11 +51,50 @@ sub getPrimaryKeyPrefix {
     return "HH"; 
 }
 
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="enrollment";
+
+}
+
+1;
+
+=head **HHObservations.txt will include all followup variables (f5)   
+
+=cut
+ 
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{childid};
+}
+
+sub getParentPrefix {                                                                                                                  my ($self, $hash) = @_;                                                                                                            return "HH";                                                                                                                   }
+
+sub makePrimaryKey {                                                                                                                
+    my ($self, $hash) = @_;                                                                                                           
+    my $suffix = $self->getSuffix();                                                                                               
+    return $hash->{childid} .  "_" . $suffix;                                                                                      }     
+
+sub getSuffix{                                                                                                                      
+    return "household_followup";                                                                                                    
+}
+
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol}="60 day follow-up";
+
+
+}
+
 1;
 
 =pop
-HouseholdObservations.txt is merged by(rbind) HHObservationEnrolldate and HHObservationFollowup (PKs are different). Each file has all HH variables.  
-=cut
+
 package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader);
 
@@ -134,7 +174,7 @@ sub cleanAndAddDerivedData{
 
 1;
 
-
+=cut
 
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader;
@@ -556,18 +596,10 @@ package ClinEpiData::Load::GatesGEMSReader::HouseholdReader::GEMS1aHouseholdRead
 use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdReader);
 1;
 
-package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader::GEMS1aHouseholdObservationEnrolldateReader;
-use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationEnrolldateReader);
+package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader::GEMS1aHouseholdObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationReader);
 
 1;
-
-
-package ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader::GEMS1aHouseholdObservationFollowdateReader;
-use base qw(ClinEpiData::Load::GatesGEMSReader::HouseholdObservationFollowdateReader);
-
-1;
-
-
 
 package ClinEpiData::Load::GatesGEMSReader::OutputReader::GEMS1aOutputReader;
 use base qw(ClinEpiData::Load::GatesGEMSReader::OutputReader);

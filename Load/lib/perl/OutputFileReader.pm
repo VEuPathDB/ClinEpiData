@@ -5,8 +5,6 @@ use strict;
 sub makeParent {
   my ($self, $hash) = @_;
   if($hash->{parent}) {
-    
-      $hash->{parent} =~  tr/a-z/A-Z/;
       return $hash->{parent};
 
   }

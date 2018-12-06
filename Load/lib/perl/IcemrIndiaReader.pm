@@ -26,6 +26,16 @@ use Switch;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
+	if(defined($hash->{redcap_event_name})){
+		if($hash->{redcap_event_name} !~ /^house/i){
+			delete $hash->{$_} for keys %$hash;
+			return undef;
+		}
+	  else{
+	  	$hash->{household_redcap_event_name} = $hash->{redcap_event_name};
+	  	delete $hash->{redcap_event_name};
+	  }
+	}
 	if(!defined($hash->{studysite})){
 		my $id = $hash->{cen_fid} || $hash->{sid};
 		switch(substr(lc($hash->{cen_fid}),0,2)){
@@ -56,9 +66,6 @@ sub cleanAndAddDerivedData {
 			case 'raurkela' { $hash->{state} = 'odisha' }
 			case 'nadiad' { $hash->{state} = 'gujarat' }
 		}
-	}
-	if(defined($hash->{redcap_event_name}) && ($hash->{redcap_event_name} !~ /^houseinfo/)){
-		$hash = {};
 	}
 }
 
@@ -135,6 +142,7 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	return undef if(defined($hash->{primary_key})); ## already processed, do not run when loading parentMergedFile for Samples
   $self->SUPER::cleanAndAddDerivedData($hash);
+	return if(ref($self) eq 'ClinEpiData::Load::IcemrIndiaReader::HouseholdObservationReader');
 	if(defined($hash->{existing_illness_list}) && ($hash->{existing_illness_list} =~ /^3$/i)){
 		delete $hash->{existing_illness_list};
 	}
@@ -191,8 +199,6 @@ sub cleanAndAddDerivedData {
  	  }
 	}
 
-# sprayed_chk___1-4
-  setIfZero($hash, '^sprayed_chk___\d$', 'NULL');
 # repellent_chk___1-7
   setIfZero($hash, '^repellent_chk___\d$', 'NULL');
 # bednet_chk___1-7
@@ -324,14 +330,17 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
 # sprayed_chk___1-4
   my ($self, $hash) = @_;
-  $self->SUPER::cleanAndAddDerivedData($hash);
 	if(defined($hash->{redcap_event_name})){
 		$hash->{household_redcap_event_name} = $hash->{redcap_event_name};
 		delete($hash->{redcap_event_name});
-		unless ($hash->{household_redcap_event_name} =~ /houseinfo_arm_1|visit_1_enrollment_arm_1|visit 1|household census/i){
+	#unless ($hash->{household_redcap_event_name} =~ /houseinfo_arm_1|visit_1_enrollment_arm_1|visit 1|household census/i){
+		unless ($hash->{household_redcap_event_name} =~ /visit_1_enrollment_arm_1|visit 1/i){
 			delete $hash->{$_} for keys %$hash;
 		}
 	}
+# sprayed_chk___1-4
+  $self->SUPER::setIfZero($hash, '^sprayed_chk___\d$', 'NULL');
+  $self->SUPER::cleanAndAddDerivedData($hash);
 }
 1;
 

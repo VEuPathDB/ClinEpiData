@@ -115,17 +115,17 @@ sub makePrimaryKey {
     return $hash->{primary_key};
   }
   my $mdfile = basename($self->getMetadataFile());
-	if($mdfile =~ /inpatient_treatment_drug/){
- 	  my $rx_name = # $hash->{rx_name};
- 	    $hash->{'x51._rx_name'} ||
- 	    $hash->{'x56._rx_name'} ||
- 	    $hash->{'x61._rx_name'} ||
- 	    $hash->{'x66._generic_antimalarial_name'} ||
- 	    $hash->{'x71._generic_antimalarial_name'}; 
+##if($mdfile =~ /inpatient_treatment_drug/){
+##  my $rx_name = # $hash->{rx_name};
+##    $hash->{'x51._rx_name'} ||
+##    $hash->{'x56._rx_name'} ||
+##    $hash->{'x61._rx_name'} ||
+##    $hash->{'x66._generic_antimalarial_name'} ||
+##    $hash->{'x71._generic_antimalarial_name'}; 
 
- 	  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
-	}
-	elsif($mdfile eq 'sample_collection_form.rawdata'){
+##  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
+##}
+	if($mdfile eq 'sample_collection_form.rawdata'){
 		my $date = $hash->{'x16._collection_date'} || $hash->{'x12._temperature_reading_date'};
 		my $time = $hash->{'x15._collection_time_.24h.'} || $hash->{'x11._temperature_reading_time_.24h.'};
 		$time =~ s/^0:/12:/;
@@ -140,7 +140,7 @@ sub makePrimaryKey {
 		$time = UnixDate(ParseDate($time), "%H%M");
   	return join("_", $hash->{participant_id}, $date, $time);
 	}
-	elsif($mdfile eq 'Diagnostics Assay.rawdata'){
+	elsif($mdfile =~ 'Diagnostics_Assay.rawdata'){
  	  my $date = $hash->{date};
  	  return join("_", $hash->{participant_id}, $date, '0000');
 	}
@@ -170,6 +170,50 @@ sub makePrimaryKey {
 
 # override read() only for inpatient_treatment_drug_[12345].rawdata
 # each row generates several triples
+
+1;
+
+package ClinEpiData::Load::IcemrSouthAsiaReader::DrugReader;
+use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
+use File::Basename;
+use Data::Dumper;
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+	my $id = lc($hash->{'participant_id'});
+	die sprintf("No participant id in %s\n", $self->getMetadataFile) unless length($id) > 0;
+	my $parentMerged = $self->getParentParsedOutput();
+	my ($pid) = sort grep { /^${id}_\d\d\d\d-\d\d-\d\d/ } keys %$parentMerged;
+	return $pid;
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  my $mdfile = basename($self->getMetadataFile());
+	if($mdfile =~ /inpatient_treatment_drug/){
+ 	  my $rx_name = # $hash->{rx_name};
+ 	    $hash->{'x51._rx_name'} ||
+ 	    $hash->{'x56._rx_name'} ||
+ 	    $hash->{'x61._rx_name'} ||
+ 	    $hash->{'x66._generic_antimalarial_name'} ||
+ 	    $hash->{'x71._generic_antimalarial_name'}; 
+
+ 	  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
+	}
+	die "File $mdfile not supported\n";
+}
+
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+}
+
 sub read {
   my ($self) = @_;
 
@@ -262,7 +306,7 @@ sub read {
    	    push @{$parsedOutput->{$primaryKey}->{$key}}, $hash{$key};
    	  }
 			## end of timepoints
-			my @tpkeys = qw/primary_key parent timepoint dose method/;
+			# my @tpkeys = qw/primary_key parent timepoint dose method/;
 			# printf STDERR ("DEBUG: %s\n", join("\t", map { $hash{$_} || "" } @tpkeys ));
 			# printf STDERR ("DEBUG: %d timepoints found for id\n", $countTimepoints, $hash{participant_id});
     }
@@ -293,6 +337,7 @@ sub read {
 
 1;
 
+
 package ClinEpiData::Load::IcemrSouthAsiaReader::SampleReader;
 use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
@@ -308,10 +353,17 @@ sub makeParent {
   }
 	my $class = ref($self);
 	bless($self, 'ClinEpiData::Load::IcemrSouthAsiaReader::ObservationReader');
-	my $parent = $self->makePrimaryKey($hash);
+	my $pid = $self->makePrimaryKey($hash);
 	bless($self, $class);
-	return $parent;
+	my $parentMerged = $self->getParentParsedOutput();
+	if(!defined($parentMerged->{$pid})){
+		my $id = $hash->{participant_id};
+		($pid) = sort grep { /^${id}_\d\d\d\d-\d\d-\d\d/ } keys %$parentMerged;
+		die "NO Parent for $id" unless $pid;
+	}
+	return $pid;
 }
+
 sub makePrimaryKey {
   my ($self, $hash) = @_;
 	return $self->makeParent($hash);

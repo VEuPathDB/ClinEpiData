@@ -95,9 +95,27 @@ use strict;
 use Data::Dumper;
 use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
+
+my %remap = (
+'x31._antimalarial_therapy_initiation_at_gmc_time' => 'x11._temperature_reading_time_.24h.',
+'x9._time_enrolled' => 'x11._temperature_reading_time_.24h.',
+'x30._antimalarial_therapy_initiation_at_gmc_date' => 'x12._temperature_reading_date',
+'x8._date_enrolled' => 'x12._temperature_reading_date',
+'sample_x69._time_of_observation' => 'x15._collection_time_.24h.',
+'sample_x68._date_of_observation_collection' => 'x16._collection_date',
+);
+
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
+	if(defined($hash->{primary_key})){ return } ## I am doing getParentParsedOutput() in SampleReader
+	while(my ($a,$b) = each(%remap)){
+		next unless defined $hash->{$a};
+		die "$a conflicts with $b" if(defined($hash->{$b}) && $hash->{$a} ne $hash->{$b});
+		my $hash->{$b} = $hash->{$a};
+		delete $hash->{$a};
+		printf STDERR ("remapped $a to $b: $hash->{$b}\n");
+	}
 }
 
 sub makeParent {
@@ -344,6 +362,11 @@ use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
+#	foreach my $col (qw/x68._date_of_observation_collection x69._time_of_observation/){
+#		my $k = "sample_${col}";
+#		$hash->{$k} = $hash->{$col};
+#		delete $hash->{$col};
+#	}
 }
 
 sub makeParent {

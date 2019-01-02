@@ -19,7 +19,7 @@ while($line = <FH>){
 	my @row = split(/\t/, $line);
 	my %data;
 	@data{@index} = @row;
-	my $key = join("", @data{@keys});
+	my $key = join(":::", @data{@keys});
 	$merge->{$key} ||= {};
 	foreach my $col (@cols){
 		next if $data{$col} eq "";
@@ -31,15 +31,17 @@ while($line = <FH>){
 close(FH);
 while(my ($key,$data) = each %$merge){
 	foreach my $col(@cols){
-		next unless $merge->{$key}->{$col}->{_total} > 1;
+	#	next unless $merge->{$key}->{$col}->{_total} > 1;
 		delete $merge->{$key}->{$col}->{_total};
 		my $scores = $merge->{$key}->{$col};
 		my ($topvalue) = sort { $scores->{$b} <=> $scores->{$a} } keys %$scores ;
 		$merge->{$key}->{$col} = $topvalue;
 	}
 }
+printf("%s\n", join("\t", @keys, @cols));
 while(my ($key,$data) = each %$merge){
+	my @keyvals = split(/:::/, $key);
 	my @row = map { $data->{$_} } @cols;
-	printf("%s\t%s\n", $key, join("\t", @row));
+	printf("%s\n", join("\t", @keyvals, @row));
 }
 		

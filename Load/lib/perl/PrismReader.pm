@@ -89,8 +89,6 @@ package ClinEpiData::Load::PrismReader::ClinicalVisitReader;
 use base qw(ClinEpiData::Load::PrismReader);
 use File::Basename;
 
-use Data::Dumper;
-
 use strict;
 
 sub skipIfNoParent { return 0; }
@@ -226,7 +224,7 @@ use Date::Manip qw(Date_Init ParseDate UnixDate);
 use File::Basename;
 
 
-sub skipIfNoParent { return 0; }
+sub skipIfNoParent { return 1; }
 
 sub getClinicalVisitMapper { $_[0]->{_clinical_visit_mapper} }
 sub setClinicalVisitMapper { $_[0]->{_clinical_visit_mapper} = $_[1] }
@@ -387,6 +385,9 @@ sub makeParent {
     my $formattedDate = &formatDate($date);
     
     my $key = "$participant.$formattedDate";
+		unless($mapper->{$key}){
+			warn "No mapped parent for $key ($date)";
+		}
     return $mapper->{$key};
   }
 
@@ -416,9 +417,6 @@ package ClinEpiData::Load::PrismReader::LightTrapReader;
 use base qw(ClinEpiData::Load::PrismReader);
 
 use strict;
-
-use Data::Dumper;
-
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;

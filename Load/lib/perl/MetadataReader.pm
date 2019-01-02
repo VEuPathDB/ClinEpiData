@@ -228,6 +228,10 @@ sub getParentPrefix {
   return undef;
 }
 
+sub skipRow {
+  my ($self, $hash) = @_;
+	delete $hash->{$_} for keys %$hash;
+}
 
 1;
 

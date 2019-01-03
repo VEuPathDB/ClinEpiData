@@ -72,6 +72,9 @@ sub cleanAndAddDerivedData {
 	$self->SUPER::cleanAndAddDerivedData($hash);
 	$hash->{today_observation} = $hash->{today};
 	delete $hash->{today};
+	if($hash->{age_months} > 0){
+		$hash->{age_years} = sprintf("%0.2f", $hash->{age_years} + ($hash->{age_months} / 12.0));
+	}
 }
 
 sub makeParent {

@@ -9,15 +9,23 @@ use Env qw/PROJECT_HOME SPARQLPATH/;
 use File::Basename;
 use Getopt::Long;
 use Data::Dumper;
+use CBIL::Util::PropertySet;
 
-my ($dataset, @filters, @files, $inverse);
+my ($dataset, @filters, @files, $inverse, $propFile);
 GetOptions(
 	'o|owl=s' => \$dataset,
 	'f|filter=s' => \@filters,
 	'i|input=s' => \@files,
-	'v|inverse' => \$inverse
+	'v|inverse' => \$inverse,
+	'p|propFile=s' => \$propFile
 );
-
+if(-e $propFile) {
+	my @_p;
+  my $p = CBIL::Util::PropertySet->new($propFile, \@_p, 1);
+	push(@files, split(/,/,$p->{props}->{metadataFile}));
+	$dataset ||= $p->{props}->{ontologyOwlFile};
+	push(@filters, lc($p->{props}->{type})) unless @filters;
+}
 
 unless($dataset){
 	printf(join("\n\n",

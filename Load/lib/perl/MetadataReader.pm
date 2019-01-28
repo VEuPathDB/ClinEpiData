@@ -175,6 +175,10 @@ sub read {
 
     $primaryKey = $self->getPrimaryKeyPrefix(\%hash) . $primaryKey;
 
+    if(($rowExcludes->{$primaryKey} eq $fileBasename) || ($rowExcludes->{$primaryKey} eq '__ALL__')){
+			next;
+		}
+
     $self->cleanAndAddDerivedData(\%hash);
 
     foreach my $key (keys %hash) {

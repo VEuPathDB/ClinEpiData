@@ -175,6 +175,7 @@ use base qw(ClinEpiData::Load::MALEDReader);
 use strict;
 use warnings;
 use Data::Dumper;
+use Switch;
 
 my @obs_date_cols = (
 "bcgdate1", "bcgdate2", "cpoxdate1", "dewormdate1", "dewormdate2", "dptdate1", "dptdate2", "dptdate3", "dptdate4", "dptdate5", "fludate1", "fludate2",
@@ -255,6 +256,10 @@ sub cleanAndAddDerivedData {
 			$hash->{ill} = 1;
 		}
 		else { $hash->{ill} = 0; }
+		if(defined($hash->{visit})){
+			$hash->{ill_visit} = $hash->{visit};
+			delete $hash->{visit};
+		}
 	}
 	for my $type (qw/who diet/){
 		if($mdFile =~ /$type/i){
@@ -274,8 +279,22 @@ sub cleanAndAddDerivedData {
 	if($mdFile =~ /zscores/i && defined($hash->{date})){
 		$hash->{anthro_date} = $hash->{date};
 	}
-	
+	if(defined($hash->{window})){
+		switch(lc($mdFile)) {
+			case /^mn_blood_iar/ {
+				$hash->{urine_window} = $hash->{window};
+				$hash->{blood_window} = $hash->{window};
+			}
+			case /^fsq/ { $hash->{fsq_window} = $hash->{window}; }
+			case /^diet/ { $hash->{diet_window} = $hash->{window}; }
+			case /^whocore/ { $hash->{who_window} = $hash->{window}; }
+			case /^zscores/ { $hash->{zscores_window} = $hash->{window}; }
+		}
+		delete $hash->{window};
+	}
 }
+
+1;
 
 package ClinEpiData::Load::MALEDReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::MALEDReader::ObservationReader);

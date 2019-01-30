@@ -304,11 +304,14 @@ use base qw(ClinEpiData::Load::MALEDReader::ObservationReader);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
-  my $mdFile = $self->getMetadataFile();
+  my $mdfile = $self->getMetadataFile();
 	for my $type (qw/fsq wami/){
-		if($mdFile =~ /$type/i){
+		if($mdfile =~ /$type/i){
 			$hash->{"${type}_target_month"} = $hash->{target_month};
 		}
+	}
+	if(defined($hash->{window}) && ($hash->{window} =~ /^\d$/) && ($mdfile =~ /fsq/)){
+		$hash->{fsq_window} = $hash->{window};
 	}
 }
 

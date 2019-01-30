@@ -166,6 +166,11 @@ sub cleanAndAddDerivedData {
 			$hash->{sample_collection_date} = $hash->{$col};
 		}
 	}
+	if(defined($hash->{window}) && $mdfile =~ /mn_blood_iar/) { # sampletype = blood or urine
+		my $newcol = join("_", $hash->{sampletype}, "window");
+		$hash->{$newcol} = $hash->{window};
+		delete $hash->{window};
+	}
 }
 
 1;
@@ -176,6 +181,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Switch;
+use File::Basename;
 
 my @obs_date_cols = (
 "bcgdate1", "bcgdate2", "cpoxdate1", "dewormdate1", "dewormdate2", "dptdate1", "dptdate2", "dptdate3", "dptdate4", "dptdate5", "fludate1", "fludate2",
@@ -234,7 +240,7 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
-  my $mdFile = $self->getMetadataFile();
+  my $mdFile = basename($self->getMetadataFile());
   if(defined($hash->{form}) && $hash->{form} =~ /caf-bw/i){
 		delete $hash->{$_} for keys %$hash;
 		return;
@@ -279,16 +285,12 @@ sub cleanAndAddDerivedData {
 	if($mdFile =~ /zscores/i && defined($hash->{date})){
 		$hash->{anthro_date} = $hash->{date};
 	}
-	if(defined($hash->{window})){
+	if(defined($hash->{window}) && $hash->{window} =~ /^\d$/){
 		switch(lc($mdFile)) {
-			case /^mn_blood_iar/ {
-				$hash->{urine_window} = $hash->{window};
-				$hash->{blood_window} = $hash->{window};
-			}
-			case /^fsq/ { $hash->{fsq_window} = $hash->{window}; }
-			case /^diet/ { $hash->{diet_window} = $hash->{window}; }
-			case /^whocore/ { $hash->{who_window} = $hash->{window}; }
-			case /^zscores/ { $hash->{zscores_window} = $hash->{window}; }
+			case /fsq/ { $hash->{fsq_window} = $hash->{window}; }
+			case /diet/ { $hash->{diet_window} = $hash->{window}; }
+			case /whocore/ { $hash->{who_window} = $hash->{window}; }
+			case /zscores/ { $hash->{zscores_window} = $hash->{window}; }
 		}
 		delete $hash->{window};
 	}

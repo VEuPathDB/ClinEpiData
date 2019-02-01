@@ -139,9 +139,10 @@ sub isValid {
       $parentId = &getDistinctLowerCaseValues($parentId);
       die "No Parent Defined for $pk" unless(defined $parentId);
 
-      unless($parentOutput->{lc($parentId)}) {
-        print STDERR "PRIMARY_KEY=$pk\n";
-        die "Parent $parentId not defined as primary key in parent file" ;
+      unless(defined($parentOutput->{lc($parentId)})) {
+        print STDERR "PRIMARY_KEY=$pk, PARENT=$parentId\n";
+				my @pks = sort keys %$parentOutput;
+        die "Parent $parentId not defined as primary key in parent file\nParent keys look like this:\n" . join("\n", @pks[0 .. 9]) . "\n";
       }
 
     }
@@ -357,6 +358,7 @@ sub makeTreeObjFromOntology {
 sub writeInvestigationTree {
   my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $investigationFile) = @_;
 
+	print STDERR "Making tree from $ontologyOwlFile\n";
   my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
 
   my $dirname = dirname($mergedOutputFile);
@@ -444,6 +446,8 @@ sub writeInvestigationTree {
 
     my @values = @{$data{$sourceId}};
 
+		printf STDERR ("Scanning %d values in %s\n", scalar @values, $sourceId);
+
     foreach my $value (@values) {
       if($value =~ /\d\d\d\d-\d\d-\d\d/) {
         $count{"date"}++;
@@ -490,12 +494,18 @@ sub writeInvestigationTree {
       foreach my $value(@values) {
         $valueCount{$value}++;
       }
-
-      my $ct = 1;
-      foreach my $value (keys %valueCount) {
-        $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($valueCount{$value})", "isLeaf" => 1, "keep" => 1} })) ;
-        $ct++;
-      }
+			my $size = scalar keys %valueCount;
+			printf STDERR ("Found %d distinct values in %s\n", $size, $sourceId);
+			if(1000 < $size){
+        $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
+			}
+			else {
+     	  my $ct = 1;
+     	  foreach my $value (keys %valueCount) {
+     	    $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($valueCount{$value})", "isLeaf" => 1, "keep" => 1} })) ;
+     	    $ct++;
+     	  }
+			}
     }
 
     &keepNode($parentNode);

@@ -65,8 +65,10 @@ sub makeParent {
 
 sub getParentPrefix {
   my ($self, $hash) = @_;
-
-  return "HH";
+  unless(defined($hash->{parent})) {
+    return "HH";
+  }
+  return "";
 }
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -325,7 +327,7 @@ sub getPrimaryKeyPrefix {
 sub getParentPrefix {
   my ($self, $hash) = @_;
 
-  unless($hash->{parent}) {
+  unless(defined($hash->{parent})) {
     return "HH";
   }
   return "";

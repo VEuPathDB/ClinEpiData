@@ -344,11 +344,6 @@ sub cleanAndAddDerivedData {
 	}
 # sprayed_chk___1-4
   $self->SUPER::setIfZero($hash, '^sprayed_chk___\d$', 'NULL');
-	my $pd = $self->getParentParsedOutput();
-	unless(defined $pd->{$hash->{cen_fid}}){
-		die "Parent data not found for $hash->{cen_fid}\n";
-	}
-	$hash->{cen_date} = $pd->{$hash->{cen_fid}}->{cen_date};
   $self->SUPER::cleanAndAddDerivedData($hash);
 }
 1;

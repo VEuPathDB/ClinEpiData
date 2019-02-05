@@ -146,6 +146,9 @@ sub cleanAndAddDerivedData {
 	if(defined($hash->{existing_illness_list}) && ($hash->{existing_illness_list} =~ /^3$/i)){
 		delete $hash->{existing_illness_list};
 	}
+	if(defined($hash->{date})){
+		$hash->{visit_date} = $hash->{date};
+	}
   ## get a value for age at time of visit
   if(!defined($hash->{age_fu}) || $hash->{age_fu} eq "" ){
     if(defined($hash->{age_en}) && $hash->{age_en} ne ""){
@@ -335,11 +338,17 @@ sub cleanAndAddDerivedData {
 		delete($hash->{redcap_event_name});
 	#unless ($hash->{household_redcap_event_name} =~ /houseinfo_arm_1|visit_1_enrollment_arm_1|visit 1|household census/i){
 		unless ($hash->{household_redcap_event_name} =~ /visit_1_enrollment_arm_1|visit 1/i){
-			delete $hash->{$_} for keys %$hash;
+			$self->skipRow($hash);
+			return;
 		}
 	}
 # sprayed_chk___1-4
   $self->SUPER::setIfZero($hash, '^sprayed_chk___\d$', 'NULL');
+	my $pd = $self->getParentParsedOutput();
+	unless(defined $pd->{$hash->{cen_fid}}){
+		die "Parent data not found for $hash->{cen_fid}\n";
+	}
+	$hash->{cen_date} = $pd->{$hash->{cen_fid}}->{cen_date};
   $self->SUPER::cleanAndAddDerivedData($hash);
 }
 1;

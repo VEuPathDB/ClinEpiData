@@ -130,9 +130,9 @@ sub read {
   my $headersAr = $self->adjustHeaderArray(\@headers);
   $headersAr = $self->clean($headersAr);
   my $parsedOutput = {};
-  while(<FILE>) {
-    $_ =~ s/\n|\r//g;
-    my @values = $self->splitLine($delimiter, $_);
+  while(my $row = <FILE>) {
+    $row =~ s/\n|\r//g;
+    my @values = $self->splitLine($delimiter, $row);
     my $valuesAr = $self->clean(\@values);
     my %rowData;
     for(my $i = 0; $i < scalar @$headersAr; $i++) {
@@ -160,7 +160,7 @@ sub read {
        }
        $self->cleanAndAddDerivedData($hash);
        foreach my $key (keys %$hash) {
-         next if(defined($colExcludes->{lc($primaryKey)}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
+         next if(defined($colExcludes->{lc($key)}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
          next unless defined $hash->{$key}; # skip undef values
          next if($hash->{$key} eq '');
          next if($self->seen($parsedOutput->{$primaryKey}->{$key}, $hash->{$key}));

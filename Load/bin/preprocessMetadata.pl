@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use strict;
+use warnings;
 use Getopt::Long;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
@@ -10,7 +11,7 @@ use ClinEpiData::Load::MetadataHelper;
 use CBIL::Util::PropertySet;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds);
+my ($help, $ontologyMappingXmlFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $TYPE = "type";
@@ -27,24 +28,27 @@ my $VALUE_MAPPING_FILE = "valueMappingFile";
 my $ONTOLOGY_OWL_FILE = "ontologyOwlFile";
 my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
+my $IS_MERGED =  "isMerged";
 
-&GetOptions('help|h' => \$help,
-            'p|propFile=s' => \$propFile,
-	    "$TYPE=s" => \$type,
-	    "$PARENT_TYPE=s" => \$parentType,
-            "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
-            "$ONTOLOGY_MAPPING_XML_FILE=s" => \$ontologyMappingXmlFile, 
-            "$METADATA_FILE=s" => \@metadataFiles,
-            "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
-            "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
-            "$OUTPUT_FILE=s" => \$outputFile,
-            "$ANCILLARY_INPUT_FILE=s" => \$ancillaryInputFile,
-            "$PACKAGE_NAME=s" => \$packageName,
-            "$VALUE_MAPPING_FILE=s" => \$valueMappingFile,
-            "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
-            "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
-            "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
-    );
+&GetOptions(
+	'help|h' => \$help,
+  'p|propFile=s' => \$propFile,
+  "$TYPE=s" => \$type,
+  "$PARENT_TYPE=s" => \$parentType,
+  "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
+  "$ONTOLOGY_MAPPING_XML_FILE=s" => \$ontologyMappingXmlFile, 
+  "$METADATA_FILE=s" => \@metadataFiles,
+  "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
+  "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
+  "$OUTPUT_FILE=s" => \$outputFile,
+  "$ANCILLARY_INPUT_FILE=s" => \$ancillaryInputFile,
+  "$PACKAGE_NAME=s" => \$packageName,
+  "$VALUE_MAPPING_FILE=s" => \$valueMappingFile,
+  "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
+  "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
+  "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
+	"$IS_MERGED" => \$isMerged,
+);
 
 
 
@@ -67,6 +71,7 @@ if(-e $propFile) {
   $ontologyOwlFile ||= $properties->{props}->{$ONTOLOGY_OWL_FILE};
   $valueMappingFile ||= $properties->{props}->{$VALUE_MAPPING_FILE};
   $dateObfuscationFile ||= $properties->{props}->{$DATE_OBFUSCATION_FILE};
+  $isMerged ||= $properties->{props}->{$IS_MERGED};
 
   unless(scalar @metadataFiles > 0) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};
@@ -74,7 +79,7 @@ if(-e $propFile) {
   }
   unless(scalar @filterParentSourceIds > 0) {
     my $filterParentSourceIdsString = $properties->{props}->{$FILTER_PARENT_SOURCE_ID};
-    @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString);
+    @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString) if($filterParentSourceIdsString);
   }
 }
 
@@ -118,14 +123,19 @@ my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFil
 
 #my $validator = ClinEpiData::Load::MetadataValidator->new($parentMergedFile, $ontologyMappingXmlFile);
 
-$metadataHelper->merge();
-if($metadataHelper->isValid()) {
-  $metadataHelper->writeMergedFile($outputFile);
+unless($isMerged){
+
+	$metadataHelper->merge();
+	if($metadataHelper->isValid()) {
+	  $metadataHelper->writeMergedFile($outputFile);
+	}
+	else {
+	  $metadataHelper->writeMergedFile($outputFile);
+	  die "ERRORS Found.  Please fix and try again.";
+	}
 }
-else {
-  $metadataHelper->writeMergedFile($outputFile);
-  die "ERRORS Found.  Please fix and try again.";
-}
+## Clean up memory before trying to run the next step
+$metadataHelper->setMergedOutput({});
 
 if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
   my %filterParents = map { $_ => 1 } @filterParentSourceIds;
@@ -133,9 +143,9 @@ if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
 }
 
 else {
-	print "$ontologyMappingXmlFile missing\n" unless(-e $ontologyMappingXmlFile);
-	print "$valueMappingFile missing\n" unless(-e $valueMappingFile);
-	print "$ontologyOwlFile missing\n" unless(-e $ontologyOwlFile);
+	print "ontologyMappingXmlFile $ontologyMappingXmlFile missing\n" unless(-e $ontologyMappingXmlFile);
+	print "valueMappingFile $valueMappingFile missing\n" unless(-e $valueMappingFile);
+	print "ontologyOwlFile $ontologyOwlFile missing\n" unless(-e $ontologyOwlFile);
 }
 	
 

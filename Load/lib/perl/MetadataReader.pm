@@ -160,7 +160,7 @@ sub read {
        }
        $self->cleanAndAddDerivedData($hash);
        foreach my $key (keys %$hash) {
-         next if(defined($colExcludes->{lc($key)}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
+         next if(defined($colExcludes->{$fileBasename}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
          next unless defined $hash->{$key}; # skip undef values
          next if($hash->{$key} eq '');
          next if($self->seen($parsedOutput->{$primaryKey}->{$key}, $hash->{$key}));

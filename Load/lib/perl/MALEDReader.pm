@@ -24,6 +24,12 @@ sub cleanAndAddDerivedData {
 package ClinEpiData::Load::MALEDReader::HouseholdReader;
 use base qw(ClinEpiData::Load::MALEDReader);
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+	$hash->{sitetype} = $hash->{country_id};
+}
+
 sub makeParent {
   return undef; 
 }
@@ -156,10 +162,6 @@ sub cleanAndAddDerivedData {
 			}
 		}
 	}
-	if($mdfile =~ /mn_blood_iar|mpo_neo_ala/){
-		$hash->{sample_target_month} = $hash->{target_month};
-	 	delete $hash->{target_month};
-	}
 	for my $col (qw/srfconsist srfstblood/){
 		delete($hash->{$col}) if(defined($hash->{$col}) && $hash->{$col} =~ /NA/i);
 	}
@@ -269,10 +271,17 @@ sub cleanAndAddDerivedData {
 			delete $hash->{visit};
 		}
 	}
-	for my $type (qw/who diet/){
+	for my $type (qw/fsq wami who diet/){
 		if($mdFile =~ /$type/i){
 			$hash->{"${type}_target_month"} = $hash->{target_month};
 		}
+	}
+	if($mdFile =~ /mpo_neo_ala/){
+		$hash->{sample_target_month} = $hash->{target_month};
+	}
+	if($mdFile =~ /mn_blood_iar/) { # sampletype = blood or urine
+		my $newcol = join("_", $hash->{sampletype}, "target_month");
+		$hash->{$newcol} = $hash->{target_month};
 	}
 	for my $col (@obs_date_cols){
 		if(defined($hash->{$col})){
@@ -294,7 +303,7 @@ sub cleanAndAddDerivedData {
 			case /whocore/ { $hash->{who_window} = $hash->{window}; }
 			case /zscores/ { $hash->{zscores_window} = $hash->{window}; }
 		}
-		delete $hash->{window};
+#		delete $hash->{window};
 	}
 }
 
@@ -307,14 +316,10 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
   my $mdfile = $self->getMetadataFile();
-	for my $type (qw/fsq wami/){
-		if($mdfile =~ /$type/i){
-			$hash->{"${type}_target_month"} = $hash->{target_month};
-		}
-	}
-	if(defined($hash->{window}) && ($hash->{window} =~ /^\d$/) && ($mdfile =~ /fsq/)){
+	if(defined($hash->{window}) && ($hash->{window} =~ /^\d$/) && ($mdfile =~ /fsq/i)){
 		$hash->{fsq_window} = $hash->{window};
 	}
+	$hash->{household_agedays} = $hash->{agedays};
 }
 
 sub getPrimaryKeyPrefix {

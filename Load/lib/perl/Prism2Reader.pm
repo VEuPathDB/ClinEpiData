@@ -95,7 +95,7 @@ sub cleanAndAddDerivedData {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  return join("",$hash->{hhid}, $hash->{date}, $type{$hash->{trapmethod}},$hash->{roomnumm});
+  return join("_",$hash->{hhid}, $hash->{date}, $type{$hash->{trapmethod}},$hash->{roomnumm});
 }
 
 

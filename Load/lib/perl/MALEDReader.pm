@@ -64,17 +64,17 @@ sub cleanAndAddDerivedData {
 		$hash->{gender} = $hash->{cafsex};
 	}
 ###START Remove for > 24 months' data (full dataset)
-	foreach my $var ( qw/minamilka minasolid minanobf ldcdiff maxage/ ){
-		if(defined($hash->{$var}) && int($hash->{$var}) > 730){
-			delete($hash->{$var});
-		}
-	}
-	if($mdfile =~ /illness/){ ## all other files use agedays, only illness has age
-		$hash->{agedays} = $hash->{age};
-	}
-	if(defined($hash->{agedays}) && (int($hash->{agedays}) > 730)){
-		delete($hash->{$_}) for qw/sumdiar sumdepi3a sumep sumalri sumfev sumalrinew sumaep exitdiar lastdaycontact sumsurv time/;
-	}
+##foreach my $var ( qw/minamilka minasolid minanobf ldcdiff maxage/ ){
+##	if(defined($hash->{$var}) && int($hash->{$var}) > 730){
+##		delete($hash->{$var});
+##	}
+##}
+##if($mdfile =~ /illness/){ ## all other files use agedays, only illness has age
+##	$hash->{agedays} = $hash->{age};
+##}
+##if(defined($hash->{agedays}) && (int($hash->{agedays}) > 730)){
+##	delete($hash->{$_}) for qw/sumdiar sumdepi3a sumep sumalri sumfev sumalrinew sumaep exitdiar lastdaycontact sumsurv time/;
+##}
 ###END Remove for > 24 months' data (full dataset)
 }
 

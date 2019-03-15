@@ -80,12 +80,13 @@ use base qw(ClinEpiData::Load::IcemrIndiaFeverReader);
 use Data::Dumper;
 
 
-#sub cleanAndAddDerivedData {
-#  my ($self, $hash) = @_;
-#	if($hash->{redcap_event_name} ne 'enrollment_arm_1'){
-#		delete $hash->{$_} for keys %$hash;
-#	}
-#}
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	if(defined($hash->{bp})){
+		($hash->{systolic_bp},$hash->{diastolic_bp}) = split(/\//, $hash->{bp});
+		delete($hash->{bp});
+	}
+}
 
 sub makeParent {
   ## returns a Participant ID
@@ -146,15 +147,27 @@ my %source = (
 'IGHFeverPCRSTyphi_DATA_2018-09-12_1812.csv' => 'pcrstyphi',
 'IGHFeverRDTDengueChi_DATA_2018-09-12_1816.csv' => 'rdtdenguechi',
 );
-#sub cleanAndAddDerivedData {
-#  my ($self, $hash) = @_;
-#	unless(defined($hash->{redcap_event_name}) && $hash->{redcap_event_name}){
-#		$hash->{redcap_event_name} = 'enrollment_arm_1';
-#	}
-#	if($hash->{redcap_event_name} ne 'enrollment_arm_1'){
-#		delete $hash->{$_} for keys %$hash;
-#	}
-#}
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	my $mdfile = basename($self->getMetadataFile());
+	if($mdfile =~ /IGHFeverMxMalaria_DATA/){
+##			mic_counts1 needs to be split into 4 different variables:
+##			If the value for mic_species___2 is 1, 
+##			then the number before the “/” maps to “Plasmodium falciparum asexual stage density (per uL blood), by microscopy” EUPATH_0000550 pfal_a
+##			and the number after the “/” maps to “Plasmodium falciparum gametocyte density (per uL blood), by microscopy” EUPATH_0000546 pfal_g
+##			If the value for mic_species___3 is 1,
+##			then the number before the “/” maps to “Plasmodium vivax asexual stage density (per uL blood), by microscopy” EUPATH_0000551 pviv_a
+##			and the number after the “/” maps to “Plasmodium vivax gametocyte density (per uL blood), by microscopy” EUPATH_0000547 pviv_g
+
+		my @mc1 = split(/\//, $hash->{mic_counts1});
+		if($hash->{mic_species___2}){
+			($hash->{pfal_a},$hash->{pfal_g}) = @mc1;
+		}
+		elsif($hash->{mic_species___3}){
+			($hash->{pviv_a},$hash->{pviv_g}) = @mc1;
+		}
+	}
+}
 sub makeParent {
   ## returns a Participant ID
   my ($self, $hash) = @_;

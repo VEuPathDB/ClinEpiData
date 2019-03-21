@@ -99,7 +99,7 @@ sub makeParent {
 }
 
 sub getPrimaryKeyPrefix {
-	return "S_";
+	return "S";
 }
 
 1;

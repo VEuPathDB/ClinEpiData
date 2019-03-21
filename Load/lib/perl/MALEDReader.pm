@@ -133,7 +133,12 @@ sub makePrimaryKey {
   	return $hash->{srfmbsampid};
 	}
 	elsif($mdfile =~ /illnessfull/){
-		return sprintf("%s%04dS", $hash->{pid}, $hash->{age});
+		if(defined($hash->{age})){	
+			return sprintf("%s%04dS", $hash->{pid}, $hash->{age});
+		}
+		elsif(defined($hash->{agedays})){	
+			return sprintf("%s%04dS", $hash->{pid}, $hash->{agedays});
+		}
 	}
 	elsif($mdfile =~ /mn_blood_iar/){
 		return sprintf("%s%04d%s", $hash->{pid}, $hash->{agedays}, substr($hash->{sampletype},0,1));
@@ -259,8 +264,10 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
   my $mdFile = basename($self->getMetadataFile());
-  if(defined($hash->{form}) && $hash->{form} =~ /caf-bw/i){
-		delete $hash->{$_} for keys %$hash;
+  if(defined($hash->{form}) && $hash->{form} eq "caf" && int($hash->{agedays}) == 0 ){
+		delete $hash->{weight};
+		delete $hash->{zwei};
+		delete $hash->{window};
 		return;
   }
   unless(defined($hash->{"agedays"}) && $hash->{"agedays"} ne ""){

@@ -3,7 +3,7 @@ package ClinEpiData::Load::MetadataReader;
 use strict;
 
 use File::Basename;
-
+use Date::Manip qw(Date_Init ParseDate UnixDate);
 use Data::Dumper;
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
@@ -201,6 +201,19 @@ sub getParentPrefix {
 sub skipRow {
   my ($self, $hash) = @_;
 	delete $hash->{$_} for keys %$hash;
+}
+
+sub formatDate {
+  my ($self, $date, $format) = @_;
+	$format ||= "non-US";
+  Date_Init("DateFormat=$format"); 
+  my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");
+
+  unless($formattedDate) {
+    die "Date Format not supported for $date\n";
+  }
+
+  return $formattedDate;
 }
 
 1;

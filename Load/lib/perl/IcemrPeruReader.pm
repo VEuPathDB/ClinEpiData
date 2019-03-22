@@ -84,10 +84,9 @@ sub cleanAndAddDerivedData {
 		## aa, mm, dd in exclude_cols.txt
 	}
 	elsif(defined($hash->{fec_enrol})){ ## Peru_individual
-		$hash->{dateofobservation} = $hash->{fec_enrol};
+		$hash->{dateofobservation} = $self->formatDate($hash->{fec_enrol});
 		delete ($hash->{fec_enrol});
 	}
-	delete $hash->{temperatura} if($hash->{temperatura} eq 'not applicable');
 }
 1;
 package ClinEpiData::Load::IcemrPeruReader::SampleReader;

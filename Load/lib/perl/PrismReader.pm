@@ -219,7 +219,7 @@ use strict;
 
 use ClinEpiData::Load::MetadataReader;
 
-use Date::Manip qw(Date_Init ParseDate UnixDate);
+# use Date::Manip qw(Date_Init ParseDate UnixDate);
 
 use File::Basename;
 
@@ -252,20 +252,20 @@ sub new {
       my $hasDate;
 
       if($date) {
-        my $formattedDate = &formatDate($date);
+        my $formattedDate = $self->formatDate($date);
         my $key = "$participant.$formattedDate";
 
         $clinicalVisitMapper->{$key} = $uniqueid;
       }
 
       if($admitdate) {
-        my $formattedDate = &formatDate($admitdate);
+        my $formattedDate = $self->formatDate($admitdate);
         my $key = "$participant.$formattedDate";
         $clinicalVisitMapper->{$key} = $uniqueid;
       }
 
       if($dischargedate) {
-        my $formattedDate = &formatDate($dischargedate);
+        my $formattedDate = $self->formatDate($dischargedate);
         my $key = "$participant.$formattedDate";
         $clinicalVisitMapper->{$key} = $uniqueid;
       }
@@ -345,22 +345,6 @@ sub addSpecimenType {
 }
 
 
-
-sub formatDate {
-  my ($date) = @_;
-
-  Date_Init("DateFormat=non-US"); 
-  my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");
-
-  unless($formattedDate) {
-    die "Date Format not supported for $date\n";
-  }
-
-  return $formattedDate;
-}
-
-
-
 sub makeParent {
   my ($self, $hash) = @_;
 
@@ -382,7 +366,7 @@ sub makeParent {
 
   my $participant = $hash->{subjectid};
   if($date) {
-    my $formattedDate = &formatDate($date);
+    my $formattedDate = $self->formatDate($date);
     
     my $key = "$participant.$formattedDate";
 		unless($mapper->{$key}){

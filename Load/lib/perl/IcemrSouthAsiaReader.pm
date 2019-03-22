@@ -362,11 +362,11 @@ use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
-#	foreach my $col (qw/x68._date_of_observation_collection x69._time_of_observation/){
-#		my $k = "sample_${col}";
-#		$hash->{$k} = $hash->{$col};
-#		delete $hash->{$col};
-#	}
+ 	foreach my $col (qw/x68._date_of_observation_collection x69._time_of_observation/){
+ 		my $k = "sample_${col}";
+ 		$hash->{$k} = $hash->{$col};
+ 		delete $hash->{$col};
+ 	}
 }
 
 sub makeParent {
@@ -393,7 +393,7 @@ sub makePrimaryKey {
 }
 
 sub getPrimaryKeyPrefix {
-	return 'S_';
+	return 'S';
 }
 
 1;

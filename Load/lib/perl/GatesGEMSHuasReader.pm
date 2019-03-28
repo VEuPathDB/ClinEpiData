@@ -53,13 +53,13 @@ sub getPrimaryKeyPrefix {
 
 1;
 ############## Output Reader
-package ClinEpiData::Load::GatesGEMSReader::OutputReader;
+package ClinEpiData::Load::GatesGEMSHuasReader::OutputReader;
 use base qw(ClinEpiData::Load::OutputFileReader);
 
 1;
 
 ################ Participant Reader 
-package ClinEpiData::Load::GatesGEMSReader::ParticipantReader;
+package ClinEpiData::Load::GatesGEMSHuasReader::ParticipantReader;
 use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
 
 sub makeParent {
@@ -81,8 +81,11 @@ sub makePrimaryKey {
 
 
 ################ Observation Reader 
-package ClinEpiData::Load::GatesGEMSReader::ObservationReader;
+package ClinEpiData::Load::GatesGEMSHuasReader::ObservationReader;
 use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
+use File::Basename;
+use Data::Dumper;
+
 
 sub makeParent {
   ## returns a Participant ID                                                                                                       
@@ -116,17 +119,85 @@ sub makePrimaryKey {
 
 ####################### GEMS1A HUAS ################################################################################
 ###############################################################################################################                    ############################################################################################################### 
+################ Household Reader
+package ClinEpiData::Load::GatesGEMSHuasReader::GEMS1aHuasHouseholdReader;
+use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
+use strict;
 
-package ClinEpiData::Load::GatesGEMSHuasReader::HouseholdReader::GEMS1aHuasHouseholdReader;
-use base qw(ClinEpiData::Load::GatesGEMSHuasReader::HouseholdReader);
+sub makeParent {
+    my ($self, $hash) = @_;
+    return undef;
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{childid};
+}
+
+sub getPrimaryKeyPrefix {
+    return "HH";
+}
+
 1;
 
-package ClinEpiData::Load::GatesGEMSHuasReader::ParticipantReader::GEMS1aHuasParticipantReader;
-use base qw(ClinEpiData::Load::GatesGEMSHuasReader::ParticipantReader);
+
+
+################ Participant Reader 
+package ClinEpiData::Load::GatesGEMSHuasReader::GEMS1aHuasParticipantReader;
+use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{childid};
+}
+
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "HH";
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{childid};
+}
+
 1;
 
-package ClinEpiData::Load::GatesGEMSHuasReader::ObservationReader::GEMS1aHuasObservationReader;
-use base qw(ClinEpiData::Load::GatesGEMSHuasReader::ObservationReader);
-1;
 
+################ Observation Reader 
+package ClinEpiData::Load::GatesGEMSHuasReader::GEMS1aHuasObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
+use File::Basename;
+use Data::Dumper;
+
+
+sub makeParent {
+  ## returns a Participant ID                                                                                                       
+    my ($self, $hash) = @_;
+
+    return $hash->{childid};
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+
+    my $file =  basename $self->getMetadataFile();
+
+    my $date;
+
+    if ($file eq "gems1a_huas_lite_data_6_sites.csv"){
+	
+	$date = $hash->{visit_date};  
+    }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){
+	
+        $date =  $hash->{visitdate};
+    }else{
+	die "could not find visitdate or visiot_date in these parent files";
+    }
+
+    $date= $self->formatdate($date);
+    return $date ? $hash->{childid} . "_" . $date : $hash->{childid};
+}
+
+1;
 

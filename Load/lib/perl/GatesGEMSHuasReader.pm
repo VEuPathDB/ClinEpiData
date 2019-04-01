@@ -87,11 +87,14 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();
     
     if ($file eq "gems1_huas_data.csv"){
-	$hash->{study_arm}="HUAS";
+	$hash->{study_arm}=uc("HUAS");
+
     }elsif($file eq "gems1_huas_lite_data_6_sites.csv"){
-	$hash->{study_arm}="HUAS Lite";
+	$hash->{study_arm}="HUAS lite";
+
     }elsif($file eq "gems1_huas_lite_data_kenya.csv"){
-	$hash->{study_arm}="HUAS Lite - Kenya";
+	$hash->{study_arm}="HUAS lite - Kenya";
+	
     }else{
 	die "cannot find these files."
     }

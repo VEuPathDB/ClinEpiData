@@ -118,13 +118,24 @@ sub makeParent {
     return $hash->{childid};
 }
 
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;  
+    return $hash->{childid};  
+}
+
+sub getPrimaryKeyPrefix {
+    return "O";
+}
+
+
+
+=head
 sub makePrimaryKey {
     my ($self, $hash) = @_;
-
+    
     my $file =  basename $self->getMetadataFile();
-
     my $date;
-
     if ($file eq "gems1_huas_data.csv" || $file eq "gems1_huas_lite_data_kenya.csv"){
 	$date = $hash->{visitdate};  
     }elsif($file eq "gems1_huas_lite_data_6_sites.csv"){
@@ -132,11 +143,11 @@ sub makePrimaryKey {
     }else{
 	die "could not find visitdate or visiot_date in these parent files";
     }
-
     $date= $self->formatdate($date);
     return $date ? $hash->{childid} . "_" . $date : $hash->{childid};
-}
 
+}
+=cut
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
     my $file =  basename $self->getMetadataFile();

@@ -21,6 +21,12 @@ unless (2 < @ARGV){
 	exit;
 }
 
+unless(-e $dateObfuscationFile){
+	print "Creating new file $dateObfuscationFile\n";
+	open(FH, ">$dateObfuscationFile") or die "$!\n";
+	close(FH);
+}
+
 my $failed;
 do {
 	my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef , undef, 0, 0, $dateObfuscationFile);
@@ -42,6 +48,9 @@ do {
 	eval {
 		$inv->parse();
 	};
+	if($@){
+		warn $@;
+	}
 	printf "Get Studies...\n";
 	my $studies = $inv->getStudies();
 	printf "Map Parents...\n";
@@ -80,7 +89,7 @@ do {
 	$failed = 0;
 	printf "Find Missing Deltas...\n";
 	foreach my $id (keys %parentOf){
-		next if ($deltas{$id});
+		next if (defined($deltas{$id}));
 		my $pid = $parentOf{$id};
 		do {
 			printf "Climbing $id => $pid\n";
@@ -109,7 +118,6 @@ do {
 	else {
 		print "Done. Run again with test=1 to write idmap.txt\n";
 	}
-	exit;
 	
 } while($failed);
 

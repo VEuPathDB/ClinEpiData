@@ -222,14 +222,25 @@ use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
 use File::Basename;
 use Data::Dumper;
 
-
 sub makeParent {
-  ## returns a Participant ID                                                                                                       
-    my ($self, $hash) = @_;
 
+    my ($self, $hash) = @_;
     return $hash->{childid};
 }
 
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;  
+    return $hash->{childid};  
+}
+
+sub getPrimaryKeyPrefix {
+    return "O";
+}
+
+1;
+
+=head
 sub makePrimaryKey {
     my ($self, $hash) = @_;
 
@@ -250,6 +261,6 @@ sub makePrimaryKey {
     $date= $self->formatdate($date);
     return $date ? $hash->{childid} . "_" . $date : $hash->{childid};
 }
+=cut
 
-1;
 

@@ -197,6 +197,9 @@ sub getPrimaryKeyPrefix {
 ################ Participant Reader 
 package ClinEpiData::Load::GatesGEMSHuasReader::GEMS1aHuasParticipantReader;
 use base qw(ClinEpiData::Load::GatesGEMSHuasReader);
+use File::Basename;
+use Data::Dumper;
+
 
 sub makeParent {
     my ($self, $hash) = @_;
@@ -212,6 +215,25 @@ sub makePrimaryKey {
     my ($self, $hash) = @_;
     return $hash->{childid};
 }
+
+
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    
+    my $file =  basename $self->getMetadataFile();
+    
+    if ($file eq "gems1a_huas_lite_data_6_sites.csv"){
+	$hash->{study_arm}="HUAS Lite";
+
+    }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){
+	$hash->{study_arm}="HUAS Lite - Kenya";
+
+    }else{
+	die "cannot find these files."
+    }
+}
+
 
 1;
 

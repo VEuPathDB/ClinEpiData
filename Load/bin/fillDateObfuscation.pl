@@ -7,19 +7,30 @@ use lib "$ENV{GUS_HOME}/lib/perl";
 use CBIL::ISA::InvestigationSimple;
 # use Data::Dumper;
 use File::Basename;
+use Getopt::Long;
 
-my ($invFile, $ontologyMappingFile, $dateObfuscationFile, $test) = @ARGV;
 
-unless (2 < @ARGV){
+my ($invFile, $ontologyMappingFile, $dateObfuscationFile, $valueMapFile, $test);
+
+GetOptions(
+  'i|investigationFile=s' => \$invFile,
+  'o|ontologyMappingFile=s' => \$ontologyMappingFile,
+  'd|dateObfuscationFile=s' => \$dateObfuscationFile,
+  'v|valueMapFile=s' => \$valueMapFile,
+  't|makeIDMap!' => \$test,
+);
+
+unless ( -e $invFile && -e $ontologyMappingFile){
 	my $name = basename($0);
 	print join("\n", (
 		"To supplement the date obfuscation file with entries for all nodes with idObfuscationFunction=[function name] in investigation.xml:\n",
-		"\t$name investigation.xml dateObfuscation.txt\n",
+		"\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt\n",
 		"To write idmap.txt mapping obfuscated IDs to original IDs:\n",
-		"\t$name investigation.xml dateObfuscation.txt 1\n\n"
+		"\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt -t\n\n"
 	));
 	exit;
 }
+$dateObfuscationFile ||= 'dateObfuscation-NEW.txt';
 
 unless(-e $dateObfuscationFile){
 	print "Creating new file $dateObfuscationFile\n";
@@ -29,7 +40,7 @@ unless(-e $dateObfuscationFile){
 
 my $failed;
 do {
-	my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef , undef, 0, 0, $dateObfuscationFile);
+	my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef, $valueMapFile, 0, 0, $dateObfuscationFile);
 	
 	my $ont = $inv->getOntologyMapping();
 	my $xml = $inv->getSimpleXml();
@@ -117,6 +128,7 @@ do {
 	}
 	else {
 		print "Done. Run again with test=1 to write idmap.txt\n";
+		$failed = 0;
 	}
 	
 } while($failed);

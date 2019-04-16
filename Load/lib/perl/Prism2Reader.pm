@@ -1,12 +1,33 @@
 package ClinEpiData::Load::Prism2Reader;
 use base qw(ClinEpiData::Load::MetadataReader);
+use Data::Dumper;
 
+
+sub filterNaRows {
+  my ($self, $hash) = @_;
+	if(
+		$hash->{visittype} eq 'na' && 
+		$hash->{timetobed} eq 'na' &&
+		$hash->{participantdie} eq 'na'
+	){
+		#printf STDERR ("Skipping NA row %s\n", $hash->{uniqueid}|| "UNDEF");
+		$self->skipRow($hash);
+	}
+}
 1;
 
 package ClinEpiData::Load::Prism2Reader::HouseholdReader;
 use base qw(ClinEpiData::Load::Prism2Reader);
 
 use strict;
+
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	if(defined($hash->{llin})){
+		$hash->{household_llin} = $hash->{llin};
+		delete($hash->{llin});
+	}
+}
 
 sub makeParent {
   return undef;
@@ -15,8 +36,8 @@ sub makeParent {
 sub makePrimaryKey {
   my ($self, $hash) = @_;
 
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
   }
 
   return $hash->{hhid};
@@ -33,6 +54,9 @@ use strict;
 
 sub makeParent {
   my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
 
   return $hash->{hhid};
 }
@@ -40,8 +64,8 @@ sub makeParent {
 sub makePrimaryKey {
   my ($self, $hash) = @_;
 
-  if($hash->{"primary_key"}) {
-    return $hash->{"primary_key"};
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
   }
 
   return $hash->{cohortid};
@@ -54,6 +78,10 @@ package ClinEpiData::Load::Prism2Reader::ObservationReader;
 use base qw(ClinEpiData::Load::Prism2Reader);
 
 use strict;
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	$self->filterNaRows($hash);
+}
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -66,6 +94,9 @@ sub makePrimaryKey {
 
 sub makeParent {
   my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
 
   return $hash->{cohortid};
 }
@@ -95,12 +126,19 @@ sub cleanAndAddDerivedData {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-  return join("_",$hash->{hhid}, $hash->{date}, $type{$hash->{trapmethod}},$hash->{roomnumm});
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  #return join("_",$hash->{hhid}, $hash->{date}, $type{$hash->{trapmethod}},$hash->{roomnumm});
+  return join("_",$hash->{hhid}, $hash->{date});
 }
 
 
 sub makeParent {
   my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
   return $hash->{hhid};
 }
 
@@ -111,8 +149,16 @@ use base qw(ClinEpiData::Load::Prism2Reader);
 
 use strict;
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	$self->filterNaRows($hash);
+}
+
 sub makePrimaryKey {
   my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
   return $hash->{uniqueid};
 }
 
@@ -123,6 +169,9 @@ sub getPrimaryKeyPrefix {
 
 sub makeParent {
   my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
 
   return $hash->{uniqueid};
 }

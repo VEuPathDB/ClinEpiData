@@ -47,7 +47,7 @@ my $IS_MERGED =  "isMerged";
   "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
   "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
   "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
-	"$IS_MERGED" => \$isMerged,
+	"m|$IS_MERGED" => \$isMerged,
 );
 
 

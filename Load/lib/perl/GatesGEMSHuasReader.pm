@@ -234,6 +234,12 @@ sub cleanAndAddDerivedData {
     }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){
 	$hash->{study_arm}="HUAS Lite - Kenya";
 
+
+	$hash->{kenya_consent} = $hash->{consent};
+	$hash->{consent} = undef;
+
+
+
     }else{
 	die "cannot find these files."
     }

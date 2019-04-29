@@ -185,6 +185,12 @@ sub cleanAndAddDerivedData {
 	    $hash->{offer_eat_6site} = $hash->{offer_eat};
 	    $hash->{offer_eat} = undef;
 
+	    $hash->{visitdate} = $hash->{visit_date};
+	    $hash->{visit_date} = undef;
+
+
+	    
+
         }
     }
 }
@@ -315,6 +321,9 @@ sub cleanAndAddDerivedData {
 
 	$hash->{admit_6site} = $hash->{admit};
         $hash->{admit} = undef;
+
+	$hash->{visitdate} = $hash->{visit_date};
+        $hash->{visit_date} = undef;
 
 
     }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){

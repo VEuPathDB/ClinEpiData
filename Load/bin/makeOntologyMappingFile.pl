@@ -76,7 +76,13 @@ while (my $row = $it->next) {
 	}
 	else {
 		$name = lc($names);
-		$names = [ $name ];
+		if($name =~ /,/){
+			my @splitnames = split(/\s*,\s*/, $name);
+			$names = \@splitnames;
+		}
+		else {
+			$names = [ $name ];
+		}
 	}
 	my $sid = $owl->getSourceIdFromIRI($iri); 	
 	if(defined($terms{$sid})){

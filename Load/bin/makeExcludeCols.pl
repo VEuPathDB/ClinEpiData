@@ -96,28 +96,37 @@ foreach my $filter (@filters){
 	#printf ("%s\n", join("\t", @keys)) if @keys;
 	while (my $row = $itr->next) {
 		my $col = pp($row->{col}->as_sparql);
-		my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
-		if(ref($dataset) eq 'ARRAY'){
-			$dataset = join("\t", @$dataset);
-		}
-		if(defined($terms{$col})){
-			if($terms{$col} eq '1' && $dataset){
-				$terms{$col} = $dataset;
-			}
-			elsif($dataset){
-				$terms{$col} .= $dataset;
-			}
-		}
-		elsif($dataset){
-			$terms{$col} = $dataset;
+		my @cols;
+		if($col =~ /,/){
+			@cols = split (/\s*,\s*/,$col);
 		}
 		else {
-			$terms{$col} = 1;
+			@cols = ($col);
 		}
-		if(defined($columns{$col})){
-			delete($columns{$col});
-			delete($index{$col});
-			$saved{$col} = 1;
+		foreach $col (@cols){
+			my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
+			if(ref($dataset) eq 'ARRAY'){
+				$dataset = join("\t", @$dataset);
+			}
+			if(defined($terms{$col})){
+				if($terms{$col} eq '1' && $dataset){
+					$terms{$col} = $dataset;
+				}
+				elsif($dataset){
+					$terms{$col} .= $dataset;
+				}
+			}
+			elsif($dataset){
+				$terms{$col} = $dataset;
+			}
+			else {
+				$terms{$col} = 1;
+			}
+			if(defined($columns{$col})){
+				delete($columns{$col});
+				delete($index{$col});
+				$saved{$col} = 1;
+			}
 		}
 	}
 

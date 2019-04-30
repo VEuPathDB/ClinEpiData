@@ -173,10 +173,10 @@ sub makePrimaryKey {
  	  my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
  	  my $date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
  	  unless($date){
- 	  	printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
- 	  	print STDERR Dumper $parent; die;
+ 	  	# printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
+ 	  	# print STDERR Dumper $parent; die;
  	  }
- 	  return join("_", $hash->{participant_id}, $date, '0000');
+ 	  return join("_", $hash->{participant_id}, $date || 'na', '0000');
 	}
  	 #	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
  	 #	$date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
@@ -367,6 +367,9 @@ sub cleanAndAddDerivedData {
  		$hash->{$k} = $hash->{$col};
  		delete $hash->{$col};
  	}
+	if(defined($hash->{'x87._total_wbc_count'}) && $hash->{'x87._total_wbc_count'} > 0){
+		$hash->{'x87._total_wbc_count'} /= 1000;
+	}
 }
 
 sub makeParent {

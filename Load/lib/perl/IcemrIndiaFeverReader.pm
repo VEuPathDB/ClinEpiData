@@ -224,6 +224,7 @@ sub makePrimaryKey {
   	$date = $self->mergeSCD($hash);
 	}
   # return join("_", $id, $event) ;
+  $date ||= "NA";
   return join("_", $id, $date, $event);
   my $src = $source{basename($self->getMetadataFile())};
   return join("_", $id, $src, $event);

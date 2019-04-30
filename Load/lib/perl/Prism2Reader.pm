@@ -70,6 +70,13 @@ sub makePrimaryKey {
 
   return $hash->{cohortid};
 }
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+	foreach my $col ( qw/cause3 death participantdie r2malaria withdrawnreason/ ){
+		next unless $hash->{$col} eq 'na';
+		delete($hash->{$col});
+	}
+}
 
 
 1;
@@ -81,6 +88,10 @@ use strict;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	$self->filterNaRows($hash);
+	my %hack = (374621500 => 1, 374721500 => 1, 374921500 => 1);
+	if($hack{$hash->{uniqueid}}){
+		delete($hash->{totalanopheles});
+	}
 }
 
 sub makePrimaryKey {

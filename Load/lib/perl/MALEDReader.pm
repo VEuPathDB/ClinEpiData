@@ -330,6 +330,58 @@ sub cleanAndAddDerivedData {
 
 1;
 
+package ClinEpiData::Load::MALEDReader::SubobservationReader;
+use base qw(ClinEpiData::Load::MALEDReader);
+
+sub rowMultiplier {
+	my ($self, $hash) = @_;
+	my @clones;
+	my @all_cols = keys %$hash;
+	foreach my $type (qw/bcg cpox deworm dpt flu hepb hib ipv je mea men mmr mum opv pcv rab rota rub teta typ vita yf/){
+		my @timepoints = map { /^${type}aged(\d+)$/ } @all_cols;
+		## each of these generates an observation_date, so they have to be made separate nodes
+		foreach my $tp ( @timepoints ) {
+			my %clone = (
+				pid => $hash->{pid},
+				vaccine => $type,
+				agedays => $hash->{ sprintf("%saged%d", $type, $tp) } || '0',
+				vaccine_date => $hash->{ sprintf("%sdate%d", $type, $tp) },
+				dose_number => $tp
+			);
+			next unless values %clone;
+			push(@clones, \%clone);
+		}
+	}
+	$self->skipRow($hash);
+	return \@clones;
+}
+
+sub makeParent {
+  ## returns a Participant ID
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  return $hash->{pid}; 
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  unless(defined($hash->{agedays}) || defined($hash->{age})){
+  	my $mdfile = $self->getMetadataFile();
+    print STDERR "$mdfile: Cannot make parent: agedays/age not defined\n" . Dumper $hash;
+    exit;
+  }
+  my $age = $hash->{agedays};
+
+  return sprintf("%s_%d", $hash->{pid}, $age);
+}
+
+1;
+
 package ClinEpiData::Load::MALEDReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::MALEDReader::ObservationReader);
 

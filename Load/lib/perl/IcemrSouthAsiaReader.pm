@@ -132,6 +132,8 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
+ 	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+	return undef unless $parent;
   my $mdfile = basename($self->getMetadataFile());
 ##if($mdfile =~ /inpatient_treatment_drug/){
 ##  my $rx_name = # $hash->{rx_name};
@@ -170,7 +172,7 @@ sub makePrimaryKey {
  	  return join("_", $hash->{participant_id}, $date, '0000');
 	}
 	else {
- 	  my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+#	  my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
  	  my $date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
  	  unless($date){
  	  	# printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
@@ -359,6 +361,7 @@ sub read {
 package ClinEpiData::Load::IcemrSouthAsiaReader::SampleReader;
 use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
+use File::Basename;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
@@ -378,14 +381,13 @@ sub makeParent {
     return $hash->{parent};
   }
 	my $class = ref($self);
-	bless($self, 'ClinEpiData::Load::IcemrSouthAsiaReader::ObservationReader');
-	my $pid = $self->makePrimaryKey($hash);
+	my $pid = $self->makeSampleParentKey($hash);
 	bless($self, $class);
 	my $parentMerged = $self->getParentParsedOutput();
 	if(!defined($parentMerged->{$pid})){
 		my $id = $hash->{participant_id};
 		($pid) = sort grep { /^${id}_\d\d\d\d-\d\d-\d\d/ } keys %$parentMerged;
-		die "NO Parent for $id" unless $pid;
+		# die "NO Parent for $id" unless $pid;
 	}
 	return $pid;
 }
@@ -397,6 +399,65 @@ sub makePrimaryKey {
 
 sub getPrimaryKeyPrefix {
 	return 'S';
+}
+
+sub makeSampleParentKey{
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  my $mdfile = basename($self->getMetadataFile());
+##if($mdfile =~ /inpatient_treatment_drug/){
+##  my $rx_name = # $hash->{rx_name};
+##    $hash->{'x51._rx_name'} ||
+##    $hash->{'x56._rx_name'} ||
+##    $hash->{'x61._rx_name'} ||
+##    $hash->{'x66._generic_antimalarial_name'} ||
+##    $hash->{'x71._generic_antimalarial_name'}; 
+
+##  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
+##}
+	if($mdfile eq 'sample_collection_form.rawdata'){
+		my $date = $hash->{'x16._collection_date'} || $hash->{'x12._temperature_reading_date'};
+		my $time = $hash->{'x15._collection_time_.24h.'} || $hash->{'x11._temperature_reading_time_.24h.'};
+		$time =~ s/^0:/12:/;
+		$time = UnixDate(ParseDate($time), "%H%M");
+		$time ||= '0000';
+  	return join("_", $hash->{participant_id}, $date, $time);
+	}
+	elsif($mdfile eq 'inpatient_care_chart_review.rawdata'){
+		my $date = $hash->{'x68._date_of_observation_collection'};
+		my $time = $hash->{'x69._time_of_observation'};
+		$time =~ s/^0:/12:/;
+		$time = UnixDate(ParseDate($time), "%H%M");
+  	return join("_", $hash->{participant_id}, $date, $time);
+	}
+	elsif($mdfile =~ 'Diagnostics_Assay.rawdata'){
+ 	  my $date = $hash->{date};
+ 	  return join("_", $hash->{participant_id}, $date, '0000');
+	}
+	elsif($mdfile eq 'samp_coll_form_3.rawdata'){
+ 	  my $date = $hash->{'x30._antimalarial_therapy_initiation_at_gmc_date'};
+		unless($date){
+			$date = $self->makeParticipantDateKey($hash);
+		}
+ 	  return join("_", $hash->{participant_id}, $date, '0000');
+	}
+	else {
+ 	  my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+ 	  my $date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
+ 	  unless($date){
+ 	  	# printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
+ 	  	# print STDERR Dumper $parent; die;
+ 	  }
+ 	  return join("_", $hash->{participant_id}, $date || 'na', '0000');
+	}
+ 	 #	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
+ 	 #	$date = $parent->{'x8._date_enrolled'} || $parent->{'x34._age_.at_enrollment.'};
+ 	 #  unless($date){
+ 	 #  	printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
+ 	 #  	print STDERR Dumper $parent; die;
+ 	 #  }
 }
 
 1;

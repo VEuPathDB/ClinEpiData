@@ -461,13 +461,19 @@ sub writeInvestigationTree {
 
       $count{"total"}++;
     }
+		my $total = $count{total};
+    my %valueCount;
+    foreach my $value(@values) {
+      $valueCount{$value}++;
+    }
+		my $size = scalar keys %valueCount;
 
     if(defined($count{"date"}) && defined($count{"total"}) && $count{"date"} == $count{"total"}) {
       #sort and take first and last
       my @sorted = sort @values;
       my $mindate = $sorted[0];
       my $maxdate = $sorted[$#sorted];
-      my $display = "DATE_RANGE=$mindate...$maxdate";
+      my $display = "$total values $size distinct DATE_RANGE=$mindate...$maxdate";
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 }})) ;
     }
@@ -482,7 +488,7 @@ sub writeInvestigationTree {
       my $max = $stat->quantile(4);
       my $mean = $stat->mean();
 
-      my $displayName = sprintf("MIN=%s MAX=%s MEDIAN=%0.1f MEAN=%0.1f LOWER_Q=%0.1f UPPER_Q=%0.1f", $min, $max, $median, $mean, $firstQuantile, $thirdQuantile);
+      my $displayName = sprintf("%d values %d distinct MIN=%s MAX=%s MEDIAN=%0.1f MEAN=%0.1f LOWER_Q=%0.1f UPPER_Q=%0.1f",$total, $size, $min, $max, $median, $mean, $firstQuantile, $thirdQuantile);
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.stats", attributes => {"displayName" => $displayName, "isLeaf" => 1, "keep" => 1} })) ;
 
@@ -490,13 +496,8 @@ sub writeInvestigationTree {
 
     }
     else {
-      my %valueCount;
-      foreach my $value(@values) {
-        $valueCount{$value}++;
-      }
-			my $size = scalar keys %valueCount;
-			printf STDERR ("Found %d distinct values in %s\n", $size, $sourceId);
-			if(1000 < $size){
+			printf STDERR ("%d values %d distinct\n", $total, $size);
+			if(100 < $size){
         $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
 			}
 			else {

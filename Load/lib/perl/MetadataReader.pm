@@ -171,14 +171,20 @@ sub read {
   close FILE;
   my $rv = {};
   foreach my $primaryKey (keys %$parsedOutput) {
-    foreach my $key (keys %{$parsedOutput->{$primaryKey}}) {
-      my @values = @{$parsedOutput->{$primaryKey}->{$key}};
+		my $row = {};
+		my $nonempty;
+    foreach my $var (keys %{$parsedOutput->{$primaryKey}}) {
+      my @values = @{$parsedOutput->{$primaryKey}->{$var}};
       for(my $i = 0; $i < scalar @values; $i++) {
         my $value = $values[$i];
-        my $newKey = $i == 0 ? $key : "${key}_$i";
-        $rv->{$primaryKey}->{$newKey} = $values[$i];
+        my $newVar = $i == 0 ? $var : "${var}_$i";
+       #$rv->{$primaryKey}->{$newVar} = $values[$i];
+        $row->{$newVar} = $values[$i];
+				unless($var =~ /PARENT/i && $values[$i] ne ""){$nonempty++};
       }
     }
+		next if($self->skipIfEmpty &! $nonempty);
+		$rv->{$primaryKey} = $row;
   }
   $self->setParsedOutput($rv);
 }
@@ -198,9 +204,22 @@ sub getParentPrefix {
   return undef;
 }
 
+sub skipIfEmpty {
+  return undef;
+}
+
 sub skipRow {
   my ($self, $hash) = @_;
 	delete $hash->{$_} for keys %$hash;
+}
+
+sub countValues {
+  my ($self, $hash, @cols) = @_;
+	my %clone = ( %$hash );
+	delete $clone{$_} for @cols;
+	my @vals = grep { /.+/ } values %clone;
+	unless ( 0 < @vals ){ $self->skipRow($hash); }
+	return scalar @vals;
 }
 
 sub formatDate {

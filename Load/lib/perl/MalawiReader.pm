@@ -1,13 +1,23 @@
 package ClinEpiData::Load::MalawiReader;
 use base qw(ClinEpiData::Load::MetadataReader);
 
+sub makeParent {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  return $hash->{study_id};
+}
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  return $hash->{study_id};
+}
 # sub cleanAndAddDerivedData {
 #   my ($self, $hash) = @_;
-# 	foreach my $col (keys %$hash){
-# 		if($hash->{$col} eq "."){
-# 			delete($hash->{$col});
-# 		}
-# 	}
+# 	$hash->{existence} = 1;
 # }
 
 1;
@@ -17,14 +27,6 @@ use base qw(ClinEpiData::Load::MalawiReader);
 
 sub makeParent {
   return undef; 
-}
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  #return $hash->{study_id};
-  return $hash->{study_id};
 }
 
 sub getPrimaryKeyPrefix {
@@ -39,13 +41,37 @@ sub getPrimaryKeyPrefix {
 
 package ClinEpiData::Load::MalawiReader::EntoReader;
 use base qw(ClinEpiData::Load::MalawiReader);
+use strict;
+use warnings;
 
-sub makeParent {
+sub skipIfEmpty { return 1; }
+sub skipMask {
+	my @vars = qw/__PARENT__ trap_type mostime asprooms/;
+	my %mask;
+	$mask{ $_ } = 1 for @vars;
+	return \%mask;
+}
+
+sub rowMultiplier {
   my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $hash->{study_id};
+	my @clones;
+	my %trap = ( study_id => $hash->{study_id}, trap_type => 'lt' );
+	my @vars = grep { /_trap$/ } keys %$hash;
+	my @values = map { $hash->{$_} } @vars;
+	if(@values){
+		@trap{@vars} = @values;
+		push(@clones, \%trap);
+	}
+		
+	$trap{$_} = $hash->{$_} for @vars;
+	my %aspi = ( study_id => $hash->{study_id}, trap_type => 'as' );
+	@vars = grep { ! /_trap$/ } keys %$hash;
+	@values = map { $hash->{$_} } @vars;
+	if(@values){
+		@aspi{@vars} = @values;
+		push(@clones, \%aspi);
+	}
+	return \@clones;
 }
 
 sub getParentPrefix {
@@ -54,15 +80,6 @@ sub getParentPrefix {
     return "";
   }
   return "hh";
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  #return join("_",$hash->{study_id},$hash->{mossitrapid});
-  return $hash->{study_id};
 }
 
 sub getPrimaryKeyPrefix {
@@ -70,20 +87,35 @@ sub getPrimaryKeyPrefix {
   if($hash->{primary_key}) {
     return "";
   }
-  return "en";
+  return $hash->{trap_type};
+}
+
+1;
+
+package ClinEpiData::Load::MalawiReader::InsectReader;
+use base qw(ClinEpiData::Load::MalawiReader::EntoReader);
+
+sub skipIfEmpty { return 1; }
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return "";
+  }
+  return $hash->{trap_type};
+}
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return "";
+  }
+	return $hash->{trap_type} . "e";
 }
 
 1;
 package ClinEpiData::Load::MalawiReader::ParticipantReader;
 use base qw(ClinEpiData::Load::MalawiReader);
-
-sub makeParent {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $hash->{study_id};
-}
 
 sub getParentPrefix {
   my ($self, $hash) = @_;
@@ -93,39 +125,21 @@ sub getParentPrefix {
   return "hh";
 }
 
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  return $hash->{study_id};
-}
-
 1;
 
 package ClinEpiData::Load::MalawiReader::ObservationReader;
 use base qw(ClinEpiData::Load::MalawiReader);
+use strict;
+use warnings;
 
-
-sub makeParent {
-  ## returns a Participant ID
+sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $hash->{study_id};
+	unless($hash->{parent}){
+		my $parent = $self->getParentParsedOutput()->{$hash->{study_id}};
+		$self->skipRow($hash) unless $parent; # triggers skipIfNoParent = 1
+	}
 }
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-	my $date;
-	
-  return $hash->{study_id};
-}
-
+sub skipIfNoParent { return 1; }
 sub getPrimaryKeyPrefix {
   my ($self, $hash) = @_;
   if($hash->{primary_key}) {
@@ -139,14 +153,26 @@ sub getPrimaryKeyPrefix {
 package ClinEpiData::Load::MalawiReader::SampleReader;
 use base qw(ClinEpiData::Load::MalawiReader);
 use strict;
+use warnings;
+use Data::Dumper;
 
 sub makeParent {
   my ($self, $hash) = @_;
-  if(defined($hash->{parent})) {
-    return $hash->{parent};
-  }
-  return $hash->{study_id};
+  if($hash->{parent}) {
+		return $hash->{parent};
+	}
+	my $pid = $self->SUPER::makeParent($hash);
+	my $fullpid = join("", $self->getParentPrefix($hash),$pid);
+	my $pout = $self->getParentParsedOutput();
+	if($pout){
+		my $parent = $pout->{$pid};
+		unless($parent){
+			return "";
+		}
+	}
+	return $pid;
 }
+sub skipIfNoParent { return 1; }
 
 sub getParentPrefix {
   my ($self, $hash) = @_;
@@ -154,14 +180,6 @@ sub getParentPrefix {
     return "";
   }
   return "ob";
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  return $hash->{study_id};
 }
 
 sub getPrimaryKeyPrefix {

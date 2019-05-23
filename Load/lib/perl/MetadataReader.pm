@@ -170,9 +170,13 @@ sub read {
   }
   close FILE;
   my $rv = {};
+	my $skipped = 0;
+	my $skipEmpty = $self->skipIfEmpty();
+	my $skipVars = $self->skipMask();
+	my $minVars = $self->reportMinimumVariables();
   foreach my $primaryKey (keys %$parsedOutput) {
 		my $row = {};
-		my $nonempty;
+		my %usedVars;
     foreach my $var (keys %{$parsedOutput->{$primaryKey}}) {
       my @values = @{$parsedOutput->{$primaryKey}->{$var}};
       for(my $i = 0; $i < scalar @values; $i++) {
@@ -180,13 +184,26 @@ sub read {
         my $newVar = $i == 0 ? $var : "${var}_$i";
        #$rv->{$primaryKey}->{$newVar} = $values[$i];
         $row->{$newVar} = $values[$i];
-				unless($var =~ /PARENT/i && $values[$i] ne ""){$nonempty++};
+				next unless($skipEmpty &! $skipVars->{$var});
+				if($values[$i] =~ /.+/){
+					$usedVars{$var} = 1;
+				}
       }
     }
-		next if($self->skipIfEmpty &! $nonempty);
+		if($skipEmpty){
+			my $count = scalar keys %usedVars;
+			if( $count eq 0 ){
+				$skipped++;
+				next;
+			}
+	  	if($count < $minVars){
+	  		printf STDERR ("LOW NUMBER OF VALUES %s: %s\n", $primaryKey, join(" ", sort keys %usedVars));
+	  	}
+		}
 		$rv->{$primaryKey} = $row;
   }
   $self->setParsedOutput($rv);
+	printf STDERR ("Skipped %d empty nodes\n", $skipped) if $skipped || $skipEmpty;
 }
 
 sub makePrimaryKey {
@@ -205,7 +222,21 @@ sub getParentPrefix {
 }
 
 sub skipIfEmpty {
+## omit rows from output when they have no data
   return undef;
+}
+
+sub skipMask {
+## use with skipIfEmpty()
+## hash of variables to disregard when checking if a merged row is empty
+## override to add more variables 
+  return { __PARENT__ => 1 };
+}
+
+sub reportMinimumVariables {
+## use with skipIfEmpty()
+## print a warning if number of values is below this number
+	return 0;
 }
 
 sub skipRow {

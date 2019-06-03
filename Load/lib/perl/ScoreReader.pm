@@ -11,7 +11,7 @@ sub cleanAndAddDerivedData {
 # if($hash->{today} =~ /^(\d\d)-(...)-(\d\d)$/){
 #   $hash->{today} = join("", $1, $2, '20', $3);
 # }
- 	$hash->{$_} =~ s/^\s+$// for keys %$hash;
+  $hash->{$_} =~ s/^\s+$// for keys %$hash;
 }
 
 1;
@@ -34,19 +34,19 @@ use base qw(ClinEpiData::Load::ScoreReader);
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-	$self->SUPER::cleanAndAddDerivedData($hash);
-#	my @flags;
-#	foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
-#		push(@flags, $flag_treatment{int($pdcode)});
-#	}
-#	$hash->{flag_treatment} = join("|", @flags);
+  $self->SUPER::cleanAndAddDerivedData($hash);
+# my @flags;
+# foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
+#   push(@flags, $flag_treatment{int($pdcode)});
+# }
+# $hash->{flag_treatment} = join("|", @flags);
 #***************** or do this: ****************
- 	#$hash->{flag_treatment} =~ s/\s*,\s*/|/g;
+  #$hash->{flag_treatment} =~ s/\s*,\s*/|/g;
 #***************** or do this: ****************
-	foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
-		$hash->{ "flag_treatment_$pdcode" } = int($pdcode);
-	}
-	delete($hash->{flag_treatment});
+  foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
+    $hash->{ "flag_treatment_$pdcode" } = int($pdcode);
+  }
+  delete($hash->{flag_treatment});
 }
 
 sub makeParent {
@@ -105,16 +105,16 @@ use base qw(ClinEpiData::Load::ScoreReader::ParticipantReader);
 
 sub rowMultiplier {
   my ($self, $hash) = @_;
-	my @clones;
-	foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
-		push(@clones, {
-			village_id => $hash->{village_id},
-			person_id => $hash->{person_id},
-			flag_treatment => int($pdcode)
-		});
-	}
-	$self->skipRow($hash);
-	return \@clones;
+  my @clones;
+  foreach my $pdcode (split(/\s*,\s*/, $hash->{flag_treatment})){
+    push(@clones, {
+      village_id => $hash->{village_id},
+      person_id => $hash->{person_id},
+      flag_treatment => int($pdcode)
+    });
+  }
+  $self->skipRow($hash);
+  return \@clones;
 }
 
 sub makePrimaryKey {
@@ -169,24 +169,24 @@ sub rowMultiplier {
   my @multi;
   foreach my $specnum (qw/1 2 3/){
     foreach my $abslide (qw/a b/){
-			my %clone = (
-				'village_id' => $hash->{village_id},
-				'person_id' => $hash->{person_id},
-				'trunc' => $hash->{trunc},
-      	'specimen number' => $specnum,
-      	'a or b slide' => $abslide
-			);
+      my %clone = (
+        'village_id' => $hash->{village_id},
+        'person_id' => $hash->{person_id},
+        'trunc' => $hash->{trunc},
+        'specimen number' => $specnum,
+        'a or b slide' => $abslide
+      );
       for my $col ( qw/sm hook asc trich/ ){
-				my $assay = sprintf("%s%d%s", $col, $specnum, $abslide);
-				next unless $hash->{$assay};
-				$clone{"${col}_sample"} = $hash->{$assay};
-				$clone{"${col}_count"} = $hash->{"${assay}_count"} unless $col eq "sm";
-				## Merge will trigger warnings if there are multiple values
-			}
+        my $assay = sprintf("%s%d%s", $col, $specnum, $abslide);
+        next unless defined($hash->{$assay});
+        $clone{"${col}_sample"} = $hash->{$assay};
+        $clone{"${col}_count"} = $hash->{"${assay}_count"} unless $col eq "sm";
+        ## Merge will trigger warnings if there are multiple values
+      }
       push(@multi, \%clone);
     }
   }
-	$self->skipRow($hash);
+  $self->skipRow($hash);
   return \@multi;
 }
 

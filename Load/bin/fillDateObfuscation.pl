@@ -38,56 +38,45 @@ unless(-e $dateObfuscationFile){
 	close(FH);
 }
 
-my $failed;
-do {
-	my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef, $valueMapFile, 0, 0, $dateObfuscationFile);
-	
-	my $ont = $inv->getOntologyMapping();
-	my $xml = $inv->getSimpleXml();
-	unless($test){
-		foreach my $studyXml (@{$xml->{study}}) {
-			foreach my $node (values %{$studyXml->{node}}){
-				if($node->{idObfuscationFunction}){
-					printf("Disabling ID Obfuscation '%s' for %s in %s\n", $node->{idObfuscationFunction}, $node->{type}, $studyXml->{fileName});
-				}
-				$node->{DISABLEidObfuscationFunction} = $node->{idObfuscationFunction}; 
-				delete($node->{idObfuscationFunction});
+my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef, $valueMapFile, 0, 0, $dateObfuscationFile);
+
+my $ont = $inv->getOntologyMapping();
+my $xml = $inv->getSimpleXml();
+unless($test){
+	foreach my $studyXml (@{$xml->{study}}) {
+		foreach my $node (values %{$studyXml->{node}}){
+			if($node->{idObfuscationFunction}){
+				printf("Disabling ID Obfuscation '%s' for %s in %s\n", $node->{idObfuscationFunction}, $node->{type}, $studyXml->{fileName});
 			}
+			$node->{DISABLEidObfuscationFunction} = $node->{idObfuscationFunction}; 
+			delete($node->{idObfuscationFunction});
 		}
 	}
-	printf "Parsing...\n";
-	eval {
-		$inv->parse();
-	};
-	if($@){
-		warn $@;
-	}
-	printf "Get Studies...\n";
-	my $studies = $inv->getStudies();
-	printf "Map Parents...\n";
-	
-	my %parentOf; # map nodes to parents
-	foreach my $study (@$studies){
+}
+my $studies = $inv->getStudies();
+
+my %parentOf; # map nodes to parents
+my $func = $inv->getFunctions();
+my $obf = $func->getDateObfuscation();
+
+my %types;
+my %deltas;
+printf "Map parents, get deltas...\n";
+foreach my $study (@$studies){ ## studies are in order: household, participant, observation, sample
+	while($study->hasMoreData()) {
+		my $nodes = [];
 		my $edges = $study->getEdges();
 		foreach my $edge (@$edges){
 			my $inputs = $edge->getInputs();
 			my $outputs = $edge->getOutputs();
+			push(@$nodes, @$outputs);
 			foreach my $node (@$outputs){
 				$parentOf{$node->getValue()} = $inputs->[0]->getValue();
 			}
-  	}
-	}
- 	# print Dumper \%parentOf;
-	
-	my $func = $inv->getFunctions();
-	my $obf = $func->getDateObfuscation();
-	
-	my %types;
-	my %deltas;
-	printf "Get Deltas...\n";
-	foreach my $study (@$studies){ ## studies are in order: household, participant, observation, sample
-		my $edges = $study->getEdges();
-		my $nodes = $study->getNodes();
+		}
+		unless(0 < scalar @$nodes){
+			$nodes = $study->getNodes();
+		}
 		foreach my $node (@$nodes){
 			my $type = $node->getMaterialType()->getTermAccessionNumber();
 			my $id = $node->getValue();
@@ -96,41 +85,35 @@ do {
 			$deltas{$id} = $delta if $delta;
 		}
 	}
+}
 	
-	$failed = 0;
-	printf "Find Missing Deltas...\n";
-	foreach my $id (keys %parentOf){
-		next if (defined($deltas{$id}));
-		my $pid = $parentOf{$id};
-		do {
-			printf "Climbing $id => $pid\n";
-			if($pid && $deltas{$pid}){
-				$deltas{$id} = $deltas{ $pid };
-				$func->cacheDelta($types{$id}, $id, $deltas{$id});
-				print "Restored: $types{$id}\t$id\t$deltas{$id}\n";
-			}
-			else {
-				$pid = $parentOf{$pid};
-			}
-			
-		} while ($pid && !defined($deltas{$id}));
-		unless($deltas{$id}){
-			print "FAILED: $types{$id}\t$id\n";
-			$failed = 1;
+printf "Find Missing Deltas...\n";
+foreach my $id (keys %parentOf){
+	next if (defined($deltas{$id}));
+	my $pid = $parentOf{$id};
+	do {
+		printf "Climbing $id => $pid\n";
+		if($pid && $deltas{$pid}){
+			$deltas{$id} = $deltas{ $pid };
+			$func->cacheDelta($types{$id}, $id, $deltas{$id});
+			print "Restored: $types{$id}\t$id\t$deltas{$id}\n";
 		}
+		else {
+			$pid = $parentOf{$pid};
+		}
+		
+	} while ($pid && !defined($deltas{$id}));
+	unless($deltas{$id}){
+		die "FAILED: $types{$id}\t$id\n";
 	}
-	if($failed){
-		print "Re-parsing...\n";
-	}
-	elsif($test) {
-		print "Done. Writing idmap.txt\n";
-		$inv->writeObfuscatedIdFile("idmap.txt");
-	}
-	else {
-		print "Done. Run again with test=1 to write idmap.txt\n";
-		$failed = 0;
-	}
+}
+if($test) {
+	print "Done. Writing idmap.txt\n";
+	$inv->writeObfuscatedIdFile("idmap.txt");
+}
+else {
+	print "Done. Run again with test=1 to write idmap.txt\n";
+}
 	
-} while($failed);
 
 1;

@@ -207,8 +207,13 @@ sub makeParent {
 	die sprintf("No participant id in %s\n", $self->getMetadataFile) unless length($id) > 0;
 	my $parentMerged = $self->getParentParsedOutput();
 	my ($pid) = sort grep { /^${id}_\d\d\d\d-\d\d-\d\d/ } keys %$parentMerged;
+	unless($pid){
+		($pid) = sort grep { /^${id}_/ } keys %$parentMerged;
+	}
 	return $pid;
 }
+
+sub skipIfNoParent { return 1 }
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -234,125 +239,30 @@ sub cleanAndAddDerivedData {
   $self->SUPER::cleanAndAddDerivedData($hash);
 }
 
-sub read {
-  my ($self) = @_;
-
-  my $metadataFile = $self->getMetadataFile();
-  my $fileBasename = basename $metadataFile;
-	unless($fileBasename =~ /inpatient_treatment_drug_/){ 
-		return $self->SUPER::read();
+sub rowMultiplier {
+	my ($self,$hash) = @_;
+	my @clones;
+  my $mdFile = $self->getMetadataFile();
+	unless($mdFile =~ /inpatient_treatment_drug_/){ 
+		return [$hash];
 	}
-
-  my $colExcludes = $self->getColExcludes();
-  my $rowExcludes = $self->getRowExcludes();
-
-
-  open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
-
-  my $header = <FILE>;
-  $header =~s/\n|\r//g;
-
-  my $delimiter = $self->getDelimiter($header);
-
-  my @headers = $self->splitLine($delimiter, $header);
-
-  my $headersAr = $self->adjustHeaderArray(\@headers);
-
-  $headersAr = $self->clean($headersAr);
-
-	my @timepoints = map { lc } grep(/timepoint/i, @$headersAr); 
-	my @doses = map { lc } grep(/dose/i, @$headersAr); 
-	my @methods = map { lc } grep(/method/i, @$headersAr); 
-
-  my $parsedOutput = {};
-
-  while(<FILE>) {
-    $_ =~ s/\n|\r//g;
-
-    my @values = $self->splitLine($delimiter, $_);
-    my $valuesAr = $self->clean(\@values);
-
-		my $countTimepoints = 0;
-		foreach my $timeIndex ( 0 .. $#timepoints ){
-   	  my %hash; ## new hash (row) each loop
-   	  for(my $i = 0; $i < scalar @$headersAr; $i++) {
-   	    my $key = lc($headersAr->[$i]);
-   	    my $value = lc($valuesAr->[$i]);
-
-   	    # TODO: move this to PRISM class clean method
-   	    next if($value eq '[skipped]');
-
-   	    $hash{$key} = $value if(defined $value);
-   	  }
-
-			my $timepoint = $hash{ $timepoints[$timeIndex] } || "";
-			next if $timepoint eq 'na';
-			my $dose = $hash{ $doses[$timeIndex] } || "";
-			my $method = $hash{ $methods[$timeIndex] } || "";
-			## clobber all timepoint, dose, and method values except these
-			## delete($hash{$_}) for @timepoints,@doses,@methods;
-			$hash{'timepoint'} = $timepoint;
-			$hash{'dose'} = $dose;
-			$hash{'method'} = $method;
-			next unless($timepoint);
-			$countTimepoints++;
-
-   	  my $primaryKey = $self->makePrimaryKey(\%hash);
-   	  my $parent = $self->makeParent(\%hash);
-
-   	  next if($self->skipIfNoParent() && !$parent);
-
-   	  my $parentPrefix = $self->getParentPrefix(\%hash) || "";
-   	  my $parentWithPrefix = $parentPrefix . $parent;
-
-   	  $hash{'__PARENT__'} = $parentWithPrefix unless($parentPrefix && $parentWithPrefix eq $parentPrefix);
-
-   	  next unless($primaryKey); # skip rows that do not have a primary key
-   	  if(defined($rowExcludes->{$primaryKey}) && ($rowExcludes->{$primaryKey} ne "") && ($rowExcludes->{$primaryKey} eq $fileBasename) || ($rowExcludes->{$primaryKey} eq '__ALL__')){
-	 	  	next;
-	 	  }
-
-   	  ## $primaryKey = $self->getPrimaryKeyPrefix(\%hash) . $primaryKey;
-
-   	  $self->cleanAndAddDerivedData(\%hash);
-
-   	  foreach my $key (keys %hash) {
-   	    next if($colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
-   	    next unless defined $hash{$key}; # skip undef values
-   	    next if($hash{$key} eq '');
-
-   	    next if($self->seen($parsedOutput->{$primaryKey}->{$key}, $hash{$key}));
-
-   	    push @{$parsedOutput->{$primaryKey}->{$key}}, $hash{$key};
-   	  }
-			## end of timepoints
-			# my @tpkeys = qw/primary_key parent timepoint dose method/;
-			# printf STDERR ("DEBUG: %s\n", join("\t", map { $hash{$_} || "" } @tpkeys ));
-			# printf STDERR ("DEBUG: %d timepoints found for id\n", $countTimepoints, $hash{participant_id});
-    }
-  }
-
-  close FILE;
-
-  my $rv = {};
-
-  foreach my $primaryKey (keys %$parsedOutput) {
-
-    foreach my $key (keys %{$parsedOutput->{$primaryKey}}) {
-
-      my @values = @{$parsedOutput->{$primaryKey}->{$key}};
-
-      for(my $i = 0; $i < scalar @values; $i++) {
-        my $value = $values[$i];
-
-        my $newKey = $i == 0 ? $key : "${key}_$i";
-        $rv->{$primaryKey}->{$newKey} = $values[$i];
-      }
-    }
-  }
-
-
-  $self->setParsedOutput($rv);
+	my @cols = sort keys %$hash;
+	my @timepoints = grep(/timepoint/i, @cols); 
+	my @doses = map { lc } grep(/dose/i, @cols); 
+	my @methods = map { lc } grep(/method/i, @cols); 
+	foreach my $i ( 0 .. $#timepoints ) {
+		next if(
+			($hash->{$timepoints[$i]} eq 'na') &&
+			($hash->{$doses[$i]} eq 'na') &&
+			($hash->{$methods[$i]} eq 'na')
+		);
+		my %clone = ( %$hash );
+		$clone{timepoint} = $hash->{$timepoints[$i]};
+		$clone{dose} = $hash->{$doses[$i]};
+		$clone{method} = $hash->{$methods[$i]};
+		push(@clones, \%clone);
+	}
+	return \@clones;
 }
 
 1;

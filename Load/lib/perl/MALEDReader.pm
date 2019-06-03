@@ -335,6 +335,7 @@ use base qw(ClinEpiData::Load::MALEDReader);
 
 sub rowMultiplier {
 	my ($self, $hash) = @_;
+	return [] unless $hash->{pid};
 	my @clones;
 	my @all_cols = keys %$hash;
 	foreach my $type (qw/bcg cpox deworm dpt flu hepb hib ipv je mea men mmr mum opv pcv rab rota rub teta typ vita yf/){
@@ -362,7 +363,7 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  return $hash->{pid}; 
+  return sprintf("%s_0", $hash->{pid}); #, $hash->{agedays});
 }
 
 sub makePrimaryKey {
@@ -377,7 +378,7 @@ sub makePrimaryKey {
   }
   my $age = $hash->{agedays};
 
-  return sprintf("%s_%d", $hash->{pid}, $age);
+  return join("_", $hash->{pid}, $hash->{agedays}, $hash->{vaccine}, $hash->{dose_number});
 }
 
 1;

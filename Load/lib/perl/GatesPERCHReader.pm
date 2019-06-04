@@ -1,5 +1,5 @@
 package ClinEpiData::Load::GatesPERCHReader;
-use base qw(ClinEpiData::Load::MetadataReaderCSV);
+use base qw(ClinEpiData::Load::MetadataReader);
 
 
 sub formatdate{
@@ -8,23 +8,7 @@ sub formatdate{
     return $date;
 }
 
-sub clean {
-    my ($self, $ar) = @_;
 
-    my $clean = $self->SUPER::clean($ar);
-
-    for(my $i = 0; $i < scalar @$clean; $i++) {
-
-	my $v = $clean->[$i];
-
-	my $lcv = lc($v);
-
-	if($lcv eq 'na' || $lcv eq 'a' || $lcv eq 'f' || $lcv eq 't' || $lcv eq 'u' || $lcv eq 'n' || $lcv eq 'r' || $lcv eq 'l') {
-	    $clean->[$i] = undef;
-	}
-    }
-    return $clean;
-}
 
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
@@ -67,7 +51,6 @@ sub getPrimaryKeyPrefix {
 package ClinEpiData::Load::GatesPERCHReader::OutputReader;
 use base qw(ClinEpiData::Load::OutputFileReader);
 
-
 1;
 
 
@@ -81,20 +64,17 @@ use Data::Dumper;
 
 sub makeParent {
     my ($self, $hash) = @_;
-
     return $hash->{patid};
 }
 
 sub makePrimaryKey {
     my ($self, $hash) = @_;
-
     return $hash->{patid};
 }
 
 
 sub getParentPrefix {
     my ($self, $hash) = @_;
-
     return "HH";
 }
 
@@ -103,14 +83,10 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();
 
     if(defined($hash->{enrldate})){
-        if($file eq "_clin_rev_de.txt"){
-
             $hash->{enrldate_par} = $hash->{enrldate};
             $hash->{enrldate} = undef;
-
-        }
     }
-}
+ }
 
 
 1;
@@ -124,12 +100,9 @@ use Data::Dumper;
 
 
 sub makeParent {
-
     my ($self, $hash) = @_;
-
     return $hash->{patid};
 }
-
 
 sub makePrimaryKey {
     my ($self, $hash) = @_;
@@ -137,23 +110,290 @@ sub makePrimaryKey {
 }
 
 sub getPrimaryKeyPrefix {
-    return "O";
+    return "O_";
 }
 
 
+=head
+sub makePrimaryKey {
+    my ($self, $hash) = @_;  
+
+    if($hash->{enrldate}){
+	$hash->{enrldate_obs} = $hash->{enrldate};
+	$hash->{enrldate} = undef;
+    }
+
+    my $date = $hash->{enrldate_obs};
+
+    $date= $self->formatdate($date);
+    return $hash->{patid} . "_" . $date;
+
+}
+=cut
+sub adjustHeaderArray {
+    my ($self, $ha) = @_;
+    my $colExcludes = $self->getColExcludes();
+
+    my @visit24hr = grep (/24$/i,@$ha);
+    my @visit48hr = grep (/48$/i,@$ha);
+    my @visit30days = grep (/^csf|30d$/i,@$ha);
+    my @newcolExcludes=(@visit24hr,@visit48hr,@visit30days);
+    
+#print Dumper \@newcolExcludes;                                                                                                    #exit;                                                                                                                            
+
+    foreach my $newcol (@newcolExcludes){
+	$newcol=lc($newcol);
+	$colExcludes->{'__ALL__'}->{$newcol}=1;
+    }
+#print Dumper $colExcludes;                                                                                                       
+    return $ha;
+}
+
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
-    my $file =  basename $self->getMetadataFile();
 
     if(defined($hash->{enrldate})){
-        if($file eq "_clin_rev_de.txt"){
 
             $hash->{enrldate_obs} = $hash->{enrldate};
             $hash->{enrldate} = undef;
+    }
+}
 
-        }
+1;
+
+
+
+
+package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit24hrReader;
+use base qw(ClinEpiData::Load::GatesPERCHReader);
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "O_";
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+
+sub getPrimaryKeyPrefix {
+    return "visit24h_";
+}
+
+=head
+sub makePrimaryKey {
+    my ($self, $hash) = @_;  
+
+    my $date= $hash->{cfuvisdt24};
+    $date= $self->formatdate($date);
+    return $date ? $hash->{patid} . "_" . $date . "_" . "24hr" : $hash->{patid} . "_" . "24hr";
+
+}
+=cut
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    if(defined($hash->{enrldate})){
+
+            $hash->{enrldate_obs} = $hash->{enrldate};
+            $hash->{enrldate} = undef;
     }
 }
 
 
+
 1;
+=head
+sub makeParent {
+    my ($self, $hash) = @_;  
+
+    if(defined($hash->{enrldate})){
+	$hash->{enrldate_obs} = $hash->{enrldate};
+	$hash->{enrldate} = undef;
+    }
+
+    my  $date=$hash->{enrldate_obs};
+
+    $date= $self->formatdate($date);
+    return $date ? $hash->{patid} . "_" . $date : $hash->{patid};
+
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;  
+
+    if(defined($hash->{cfuvisdt24})){
+	$hash->{cfuvisdt24} = $hash->{cfuvisdt24};
+    }
+
+    my $date= $hash->{cfuvisdt24};
+    $date= $self->formatdate($date);
+    return $date ? $hash->{patid} . "_" . $date . "_" . "24hr" : $hash->{patid} . "_" . "24hr";
+
+}
+=cut
+
+=head
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+
+    my $date;
+    if (defined $hash->{cfuvisdt24}){
+        $date=$hash->{cfuvisdt24};
+    }
+    else {
+        die 'Could not find the visit24hr date';
+    }
+
+    $date= $self->formatdate($date);
+    return $hash->{patid} . "_" . $date . "_" . "24hr";
+}
+
+sub adjustHeaderArray {
+    my ($self, $ha) = @_;
+    my $colExcludes = $self->getColExcludes();
+
+    my @visit48hr = grep (/48$/i,@$ha);
+    my @visit30days = grep (/^csf|30d$/i,@$ha);
+    my @newcolExcludes=(@visit48hr,@visit30days);
+    
+    print Dumper \@newcolExcludes;                                                                                                    exit;                                                                                                                            
+
+    foreach my $newcol (@newcolExcludes){
+	$newcol=lc($newcol);
+	$colExcludes->{'__ALL__'}->{$newcol}=1;
+    }
+    return $ha;
+}
+
+=cut
+
+
+
+
+package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit48hrReader;
+use base qw(ClinEpiData::Load::GatesPERCHReader);
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "O_";
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+
+sub getPrimaryKeyPrefix {
+    return "visit48h_";
+}
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    if(defined($hash->{enrldate})){
+
+            $hash->{enrldate_obs} = $hash->{enrldate};
+            $hash->{enrldate} = undef;
+    }
+}
+
+
+
+1;
+
+
+package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit30dayReader;
+use base qw(ClinEpiData::Load::GatesPERCHReader);
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "O_";
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+
+sub getPrimaryKeyPrefix {
+    return "visit30d_";
+}
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    if(defined($hash->{enrldate})){
+
+            $hash->{enrldate_obs} = $hash->{enrldate};
+            $hash->{enrldate} = undef;
+    }
+}
+
+1;
+
+
+=head
+
+package ClinEpiData::Load::GatesPERCHReader::SampleReader;
+use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
+use Data::Dumper;
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{??????};
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    my $date;
+    if (defined $hash->{????????}){
+        $date=$hash->{??????????};
+    }
+    else {
+        die 'Could not find the ??????  date';
+    }
+
+    $date= $self->formatdate($date);
+    return $hash->{patid} . "_" . $date;
+}
+
+1;
+=cut
+
+package ClinEpiData::Load::GatesPERCHReader::SampleReader;
+use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
+use Data::Dumper;
+
+sub makeParent {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+
+sub getParentPrefix {
+    return "O_";
+}
+
+sub makePrimaryKey {
+    my ($self, $hash) = @_;
+    return $hash->{patid};
+}
+
+sub getPrimaryKeyPrefix {
+    return "Sample_";
+}

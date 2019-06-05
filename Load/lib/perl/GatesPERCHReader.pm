@@ -86,6 +86,12 @@ sub cleanAndAddDerivedData {
             $hash->{enrldate_par} = $hash->{enrldate};
             $hash->{enrldate} = undef;
     }
+  
+    if(defined($hash->{cmrdthdt})){
+	my $date = $hash->{cmrdthdt};
+	return undef unless $date;
+    }
+
  }
 
 
@@ -346,34 +352,6 @@ sub cleanAndAddDerivedData {
 1;
 
 
-=head
-
-package ClinEpiData::Load::GatesPERCHReader::SampleReader;
-use base qw(ClinEpiData::Load::GatesPERCHReader);
-use File::Basename;
-use Data::Dumper;
-
-sub makeParent {
-    my ($self, $hash) = @_;
-    return $hash->{??????};
-}
-
-sub makePrimaryKey {
-    my ($self, $hash) = @_;
-    my $date;
-    if (defined $hash->{????????}){
-        $date=$hash->{??????????};
-    }
-    else {
-        die 'Could not find the ??????  date';
-    }
-
-    $date= $self->formatdate($date);
-    return $hash->{patid} . "_" . $date;
-}
-
-1;
-=cut
 
 package ClinEpiData::Load::GatesPERCHReader::SampleReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);

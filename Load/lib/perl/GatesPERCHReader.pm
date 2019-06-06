@@ -373,5 +373,5 @@ sub makePrimaryKey {
 }
 
 sub getPrimaryKeyPrefix {
-    return "Sample_";
+    return "S_";
 }

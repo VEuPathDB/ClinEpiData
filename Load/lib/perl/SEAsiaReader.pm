@@ -53,6 +53,9 @@ sub makeParent {
 	if($hash->{housecode}){
   	return $hash->{housecode};
 	}
+	elsif(substr($hash->{studycode},0,4) eq '6305'){
+		return "na";
+	} 
 	else {
 		my @pid = split(/-/, $hash->{studycode});
 		pop(@pid);

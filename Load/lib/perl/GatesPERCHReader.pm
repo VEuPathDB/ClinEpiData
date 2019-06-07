@@ -375,3 +375,39 @@ sub makePrimaryKey {
 sub getPrimaryKeyPrefix {
     return "S_";
 }
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    my $file =  basename $self->getMetadataFile();
+
+    if ($file eq "_clin_rev_de.txt"){
+	$hash->{_prabxur_3_clin_rev} = $hash->{_prabxur_3};
+	$hash->{_prabxur_3} = undef;
+    }
+    if ($file eq "_lab_rev_de.txt"){
+	$hash->{_prabxur_3_lab_rev} = $hash->{_prabxur_3};
+	$hash->{_prabxur_3} = undef;
+    }
+
+    if ($file eq "_pneu_st.txt"){
+	$hash->{is_nt_pneu_st} = $hash->{is_nt};
+	$hash->{is_nt} = undef;
+
+	$hash->{is_unknown_pneu_st} = $hash->{is_unknown};
+	$hash->{is_unknown} = undef;
+    }
+    if ($file eq "_hinf_st.txt"){
+	$hash->{is_unknown_hinf_st} = $hash->{is_unknown};
+	$hash->{is_unknown} = undef;
+    }
+
+
+}
+
+1;
+
+
+
+
+
+

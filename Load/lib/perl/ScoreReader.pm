@@ -174,13 +174,20 @@ sub rowMultiplier {
         'person_id' => $hash->{person_id},
         'trunc' => $hash->{trunc},
         'specimen number' => $specnum,
-        'a or b slide' => $abslide
+        'a or b slide' => $abslide,
+        'mean_epg' => $hash->{mean_epg},
+        'sm_binary' => $hash->{sm_binary},
       );
       for my $col ( qw/sm hook asc trich/ ){
         my $assay = sprintf("%s%d%s", $col, $specnum, $abslide);
         next unless defined($hash->{$assay});
         $clone{"${col}_sample"} = $hash->{$assay};
-        $clone{"${col}_count"} = $hash->{"${assay}_count"} unless $col eq "sm";
+        if($col eq "sm"){
+          $clone{"${col}_epg"} = $hash->{"${assay}_epg"};
+        }
+        else{
+          $clone{"${col}_count"} = $hash->{"${assay}_count"}
+        }
         ## Merge will trigger warnings if there are multiple values
       }
       push(@multi, \%clone);

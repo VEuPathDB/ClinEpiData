@@ -11,9 +11,10 @@ use ClinEpiData::Load::MetadataHelper;
 use CBIL::Util::PropertySet;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
+my $INVESTIGATION_FILE = "investigationFile";
 my $TYPE = "type";
 my $PARENT_TYPE = "parentType";
 my $PARENT_MERGED_FILE = "parentMergedFile";
@@ -37,6 +38,7 @@ my $IS_MERGED =  "isMerged";
   "$PARENT_TYPE=s" => \$parentType,
   "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
   "$ONTOLOGY_MAPPING_XML_FILE=s" => \$ontologyMappingXmlFile, 
+  "i|$INVESTIGATION_FILE=s" => \$investigationFile, 
   "$METADATA_FILE=s" => \@metadataFiles,
   "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
   "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
@@ -139,7 +141,7 @@ $metadataHelper->setMergedOutput({});
 
 if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
   my %filterParents = map { $_ => 1 } @filterParentSourceIds;
-  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents);
+  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents, $investigationFile);
 }
 
 else {

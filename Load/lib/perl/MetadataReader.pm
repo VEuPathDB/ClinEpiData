@@ -255,6 +255,7 @@ sub countValues {
 
 sub formatDate {
   my ($self, $date, $format) = @_;
+	return unless $date;
 	$format ||= "non-US";
   Date_Init("DateFormat=$format"); 
   my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");

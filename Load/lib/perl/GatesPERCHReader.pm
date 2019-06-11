@@ -9,9 +9,18 @@ sub formatdate{
 }
 
 
-
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
+
+        for my $field ((
+                'seaettm','clalatm','spfpftm'
+		       )){
+	    if(defined($hash->{$field}) &&
+	       $hash->{$field} eq 'na'){
+		delete $hash->{$field};
+	    }
+	    $hash->{$field} =~ s/^0:/12:/;
+        }
 }
 
 1;
@@ -101,6 +110,7 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesPERCHReader::ObservationReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use File::Basename;
 use Data::Dumper;
 
@@ -163,6 +173,16 @@ sub cleanAndAddDerivedData {
             $hash->{enrldate_obs} = $hash->{enrldate};
             $hash->{enrldate} = undef;
     }
+
+    if(defined ($hash->{'cam1abtm'})){
+
+	my $time = $hash->{'cam1abtm'};
+	$time =~ s/^0:/12:/;
+	$time = UnixDate(ParseDate($time), "%H%M");
+	$time ||= '0000';
+
+    }
+
 }
 
 1;
@@ -355,6 +375,7 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesPERCHReader::SampleReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use File::Basename;
 use Data::Dumper;
 
@@ -397,12 +418,64 @@ sub cleanAndAddDerivedData {
 	$hash->{is_unknown} = undef;
     }
     if ($file eq "_hinf_st.txt"){
+	
 	$hash->{is_unknown_hinf_st} = $hash->{is_unknown};
 	$hash->{is_unknown} = undef;
+	
+	if( ($hash->{is_nt} ==9) && ($hash->{is_hinf} ==9)){
+	    $hash->{is_hinf_nt_all} = 9;
+	    
+	   # $hash->{is_nt_hinf_st} = $hash->{is_nt};
+	   # $hash->{is_nt} = undef;
+	    
+	    #$hash->{is_nt_hinf_st} = undef;
+	    #$hash->{is_hinf} = undef;
+	    
+	}elsif(($hash->{is_nt} == 1) || ($hash->{is_hinf} == 1)){
+	    $hash->{is_hinf_nt_all} = 1;
+	    
+	    #$hash->{is_nt_hinf_st} = $hash->{is_nt};
+	    #$hash->{is_nt} = undef;
+	    
+	    #$hash->{is_nt_hinf_st} = undef;
+	    #$hash->{is_hinf} = undef;
+	}elsif(($hash->{is_nt} eq '') && ($hash->{is_hinf} eq '') ){
+	    $hash->{is_hinf_nt_all} = '';
+	}else{$hash->{is_hinf_nt_all} = 0;}
+
+
+	if( ($hash->{is_b} ==9) && ($hash->{is_hinb} ==9)){
+            $hash->{is_bb_all} = 9;
+
+	}elsif(($hash->{is_b} == 1) || ($hash->{is_hinb} == 1)){
+            $hash->{is_bb_all} = 1;
+
+	}elsif(($hash->{is_b} eq '') && ($hash->{is_hinb} eq '') ){
+            $hash->{is_bb_all} = '';
+        }else{$hash->{is_bb_all} = 0;}
+
+	$hash->{is_nt_hinf_st} = $hash->{is_nt};
+	#$hash->{is_nt} = undef;
+	#$hash->{is_nt_hinf_st} = undef;
+	#$hash->{is_b} = undef;
+	#$hash->{is_hinb} = undef;
+
+    }
+
+############## we may don't need the following in PERCH
+    if(defined ($hash->{'seaettm'} || $hash->{'clalatm'} || $hash->{'spfpftm'})){
+
+    my $time = $hash->{'seaettm'} || $hash->{'clalatm'} || $hash->{'spfpftm'};
+    $time =~ s/^0:/12:/;
+    $time = UnixDate(ParseDate($time), "%H%M");
+    $time ||= '0000';
+
     }
 
 
 }
+
+
 
 1;
 

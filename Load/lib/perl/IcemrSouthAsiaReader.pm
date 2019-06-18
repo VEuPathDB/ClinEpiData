@@ -48,6 +48,43 @@ sub makeParticipantDateKey {
 	}
   return join("_", $hash->{participant_id}, $date);
 }
+sub getPid {
+  my ($self, $hash) = @_;
+  if(defined($hash->{'x1._participant_id'})){
+		my $pid = $hash->{'x1._participant_id'};
+		if($pid !~ /^\d{7}$/){
+			$pid += 1010000;
+			if($pid !~ /^\d{7}$/){
+				die "Cannot make pid from $pid\n";
+			}
+			return $pid;
+		}
+	}
+  return $hash->{'participant_id'};
+}
+1;
+
+package ClinEpiData::Load::IcemrSouthAsiaReader::HouseholdReader;
+use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
+
+sub makeParent {
+	return undef;
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  $self->getPid($hash);
+}
+
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+  return "" if(defined($hash->{primary_key}));
+  return "hh";
+}
+
 1;
 
 package ClinEpiData::Load::IcemrSouthAsiaReader::ParticipantReader;
@@ -67,7 +104,24 @@ sub cleanAndAddDerivedData {
 }
 
 sub makeParent {
-	return undef;
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  my $pid = $self->getPid($hash);
+  my $ppo = $self->getParentParsedOutput();
+  if(defined($ppo->{"hh" . $pid})){ return $pid; }
+  return "";
+}
+
+sub skipIfNoParent {
+  return 1;
+}
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+  return "" if(defined($hash->{parent}));
+  return "hh";
 }
 
 sub makePrimaryKey {
@@ -75,17 +129,7 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  if(defined($hash->{'x1._participant_id'})){
-		my $pid = $hash->{'x1._participant_id'};
-		if($pid !~ /^\d{7}$/){
-			$pid += 1010000;
-			if($pid !~ /^\d{7}$/){
-				die "Cannot make pid from $pid\n";
-			}
-			return $pid;
-		}
-	}
-  return $hash->{'participant_id'};
+  return $self->getPid($hash);
 }
 1;
 

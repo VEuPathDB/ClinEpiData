@@ -119,7 +119,7 @@ sub splitLine {
 sub read {
   my ($self) = @_;
   my $metadataFile = $self->getMetadataFile();
-  my $fileBasename = basename $metadataFile;
+  my ($fileBasename) = lc(fileparse($metadataFile, qr/\.[^.]+$/));
   my $colExcludes = $self->getColExcludes();
   my $rowExcludes = $self->getRowExcludes();
   open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";

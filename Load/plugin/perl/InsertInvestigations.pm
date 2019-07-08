@@ -12,118 +12,7 @@ use GUS::Model::Study::Study;
 use POSIX qw/strftime/;
 use File::Temp qw/ tempfile /;
 
-my $argsDeclaration =
-  [
-
-   fileArg({name           => 'metaDataRoot',
-            descr          => 'directory where to find directories of isa tab files',
-            reqd           => 1,
-        mustExist      => 1,
-        format         => '',
-            constraintFunc => undef,
-            isList         => 0, }),
-
-   stringArg({name           => 'investigationBaseName',
-            descr          => 'directory where to find directories of isa tab files',
-            reqd           => 1,
-            constraintFunc => undef,
-            isList         => 0, }),
-
-
-   stringArg({name           => 'investigationSubset',
-            descr          => 'Skip directory unless it is one of these',
-            reqd           => 0,
-            constraintFunc => undef,
-            isList         => 1, }),
-
-stringArg({name           => 'extDbRlsSpec',
-            descr          => 'external database release spec',
-            reqd           => 1,
-            constraintFunc => undef,
-            isList         => 0, }),
-
-
-
-   booleanArg({name => 'isSimpleConfiguration',
-          descr => 'if true, use CBIL::ISA::InvestigationSimple',
-          reqd => 1,
-          constraintFunc => undef,
-          isList => 0,
-         }),
-
-
-   booleanArg({name => 'skipDatasetLookup',
-          descr => 'do not require existing nodes for datasets listed in isa files',
-          reqd => 1,
-          constraintFunc => undef,
-          isList => 0,
-         }),
-
-
-
-   fileArg({name           => 'ontologyMappingFile',
-            descr          => 'For InvestigationSimple Reader',
-            reqd           => 0,
-        mustExist      => 1,
-        format         => '',
-            constraintFunc => undef,
-            isList         => 0, }),
-
-   fileArg({name           => 'valueMappingFile',
-            descr          => 'For InvestigationSimple Reader',
-            reqd           => 0,
-        mustExist      => 1,
-        format         => '',
-            constraintFunc => undef,
-            isList         => 0, }),
-
-
-   fileArg({name           => 'dateObfuscationFile',
-            descr          => 'For InvestigationSimple Reader',
-            reqd           => 0,
-        mustExist      => 1,
-        format         => '',
-            constraintFunc => undef,
-            isList         => 0, }),
-
-
-   stringArg({name           => 'ontologyMappingOverrideFileBaseName',
-            descr          => 'For InvestigationSimple Reader',
-            reqd           => 0,
-            constraintFunc => undef,
-            isList         => 0, }),
-
-
-  ];
-
-my $documentation = { purpose          => "",
-                      purposeBrief     => "",
-                      notes            => "",
-                      tablesAffected   => "",
-                      tablesDependedOn => "",
-                      howToRestart     => "",
-                      failureCases     => "" };
-
-# ----------------------------------------------------------------------
 sub getIsReportMode { }
-
-# ----------------------------------------------------------------------
-
-sub new {
-  my ($class) = @_;
-  my $self = {};
-  bless($self,$class);
-
-  $self->initialize({ requiredDbVersion => 4.0,
-                      cvsRevision       => '$Revision$',
-                      name              => ref($self),
-                      argsDeclaration   => $argsDeclaration,
-                      documentation     => $documentation});
-
-  return $self;
-}
-
-# ======================================================================
 
 sub run {
   my ($self) = @_;
@@ -382,9 +271,10 @@ sub sideloadStudy {
   $self->writeConfigFile($charCtrlFile, $charFile, $table, \@fields);
   $self->runSqlldr($charFile, [[ $table, 'CHARACTERISTIC_ID', 'Study.CHARACTERISTIC_sq' ]]);
 
-  ## PROTOCOLS AND EDGES
+  ## PROTOCOLS - there are few of these, so load them the conventional way with GUS::Model
   printf STDERR ("Loading %d Protocols\n", scalar @$allprots);
   my ($protocolParamsToIdMap, $protocolNamesToIdMap) = $self->loadProtocols($allprots);
+  ## EDGES
   printf STDERR ("Loading %d Edges\n", scalar @$alledges);
   $self->loadEdges($alledges, $panNameToIdMap, $protocolParamsToIdMap, $protocolNamesToIdMap);
 }
@@ -417,6 +307,10 @@ sub updateProtocolAppNodeMapId {
 }
   
 sub writeConfigFile {
+# configFile: name of file to write
+# dataFile: data file
+# table: table to load
+# fieldsArray: fields/columns in data file, ordered
   my ($self, $configFile, $dataFile, $table, $fieldsArray) = @_;
   my $modDate = uc(strftime("%d-%b-%Y", localtime));
   my $fields = join(",\n", @$fieldsArray);

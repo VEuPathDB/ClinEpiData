@@ -107,16 +107,37 @@ sub getPrimaryKeyPrefix {
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+  return if(defined($hash->{primary_key})); 
   $self->SUPER::cleanAndAddDerivedData($hash);
 }
 1;
 
 package ClinEpiData::Load::ScoreMozReader::SampleReader;
 use base qw(ClinEpiData::Load::ScoreMozReader);
+use Data::Dumper;
+use strict;
+use warnings;
+
+sub rowMultiplier {
+  my ($self, $hash) = @_;
+  my $clone1 = { %$hash };
+  $clone1->{filtration} = 'a';
+  delete($clone1->{sh1b});
+  delete($clone1->{sh1b_vol});
+  my $clone2 = { %$hash };
+  $clone2->{filtration} = 'b';
+  delete($clone2->{sh1a});
+  delete($clone2->{sh1a_vol});
+  return [$clone1, $clone2];
+}
 
 sub makeParent {
   my ($self, $hash) = @_;
-	return $self->makePrimaryKey($hash);
+
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  return join("_", $hash->{village_id},$hash->{person_id});
 }
 
 sub getParentPrefix {
@@ -133,7 +154,13 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  return join("_", $hash->{village_id},$hash->{person_id});
+  if(keys %$hash){
+    unless($hash->{filtration} eq "a" || $hash->{filtration} eq "b"){
+      print Dumper $hash;
+      exit;
+    }
+  }
+  return sprintf("%s_%s%s", $hash->{village_id}, $hash->{person_id}, $hash->{filtration});
 }
 
 sub getPrimaryKeyPrefix {

@@ -164,7 +164,7 @@ if($inverse){
   }
 }
 else{
-  foreach my $var (keys %index){
+  foreach my $var (sort keys %index){
     printf("%s\n", $var);
    #foreach my $file( keys %{$index{$var}} ){
    #  printf("%s\t%s\n", $var, $file);

@@ -11,6 +11,7 @@ use File::Basename;
 use GUS::Model::Study::Study;
 use POSIX qw/strftime/;
 use File::Temp qw/ tempfile /;
+use Data::Dumper;
 
 sub getIsReportMode { }
 
@@ -190,7 +191,7 @@ sub sideloadStudy {
       push(@$allprots, @$prots);
 	  	my $nodes = [];
 	  	foreach my $edge (@$edges){
-	  		my $inputs = $edge->getInputs();
+	  		# my $inputs = $edge->getInputs();
 	  		my $outputs = $edge->getOutputs();
 	  		push(@$nodes, @$outputs);
 	  	}
@@ -226,7 +227,7 @@ sub sideloadStudy {
   $self->writeConfigFile($configFile, $dataFile, $table, \@fields);
   $self->runSqlldr($dataFile, [[ $table, 'PROTOCOL_APP_NODE_ID', 'Study.PROTOCOLAPPNODE_SQ' ]]);
     # keep the cache up to date as we add new nodes
-  my $panNameToIdMap = $self->updateProtocolAppNodeMapId($allnodes);
+  my $panNameToIdMap = $self->updateProtocolAppNodeMap($allnodes);
 
   ## STUDYLINK
   my ($linksFh, $linksFile) = tempfile(SUFFIX => '.dat');
@@ -274,19 +275,70 @@ sub sideloadStudy {
   ## PROTOCOLS - there are few of these, so load them the conventional way with GUS::Model
   printf STDERR ("Loading %d Protocols\n", scalar @$allprots);
   my ($protocolParamsToIdMap, $protocolNamesToIdMap) = $self->loadProtocols($allprots);
+  unless(keys %$protocolNamesToIdMap){
+    $protocolNamesToIdMap = $self->updateProtocolNamesToIdMap();
+  }
+
   ## EDGES
   printf STDERR ("Loading %d Edges\n", scalar @$alledges);
   $self->loadEdges($alledges, $panNameToIdMap, $protocolParamsToIdMap, $protocolNamesToIdMap);
+  
+  
+}
+sub loadEdges {
+  my ($self, $edges, $panNameToIdMap, $protocolParamsToIdMap, $protocolNamesToIdMap) = @_;
+  my ($protappsFh, $protappsFile) = tempfile(SUFFIX => '.dat');
+  my $protappsCtrlFile = $protappsFile . ".ctrl";
+  my $protappNext = $self->getNextVal('Study.PROTOCOLAPP_SQ');
+  my ($inputsFh, $inputsFile) = tempfile(SUFFIX => '.dat');
+  my $inputsCtrlFile = $inputsFile . ".ctrl";
+  my $inputNext = $self->getNextVal('Study.INPUT_SQ');
+  my ($outputsFh, $outputsFile) = tempfile(SUFFIX => '.dat');
+  my $outputsCtrlFile = $outputsFile . ".ctrl";
+  my $outputNext = $self->getNextVal('Study.OUTPUT_SQ');
+  foreach my $edge (@$edges) {
+    my $protocolName = $edge->getProtocolApplications()->[0]->getProtocol()->getProtocolName();
+    my $gusProtocolId = $protocolNamesToIdMap->{$protocolName};
+    my ($input) = @{$edge->getInputs()}; ## ClinEpiDB currently supports only one input per output
+    my $inputName = $input->getValue();
+    my $inputId = $panNameToIdMap->{ $inputName };
+    my @outputs = @{$edge->getOutputs()};
+    printf $protappsFh ("%s\t%s\n", $protappNext, $gusProtocolId);
+    printf $inputsFh ("%s\t%s\t%s\n", $inputNext, $protappNext, $inputId);
+    foreach my $output (@outputs){
+      my $outputName = $output->getValue();
+      my $outputId = $panNameToIdMap->{ $outputName };
+      printf $outputsFh ("%s\t%s\t%s\n", $outputNext, $protappNext, $outputId);
+      $outputNext++;
+    }
+    $protappNext++;
+    $inputNext++;
+  }
+  close($protappsFh);
+  close($inputsFh);
+  close($outputsFh);
+  my @fields = qw/PROTOCOL_APP_ID PROTOCOL_ID/;
+  my $table = 'Study.ProtocolApp';
+  $self->writeConfigFile($protappsCtrlFile, $protappsFile, $table, \@fields);
+  $self->runSqlldr($protappsFile, [[ $table, 'PROTOCOL_APP_ID', 'Study.PROTOCOLAPP_SQ' ]]);
+  @fields = qw/INPUT_ID PROTOCOL_APP_ID PROTOCOL_APP_NODE_ID/;
+  $table = 'Study.Input';
+  $self->writeConfigFile($inputsCtrlFile, $inputsFile, $table, \@fields);
+  $self->runSqlldr($inputsFile, [[ $table, 'INPUT_ID', 'Study.INPUT_SQ' ]]);
+  @fields = qw/OUTPUT_ID PROTOCOL_APP_ID PROTOCOL_APP_NODE_ID/;
+  $table = 'Study.Output';
+  $self->writeConfigFile($outputsCtrlFile, $outputsFile, $table, \@fields);
+  $self->runSqlldr($outputsFile, [[ $table, 'OUTPUT_ID', 'Study.OUTPUT_SQ' ]]);
 }
 
-sub updateProtocolAppNodeMapId {
+
+sub updateProtocolAppNodeMap {
   my ($self, $nodes) = @_;
   my $database = $self->getDb();
   my $algInvocationId = $database->getDefaultAlgoInvoId();
   my $sql = "select pan.name, pan.protocol_app_node_id from STUDY.PROTOCOLAPPNODE pan where pan.row_alg_invocation_id=?";
   my $dbh = $self->getQueryHandle();
   my $sh = $dbh->prepare($sql);
-  my %studyNodes;
   $sh->execute($algInvocationId);
   while(my ($name, $panId) = $sh->fetchrow_array()) {
     if(defined($self->{_PROTOCOL_APP_NODE_MAP}->{$name}) && $self->{_PROTOCOL_APP_NODE_MAP}->{$name} ne $panId){
@@ -304,6 +356,31 @@ sub updateProtocolAppNodeMapId {
     }
   }
   return $self->{_PROTOCOL_APP_NODE_MAP};
+}
+sub updateProtocolNamesToIdMap {
+  my ($self, $nodes) = @_;
+  my $database = $self->getDb();
+  my $algInvocationId = $database->getDefaultAlgoInvoId();
+  my $sql = "select NAME,PROTOCOL_ID from STUDY.PROTOCOL";
+  my $dbh = $self->getQueryHandle();
+  my $sh = $dbh->prepare($sql);
+  $sh->execute();
+  delete($self->{_PROTOCOL_ID_MAP});
+  while(my ($name, $Id) = $sh->fetchrow_array()) {
+    $self->{_PROTOCOL_ID_MAP}->{$name} = $Id;
+  }
+  return $self->{_PROTOCOL_ID_MAP};
+}
+
+sub getNextVal {
+  my ($self,$seqname) = @_;
+  my $database = $self->getDb();
+  my $sql = "SELECT $seqname.nextval FROM dual";
+  my $dbh = $self->getQueryHandle();
+  my $sh = $dbh->prepare($sql);
+  $sh->execute();
+  my ($nextVal) = $sh->fetchrow_array();
+  return $nextVal;
 }
   
 sub writeConfigFile {
@@ -368,7 +445,7 @@ sub runSqlldr {
   if($self->getArg('commit')) {
     my $exitstatus = system("sqlldr $login/$password\@$db control=$configFile log=$logFile rows=1000 direct=$directMode");
     if($exitstatus != 0){
-      die "ERROR: sqlldr returned exit status $exitstatus";
+      die "ERROR: sqlldr returned exit status $exitstatus\nCheck $logFile";
     }
     open(LOG, $logFile) or die "Cannot open log file $logFile: $!";
     while(<LOG>) {

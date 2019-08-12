@@ -10,6 +10,7 @@ use File::Basename qw/basename dirname/;
 use Env qw/PROJECT_HOME/;
 use XML::Simple;
 use Getopt::Long;
+use Switch;
 
 my ($owlFile,$functionsFile,%funcToAdd);
 unless(0 < @ARGV){
@@ -109,41 +110,49 @@ while (my $row = $it->next) {
 }
 my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
 
-## Protocols are "edges" between an entity type and its parent, as in;
-## Participant is an output of Household (participant->household).
-## Add all known protocols, though all may not be needed
-## Protocol for participant->household:
-unshift(@sorted, { source_id => 'OBI_0600004', type => 'protocol', name => [ 'enrollment' ] }); 
-## Protocol for observation->participant:
-unshift(@sorted, { source_id => 'BFO_0000015', type => 'protocol', name => [ 'observationProtocol' ] }); 
-## Protocol for sample->observation:
-unshift(@sorted, { source_id => 'OBI_0000659', type => 'protocol', name => [ 'specimen collection' ] }); 
-unshift(@sorted, { source_id => 'EUPATH_0000055', type => 'protocol', name => [ 'lightTrap' ] }); 
+#foreach my $term (@sorted){
+#  ;
+#  my %namesExt;
+#  foreach my $name(@{$term->{name}}){
+#    if($name =~ /::/){
+#      my ($var,$file) = split(/::/,$name);
+#      $namesExt{$name} = {content=>$var, file => $file, name => undef};
+#    }
+#    else { $namesExt{$name} = 1 }
+#  }
+#  $term->{name} = \%namesExt;
+#}
+
 
 ## Add top level  entities as 'materialType' ontologyTerms (Household, Participant, etc)
 $it = $owl->execute('top_level_entities');
 
+my %protocols;
+my %materialTypes;
 while (my $row = $it->next) {
 	my $iri = $row->{entity}->as_hash()->{iri};
 	my $sid = basename($iri); 	
 	my $name = $row->{label} ? $row->{label}->as_hash()->{literal} : "";
-	unshift(@sorted, 
-		{ 'source_id' => $sid, 'name'=>  [ lc($name) ], 'type'=> 'materialType' }
-	);
+  $materialTypes{$name} = $sid;
+##unshift(@sorted, 
+##	{ 'source_id' => $sid, 'name'=>  [ $name ], 'type'=> 'materialType' }
+##);
+  switch(lc($name)){
+    case /household/ { $protocols{enrollment} = 'OBI_0600004'; }
+    case /observation/ { $protocols{observationProtocol} = 'BFO_0000015'; }
+    case /sample/ { $protocols{'specimen collection'} = 'OBI_0000659'; }
+    case /trap|entomolog/ { $protocols{'lightTrap'} = 'EUPATH_0000055'; }
+  }
 }
 
-
-my @manualAdditions = (["INTERNAL_X","materialType", "INTERNAL"],
-    );
-foreach my $row (@manualAdditions) {
-    my $sourceId = $row->[0];
-    my $type = $row->[1];
-    my $name = $row->[2];
-
-    unshift(@sorted, { source_id => $sourceId, type => $type, name => [ lc($name) ] }); 
-    
+foreach my $prot ( reverse sort keys %protocols ){
+  unshift(@sorted, { source_id => $protocols{$prot}, type => 'protocol', name => [ $prot ] }); 
+}
+foreach my $type ( reverse sort keys %materialTypes){
+  unshift(@sorted, { source_id => $materialTypes{$type }, type => 'materialType', name => [ $type ] }); 
 }
 
+unshift(@sorted, { source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] }); 
 
 
 my $xml = {

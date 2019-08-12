@@ -20,7 +20,7 @@ if($filters){
 }
 
 my ($treeObjRoot, $nodeLookup) = $metadataHelper->makeTreeObjFromOntology($owlFile, $filters);
-if(0 < $tree){
+if(1){
   map { print "$_\n" if $_ } @{$treeObjRoot->tree2string({no_attributes => 0})};
 }
 else {

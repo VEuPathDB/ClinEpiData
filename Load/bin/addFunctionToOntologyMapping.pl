@@ -39,7 +39,7 @@ my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 if($dump){ ## print functions and exit
 	foreach my $root ( @{$xml->{ontologymappings}} ) {
 	  foreach my $term ( @{$root->{ontologyTerm}} ) {
-			printf("%s\t%s\n", $term->{source_id}, join("\t", @{$term->{function} || [] })) if $term->{function};
+			printf("%s\t%s\n", $term->{name}->[0], join("\t", @{$term->{function} || [] })) if $term->{function};
 		}
 	}
 	exit;

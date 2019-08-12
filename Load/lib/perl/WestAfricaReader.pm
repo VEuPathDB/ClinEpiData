@@ -82,6 +82,7 @@ sub parentExists {
   my $ppo = $self->getParentParsedOutput();
   return unless defined $ppo;
   my $pid = $id;
+  return unless $pid;
   $pid = join("", $pre, $id) if(defined($pre));
   return defined($ppo->{$pid});
 }
@@ -152,8 +153,7 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::WestAfricaReader::ObservationReader;
 use base qw(ClinEpiData::Load::WestAfricaReader);
-use Switch;
-
+use Data::Dumper;
 sub skipIfNoParent {
 	return 1;
 }
@@ -175,7 +175,10 @@ sub makePrimaryKey {
     return $hash->{primary_key};
   }
   my $pid = $self->getPid($hash);
-  die Dumper($hash) unless($pid ne "");
+  unless($pid){
+    $self->skipRow($hash);
+    return;
+  }
   my $int = $self->getIntervalName($hash);
   return join("_", $pid, $int);
 }

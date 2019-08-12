@@ -172,8 +172,64 @@ foreach my $study (@$studies){ ## studies are in order: household, participant, 
 	}
 }
 
-open(FH, ">$noSqlFile") or die "Cannot write $noSqlFile: $!\n";
-print FH to_json($tree,{convert_blessed=>1,utf8=>1, pretty=>1, canonical=>[0]});
-close(FH);
+if($noSqlFile){
+   open(FH, ">$noSqlFile") or die "Cannot write $noSqlFile: $!\n";
+   print FH to_json($tree,{convert_blessed=>1,utf8=>1, pretty=>1, canonical=>[0]});
+   close(FH);
+}
 exit;
+
+
+sub getTuningTablePrefix {
+  my ($datasetName) = @_;
+  return "D" . substr(sha1_hex($datasetName), 0, 10);
+}
+
+sub writeConfigFile {
+  my ($self, $configFile, $dataFile, $table, $fieldsArr) = @_;
+
+  my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
+  my @abbr = qw(JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC);
+  my $modDate = sprintf('%2d-%s-%02d', $mday, $abbr[$mon], ($year+1900) % 100);
+  my $fields = join(",\n", @$fieldsArr);
+  my $database = $self->getDb();
+  my $projectId = $database->getDefaultProjectId();
+  my $userId = $database->getDefaultUserId();
+  my $groupId = $database->getDefaultGroupId();
+  my $algInvocationId = $database->getDefaultAlgoInvoId();
+  my $userRead = $database->getDefaultUserRead();
+  my $userWrite = $database->getDefaultUserWrite();
+  my $groupRead = $database->getDefaultGroupRead();
+  my $groupWrite = $database->getDefaultGroupWrite();
+  my $otherRead = $database->getDefaultOtherRead();
+  my $otherWrite = $database->getDefaultOtherWrite();
+
+  open(CONFIG, "> $configFile") or die "Cannot open file $configFile For writing:$!";
+
+  print CONFIG "LOAD DATA
+INFILE '$dataFile'
+APPEND
+INTO TABLE $table 
+REENABLE DISABLED_CONSTRAINTS
+FIELDS TERMINATED BY '\\t'
+TRAILING NULLCOLS
+($fields,
+modification_date constant \"$modDate\",
+user_read constant $userRead,
+user_write constant $userWrite,
+group_read constant $groupRead,
+group_write constant $groupWrite,
+other_read constant $otherRead,
+other_write constant $otherWrite,
+row_user_id constant $userId,
+row_group_id constant $groupId,
+row_project_id constant $projectId,
+row_alg_invocation_id constant $algInvocationId,
+)\n";
+  close CONFIG;
+}
+
+
+
+
 1;

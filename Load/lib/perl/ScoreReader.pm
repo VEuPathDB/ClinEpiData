@@ -143,13 +143,14 @@ use warnings;
 
 sub rowMultiplier {
   my ($self, $hash) = @_;
-  my @multi = ({
-        'village_id' => $hash->{village_id},
-        'person_id' => $hash->{person_id},
-        'trunc' => $hash->{trunc},
-        'mean_epg' => $hash->{mean_epg},
-        'sm_binary' => $hash->{sm_binary},
-  });
+  my @multi;
+ #my @multi = ({
+ #      'village_id' => $hash->{village_id},
+ #      'person_id' => $hash->{person_id},
+ #      'trunc' => $hash->{trunc},
+ #      'mean_epg' => $hash->{mean_epg},
+ #      'sm_binary' => $hash->{sm_binary},
+ #});
   foreach my $specnum (qw/1 2 3/){
     foreach my $abslide (qw/a b/){
       my %clone = (
@@ -158,6 +159,8 @@ sub rowMultiplier {
         'trunc' => $hash->{trunc},
         'specimen number' => $specnum,
         'a or b slide' => $abslide,
+        'mean_epg' => $hash->{mean_epg},
+        'sm_binary' => $hash->{sm_binary},
       );
       for my $col ( qw/sm hook asc trich/ ){
         my $assay = sprintf("%s%d%s", $col, $specnum, $abslide);

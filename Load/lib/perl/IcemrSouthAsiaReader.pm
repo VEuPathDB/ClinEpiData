@@ -178,7 +178,7 @@ sub makePrimaryKey {
   }
  	my $parent = $self->getParentParsedOutput()->{$hash->{participant_id}};
 	return undef unless $parent;
-  my $mdfile = basename($self->getMetadataFile());
+  my $mdfile = lc(fileparse($self->getMetadataFile(),qr/\.[^.]+$/));
 ##if($mdfile =~ /inpatient_treatment_drug/){
 ##  my $rx_name = # $hash->{rx_name};
 ##    $hash->{'x51._rx_name'} ||
@@ -189,7 +189,7 @@ sub makePrimaryKey {
 
 ##  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
 ##}
-	if($mdfile eq 'sample_collection_form.rawdata'){
+	if($mdfile eq 'sample_collection_form'){
 		my $date = $hash->{'x16._collection_date'} || $hash->{'x12._temperature_reading_date'};
 		my $time = $hash->{'x15._collection_time_.24h.'} || $hash->{'x11._temperature_reading_time_.24h.'};
 		$time =~ s/^0:/12:/;
@@ -197,18 +197,18 @@ sub makePrimaryKey {
 		$time ||= '0000';
   	return join("_", $hash->{participant_id}, $date, $time);
 	}
-	elsif($mdfile eq 'inpatient_care_chart_review.rawdata'){
+	elsif($mdfile eq 'inpatient_care_chart_review'){
 		my $date = $hash->{'x68._date_of_observation_collection'};
 		my $time = $hash->{'x69._time_of_observation'};
 		$time =~ s/^0:/12:/;
 		$time = UnixDate(ParseDate($time), "%H%M");
   	return join("_", $hash->{participant_id}, $date, $time);
 	}
-	elsif($mdfile =~ 'Diagnostics_Assay.rawdata'){
+	elsif($mdfile =~ 'diagnostics_assay'){
  	  my $date = $hash->{date};
  	  return join("_", $hash->{participant_id}, $date, '0000');
 	}
-	elsif($mdfile eq 'samp_coll_form_3.rawdata'){
+	elsif($mdfile eq 'samp_coll_form_3'){
  	  my $date = $hash->{'x30._antimalarial_therapy_initiation_at_gmc_date'};
 		unless($date){
 			$date = $self->makeParticipantDateKey($hash);
@@ -232,7 +232,7 @@ sub makePrimaryKey {
  	 #  }
 }
 
-# override read() only for inpatient_treatment_drug_[12345].rawdata
+# override read() only for inpatient_treatment_drug_[12345]
 # each row generates several triples
 
 1;
@@ -264,7 +264,7 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  my $mdfile = basename($self->getMetadataFile());
+  my $mdfile = lc(fileparse($self->getMetadataFile(),qr/\.[^.]+$/));
 	if($mdfile =~ /inpatient_treatment_drug/){
  	  my $rx_name = # $hash->{rx_name};
  	    $hash->{'x51._rx_name'} ||
@@ -304,6 +304,10 @@ sub rowMultiplier {
 		$clone{timepoint} = $hash->{$timepoints[$i]};
 		$clone{dose} = $hash->{$doses[$i]};
 		$clone{method} = $hash->{$methods[$i]};
+    if($hash->{participant_id} eq '1030077' && $clone{timepoint} eq '0'){
+      my ($rx) = $hash->{'x51._rx_name'} || $hash->{'x56._rx_name'};
+      print STDERR "DEBUG:$mdFile:$rx:timepoint 0\n";
+    }
 		push(@clones, \%clone);
 	}
 	return \@clones;
@@ -360,7 +364,7 @@ sub makeSampleParentKey{
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  my $mdfile = basename($self->getMetadataFile());
+  my $mdfile = lc(fileparse($self->getMetadataFile(),qr/\.[^.]+$/));
 ##if($mdfile =~ /inpatient_treatment_drug/){
 ##  my $rx_name = # $hash->{rx_name};
 ##    $hash->{'x51._rx_name'} ||
@@ -371,7 +375,7 @@ sub makeSampleParentKey{
 
 ##  return join("_", $hash->{participant_id}, $rx_name, $hash->{timepoint});
 ##}
-	if($mdfile eq 'sample_collection_form.rawdata'){
+	if($mdfile eq 'sample_collection_form'){
 		my $date = $hash->{'x16._collection_date'} || $hash->{'x12._temperature_reading_date'};
 		my $time = $hash->{'x15._collection_time_.24h.'} || $hash->{'x11._temperature_reading_time_.24h.'};
 		$time =~ s/^0:/12:/;
@@ -379,18 +383,18 @@ sub makeSampleParentKey{
 		$time ||= '0000';
   	return join("_", $hash->{participant_id}, $date, $time);
 	}
-	elsif($mdfile eq 'inpatient_care_chart_review.rawdata'){
+	elsif($mdfile eq 'inpatient_care_chart_review'){
 		my $date = $hash->{'x68._date_of_observation_collection'};
 		my $time = $hash->{'x69._time_of_observation'};
 		$time =~ s/^0:/12:/;
 		$time = UnixDate(ParseDate($time), "%H%M");
   	return join("_", $hash->{participant_id}, $date, $time);
 	}
-	elsif($mdfile =~ 'Diagnostics_Assay.rawdata'){
+	elsif($mdfile =~ 'diagnostics_assay'){
  	  my $date = $hash->{date};
  	  return join("_", $hash->{participant_id}, $date, '0000');
 	}
-	elsif($mdfile eq 'samp_coll_form_3.rawdata'){
+	elsif($mdfile eq 'samp_coll_form_3'){
  	  my $date = $hash->{'x30._antimalarial_therapy_initiation_at_gmc_date'};
 		unless($date){
 			$date = $self->makeParticipantDateKey($hash);

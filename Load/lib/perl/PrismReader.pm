@@ -3,7 +3,7 @@ use base qw(ClinEpiData::Load::MetadataReader);
 
 1;
 
-package ClinEpiData::Load::PrismReader::DwellingReader;
+package ClinEpiData::Load::PrismReader::HouseholdReader;
 use base qw(ClinEpiData::Load::PrismReader);
 
 use strict;

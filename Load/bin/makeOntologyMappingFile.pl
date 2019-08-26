@@ -71,12 +71,12 @@ my %terms;
 while (my $row = $it->next) {
 	my $iri = $row->{entity}->as_hash()->{iri}|| $row->{entity}->as_hash()->{URI};
 	my $names = $row->{vars}->as_hash()->{literal};
-	my $name = "";
+	#my $name = "";
 	if(ref($names) eq 'ARRAY'){
-		$name = lc($names->[0]);
+		#$name = lc($names->[0]);
 	}
 	else {
-		$name = lc($names);
+		my $name = lc($names);
 		if($name =~ /,/){
 			my @splitnames = split(/\s*,\s*/, $name);
 			$names = \@splitnames;
@@ -85,17 +85,23 @@ while (my $row = $it->next) {
 			$names = [ $name ];
 		}
 	}
+	my %allnames;
+	foreach my $n (@$names){
+    if( $n =~ /::/ ) {
+      my ($mdfile,$colName) = split(/::/, $n);
+      print STDERR ("$colName\t$mdfile\n");
+      delete $allnames{$n};
+      $n = $colName;
+    }
+		$allnames{$n} = 1;
+	}
 	my $sid = $owl->getSourceIdFromIRI($iri); 	
 	if(defined($terms{$sid})){
-		my %allnames;
-		for my $n (@$names){
+		foreach my $n (@{ $terms{$sid}->{name} } ){ # all rows for this $sid previously read
 			$allnames{$n} = 1;
 		}
-		for my $n (@{ $terms{$sid}->{name} } ){ 
-			$allnames{$n} = 1;
-		}
-		@$names = sort keys %allnames;
 	}
+	@$names = sort keys %allnames;
 	my %funcHash;
 	my $rank = 1;
 	foreach my $id (map { lc } ($sid, @$names)){

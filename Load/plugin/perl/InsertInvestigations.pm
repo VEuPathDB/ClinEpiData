@@ -99,7 +99,6 @@ sub run {
       next;
     }
 
-    $self->log("EXPERIMENTAL PRELOADING/SIDELOADING\n");
     $self->sideloadStudy($investigation);
     $self->{_PROTOCOL_APP_NODE_MAP} = {};
     $investigationCount++;

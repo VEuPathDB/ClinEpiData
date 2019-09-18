@@ -120,8 +120,9 @@ sub run {
 
 sub countLines {
   my ($self, $charFile) = @_;
-  open(FILE, "<", $charFile);
-  my $count += tr/\n/\n/ while sysread(FILE, $_, 2 ** 16);
+  my $count = 0;
+  open(FILE, "<", $charFile) or die "Cannot open file to count lines: $charFile";
+  $count++ while <FILE>;
   close(FILE);
   return $count;
 }
@@ -165,6 +166,7 @@ sub sideloadStudy {
 ## each study
   my $studies = $inv->getStudies();
   my %nodeStudyInvestigation;
+  my $protocolNamesToIdMap = $self->updateProtocolNamesToIdMap();
   foreach my $study (@$studies){
     my $investigationId = $self->loadInvestigation($inv);
     my $identifier = $study->getIdentifier();
@@ -188,7 +190,14 @@ sub sideloadStudy {
 	  	my $edges = $study->getEdges();
       push(@$alledges, @$edges);
 	  	my $prots = $study->getProtocols();
-      push(@$allprots, @$prots);
+      foreach my $prot ( @$prots ){
+        my $protocolName = $prot->getProtocolName();
+        unless(defined($protocolNamesToIdMap->{$protocolName})){
+          push(@$allprots, $prot);
+          ## placeholder - map must be updated later with real IDs
+          $protocolNamesToIdMap->{$protocolName} = 1;
+        }
+      }
 	  	my $nodes = [];
 	  	foreach my $edge (@$edges){
 	  		# my $inputs = $edge->getInputs();
@@ -272,21 +281,43 @@ sub sideloadStudy {
   $self->writeConfigFile($charCtrlFile, $charFile, $table, \@fields);
   $self->runSqlldr($charFile, [[ $table, 'CHARACTERISTIC_ID', 'Study.CHARACTERISTIC_sq' ]]);
 
-  ## PROTOCOLS - there are few of these, so load them the conventional way with GUS::Model
-  printf STDERR ("Loading %d Protocols\n", scalar @$allprots);
-  my ($protocolParamsToIdMap, $protocolNamesToIdMap) = $self->loadProtocols($allprots);
-  unless(keys %$protocolNamesToIdMap){
-    $protocolNamesToIdMap = $self->updateProtocolNamesToIdMap();
-  }
+  ## PROTOCOLS
+  # load new protocols and update protcolNamesToIdMap again
+  $protocolNamesToIdMap = $self->loadProtocols($allprots);
 
   ## EDGES
   printf STDERR ("Loading %d Edges\n", scalar @$alledges);
-  $self->loadEdges($alledges, $panNameToIdMap, $protocolParamsToIdMap, $protocolNamesToIdMap);
-  
+  $self->loadEdges($alledges, $panNameToIdMap, $protocolNamesToIdMap);
   
 }
+
+sub loadProtocols {
+  my ($self, $prots) = @_;
+  # read from database, only need to add new ones
+  my $protocolNamesToIdMap = $self->updateProtocolNamesToIdMap();
+  my @protsToAdd;
+  printf STDERR ("Scanning %d Protocol objects\n", scalar @$prots);
+  foreach my $prot ( @$prots ){
+    my $protocolName = $prot->getProtocolName();
+    unless(defined($protocolNamesToIdMap->{$protocolName})){
+      push(@protsToAdd, $prot);
+      ## placeholder, do not add again
+      $protocolNamesToIdMap->{$protocolName} = 1;
+    }
+  }
+  if(@protsToAdd){
+    printf STDERR ("Loading %d new Protocols\n", scalar @protsToAdd);
+    $self->SUPER::loadProtocols(\@protsToAdd);
+    $protocolNamesToIdMap = $self->updateProtocolNamesToIdMap();
+  }
+  else {
+    printf STDERR ("No new Protocols to load\n");
+  }
+  return $protocolNamesToIdMap;
+}
+
 sub loadEdges {
-  my ($self, $edges, $panNameToIdMap, $protocolParamsToIdMap, $protocolNamesToIdMap) = @_;
+  my ($self, $edges, $panNameToIdMap, $protocolNamesToIdMap) = @_;
   my ($protappsFh, $protappsFile) = tempfile(SUFFIX => '.dat');
   my $protappsCtrlFile = $protappsFile . ".ctrl";
   my $protappNext = $self->getNextVal('Study.PROTOCOLAPP_SQ');

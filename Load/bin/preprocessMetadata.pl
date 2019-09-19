@@ -10,6 +10,8 @@ use ClinEpiData::Load::MetadataHelper;
 
 use CBIL::Util::PropertySet;
 
+use Data::Dumper;
+
 # TODO:  ontologyMappingFile is a validation step in the end
 my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged);
 
@@ -54,6 +56,7 @@ my $IS_MERGED =  "isMerged";
 
 
 
+my @filesInDirs;
 if(-e $propFile) {
   my @properties;
   my $properties = CBIL::Util::PropertySet->new($propFile, \@properties, 1);
@@ -79,6 +82,15 @@ if(-e $propFile) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};
     @metadataFiles = split(/\s*,\s*/, $metadataFileString);
   }
+  foreach my $mdfile (@metadataFiles){
+    if( -d $mdfile ){
+      opendir(DH, $mdfile) or die "Cannot read directory $mdfile: $!";
+      my @files = map { join("/", $mdfile, $_) } grep { ! /^\./ } readdir(DH);
+      closedir(DH);
+      push(@filesInDirs, @files);
+    }
+    else{ push(@filesInDirs,$mdfile) };
+  }
   unless(scalar @filterParentSourceIds > 0) {
     my $filterParentSourceIdsString = $properties->{props}->{$FILTER_PARENT_SOURCE_ID};
     @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString) if($filterParentSourceIdsString);
@@ -86,6 +98,8 @@ if(-e $propFile) {
 }
 
 &usage() if($help);
+
+@metadataFiles = @filesInDirs;
 
 unless(scalar @metadataFiles > 0) {
   &usage("Must Provide at least one meta data file");

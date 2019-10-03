@@ -20,8 +20,7 @@ GetOptions(
   'p|propFile=s' => \$propFile,
   'd|varDelim=s' => \$varDelim # a delimeter used in the owl file as in <column><Delim><file>
 );
-# defaults
-$varDelim = '::';
+# $varDelim = '::';
 if(defined($propFile) && -e $propFile) {
   my @_p;
   my $p = CBIL::Util::PropertySet->new($propFile, \@_p, 1);
@@ -112,6 +111,7 @@ foreach my $filter (@filters){
       @cols = ($col);
     }
     foreach $col (@cols){
+      unless($varDelim){ $col =~ s/^.*::// }
       my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
       if(ref($dataset) eq 'ARRAY'){
         $dataset = join("\t", @$dataset);

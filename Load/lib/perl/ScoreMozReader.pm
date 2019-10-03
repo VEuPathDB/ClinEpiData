@@ -3,6 +3,7 @@ use base qw(ClinEpiData::Load::MetadataReader);
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+  return if(defined($hash->{primary_key})); 
   $hash->{$_} =~ s/^\s+$// for keys %$hash;
   if($hash->{village_id} eq $hash->{person_id}){
     $self->skipRow($hash);
@@ -24,7 +25,8 @@ sub makePrimaryKey {
     return $hash->{primary_key};
   }
 	# $self->formatKeyVars($hash);
-  return join("_", $hash->{village_id},$hash->{person_id});
+  # return join("_", $hash->{village_id},$hash->{person_id});
+  return $hash->{village_id};
 }
 
 sub getPrimaryKeyPrefix {
@@ -35,8 +37,17 @@ sub getPrimaryKeyPrefix {
 	return "hh";
 }
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  return if(defined($hash->{primary_key})); 
+  $hash->{$_} =~ s/^\s+$// for keys %$hash;
+  $hash->{latitude} = sprintf("%.07f", $hash->{latitude}) if($hash->{latitude});
+  $hash->{longitude} = sprintf("%.07f", $hash->{longitude}) if($hash->{longitude});
+}
 
 1;
+
+
 package ClinEpiData::Load::ScoreMozReader::ParticipantReader;
 use base qw(ClinEpiData::Load::ScoreMozReader);
 
@@ -45,7 +56,8 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  return join("_", $hash->{village_id},$hash->{person_id});
+  #return join("_", $hash->{village_id},$hash->{person_id});
+  return $hash->{village_id};
 }
 
 sub getParentPrefix {
@@ -56,23 +68,63 @@ sub getParentPrefix {
   return "hh";
 }
 
-
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-
   return join("_", $hash->{village_id},$hash->{person_id});
 }
+
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  $self->SUPER::cleanAndAddDerivedData($hash);
+  return if(defined($hash->{primary_key})); 
+  $hash->{$_} =~ s/^\s+$// for keys %$hash;
+  if($hash->{village_id} eq $hash->{person_id}){
+    $self->skipRow($hash);
+  }
 }
 
 1;
 
+##HOUSEHOLDOBSERVATIONREADER
+package ClinEpiData::Load::ScoreMozReader::HouseholdObservationReader;
+use base qw(ClinEpiData::Load::ScoreMozReader);
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return $hash->{parent};
+  }
+  #return join("_", $hash->{village_id},$hash->{person_id});
+  return $hash->{village_id};
+}
+
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+  if($hash->{parent}) {
+    return "";
+  }
+  return "hh";
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  if($hash->{primary_key}) {
+    return $hash->{primary_key};
+  }
+  return join("_", $hash->{village_id},$hash->{study_year});
+}
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  return if(defined($hash->{primary_key})); 
+  $hash->{village_study_year} = $hash->{study_year};
+}
+
+1;
+##END HOUSEHOLDOBSERVATIONREADER
+#
+##OBSERVATIONREADER
 package ClinEpiData::Load::ScoreMozReader::ObservationReader;
 use base qw(ClinEpiData::Load::ScoreMozReader);
 
@@ -150,17 +202,10 @@ sub getParentPrefix {
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
-
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  if(keys %$hash){
-    unless($hash->{filtration} eq "a" || $hash->{filtration} eq "b"){
-      print Dumper $hash;
-      exit;
-    }
-  }
-  return sprintf("%s_%s%s", $hash->{village_id}, $hash->{person_id}, $hash->{filtration});
+  return join("_", $hash->{village_id},$hash->{person_id}); 
 }
 
 sub getPrimaryKeyPrefix {
@@ -171,7 +216,9 @@ sub getPrimaryKeyPrefix {
 	return "s";
 }
 
-# sub cleanAndAddDerivedData {
-#   my ($self, $hash) = @_;
-# }
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  return if(defined($hash->{primary_key})); 
+  $self->SUPER::cleanAndAddDerivedData($hash);
+}
 1;

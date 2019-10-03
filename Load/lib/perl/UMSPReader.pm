@@ -3,7 +3,8 @@ use base qw(ClinEpiData::Load::MetadataReader);
 
 sub getId {
   my ($self, $hash) = @_;
-  return sprintf("%07d",$hash->{site});
+  return undef unless defined($hash->{pid});
+  return sprintf("%07d",$hash->{pid});
 }
 
 1;
@@ -20,16 +21,10 @@ sub makePrimaryKey {
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-	# $self->formatKeyVars($hash);
-  return $self->getId($hash);
-}
-
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "h";
+  #return $self->getId($hash);
+  my $id = sprintf("%s%09d%09d",substr($hash->{site},0,4),$hash->{parish},$hash->{village});
+  print STDERR "$id\n";
+  return $id;
 }
 
 1;
@@ -41,15 +36,7 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  return $self->getId($hash);
-}
-
-sub getParentPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return undef;
-  }
-	return "h";
+  my $id = sprintf("%s%09d%09d",substr($hash->{site},0,4),$hash->{parish},$hash->{village});
 }
 
 sub makePrimaryKey {

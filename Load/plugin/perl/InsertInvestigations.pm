@@ -470,7 +470,7 @@ sub runSqlldr {
   my $directMode = 'false';
   if ($self->countLines($dataFile) > 100000){
     $directMode = 'true';
-    $self->log("SQLLDR will use DIRECT path\n");
+    $self->log(sprintf("SQLLDR will use DIRECT path [%s]\n", join("," @$sequences) || ""));
   }
   if($self->getArg('commit')) {
     my $exitstatus = system("sqlldr $login/$password\@$db control=$configFile log=$logFile rows=1000 direct=$directMode");

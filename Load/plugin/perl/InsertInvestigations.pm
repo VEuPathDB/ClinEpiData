@@ -468,7 +468,7 @@ sub runSqlldr {
   my $dbiDsn      = $self->getConfig->getDbiDsn();
   my ($dbi, $type, $db) = split(':', $dbiDsn);
   my $directMode = 'false';
-  if ($self->countLines($dataFile) > 100000){
+  if ($self->countLines($dataFile) > 1000000){
     $directMode = 'true';
     $self->log(sprintf("SQLLDR will use DIRECT path [%s]\n", join("," @$sequences) || ""));
   }

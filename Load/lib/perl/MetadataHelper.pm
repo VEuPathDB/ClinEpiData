@@ -497,7 +497,7 @@ sub writeInvestigationTree {
     }
     else {
 			printf STDERR ("%d values %d distinct in %s %s\n", $total, $size, $sourceId, join(",", @altQualifiers) || "");
-			if(100 < $size){
+			if(0){ # do not print huge list
         $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
 			}
 			else {

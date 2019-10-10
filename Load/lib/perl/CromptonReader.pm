@@ -8,8 +8,11 @@ use Data::Dumper;
 sub getId {
   my ($self, $hash) = @_;
   #printf STDERR ("%s\tsubj_id empty\n", $self->getMetadataFile()) unless $hash->{subj_id};
-  my ($idcol) = grep { /subj_id/ } keys %$hash;
-  return unless defined($idcol);
+  my ($idcol) = grep { /subj_id/i } keys %$hash;
+  unless(defined($idcol)){
+    printf STDERR ("No id column in %s\n", $self->getMetadataFileLCB());
+    return;
+  }
   $hash->{subj_id} = $hash->{$idcol};
   if(!defined($hash->{subj_id}) || $hash->{subj_id} eq ""){ return }
   return sprintf("%03d",$hash->{subj_id});
@@ -223,7 +226,7 @@ sub makeParent {
 sub makePrimaryKey {
   my ($self, $hash) = @_;
 
-  if($hash->{primary_key}) {
+  if(defined($hash->{primary_key})) {
     return $hash->{primary_key};
   }
   return unless($hash->{subj_id});
@@ -243,7 +246,7 @@ sub getPrimaryKeyPrefix {
 }
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  return if $hash->{primary_key};
+  return if defined($hash->{primary_key});
 # my $prefix = $self->getMetadataFileLCB();
 # my %idIRI = (
 #   eupath_0000095 => 'subj_id',
@@ -260,7 +263,7 @@ sub cleanAndAddDerivedData {
 # return unless($hash->{subj_id});
   $self->SUPER::cleanAndAddDerivedData($hash);
   unless($self->getId($hash)) { $self->skipRow($hash) }
-  #else { $self->applyMappedIRI($hash) }
+  else { $self->applyMappedIRI($hash) }
 }
 
 1;

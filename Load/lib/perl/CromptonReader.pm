@@ -9,6 +9,7 @@ sub getId {
   my ($self, $hash) = @_;
   #printf STDERR ("%s\tsubj_id empty\n", $self->getMetadataFile()) unless $hash->{subj_id};
   my ($idcol) = grep { /subj_id/ } keys %$hash;
+  return unless defined($idcol);
   $hash->{subj_id} = $hash->{$idcol};
   if(!defined($hash->{subj_id}) || $hash->{subj_id} eq ""){ return }
   return sprintf("%03d",$hash->{subj_id});
@@ -177,6 +178,9 @@ sub makePrimaryKey {
 
 package ClinEpiData::Load::CromptonReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::CromptonReader::ParticipantReader);
+use strict;
+use warnings;
+use Data::Dumper;
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -185,6 +189,9 @@ sub makePrimaryKey {
     return $hash->{primary_key};
   }
   my $visit = $hash->{visnum} || $hash->{dfseq} || "0";
+  my $id = $self->getId($hash);
+  return unless defined($id);
+  #die "No ID " . Dumper $hash unless defined $id; 
   return sprintf("%s_%04d", $self->getId($hash), $visit);
 }
 sub getPrimaryKeyPrefix {
@@ -253,7 +260,7 @@ sub cleanAndAddDerivedData {
 # return unless($hash->{subj_id});
   $self->SUPER::cleanAndAddDerivedData($hash);
   unless($self->getId($hash)) { $self->skipRow($hash) }
-  else { $self->applyMappedIRI($hash) }
+  #else { $self->applyMappedIRI($hash) }
 }
 
 1;

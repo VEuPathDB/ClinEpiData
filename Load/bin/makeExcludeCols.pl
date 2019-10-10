@@ -20,7 +20,8 @@ GetOptions(
   'p|propFile=s' => \$propFile,
   'd|varDelim=s' => \$varDelim # a delimeter used in the owl file as in <column><Delim><file>
 );
-# $varDelim = '::';
+# defaults
+#$varDelim = '::';
 if(defined($propFile) && -e $propFile) {
   my @_p;
   my $p = CBIL::Util::PropertySet->new($propFile, \@_p, 1);
@@ -41,6 +42,19 @@ unless($dataset){
 }
 
 unless (@files) { $inverse = 1; } 
+
+my @filesInDirs;
+foreach my $mdfile ( @files ){
+  if( -d $mdfile ){
+    opendir(DH, $mdfile) or die "Cannot read directory $mdfile: $!";
+    my @files = map { join("/", $mdfile, $_) } grep { ! /^\./ } readdir(DH);
+    closedir(DH);
+    push(@filesInDirs, @files);
+  }
+  else{ push(@filesInDirs,$mdfile) };
+}
+
+@files = @filesInDirs;
 
 my %columns; ## all columns in data files
 my %index; ## col => file
@@ -76,7 +90,7 @@ unless( -e $owlFile ){
 
 my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 
-my @entities;
+my %entities;
 my %map;
 my %saved;
 my %terms;
@@ -103,6 +117,8 @@ foreach my $filter (@filters){
   #printf ("%s\n", join("\t", @keys)) if @keys;
   while (my $row = $itr->next) {
     my $col = pp($row->{col}->as_sparql);
+    my $entity = lc(basename($row->{entity}->as_hash()->{iri}));
+    $entities{$entity} = 1;
     my @cols;
     if($col =~ /,/){
       @cols = split (/\s*,\s*/,$col);
@@ -110,8 +126,8 @@ foreach my $filter (@filters){
     else {
       @cols = ($col);
     }
+    push(@cols, $entity);
     foreach $col (@cols){
-      unless($varDelim){ $col =~ s/^.*::// }
       my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
       if(ref($dataset) eq 'ARRAY'){
         $dataset = join("\t", @$dataset);
@@ -167,6 +183,9 @@ if($inverse){
 }
 else{
   foreach my $var (sort keys %index){
+    my $baseVar = $var;
+    $baseVar =~ s/^.*:://;
+    next if $entities{$baseVar};
     printf("%s\n", $var);
    #foreach my $file( keys %{$index{$var}} ){
    #  printf("%s\t%s\n", $var, $file);

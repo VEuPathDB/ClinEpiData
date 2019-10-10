@@ -87,12 +87,12 @@ while (my $row = $it->next) {
 	}
 	my %allnames;
 	foreach my $n (@$names){
-    if( $n =~ /::/ ) {
-      my ($mdfile,$colName) = split(/::/, $n);
-      print STDERR ("$colName\t$mdfile\n");
-      delete $allnames{$n};
-      $n = $colName;
-    }
+   #if( $n =~ /::/ ) {
+   #  my ($mdfile,$colName) = split(/::/, $n);
+   #  print STDERR ("$colName\t$mdfile\n");
+   #  delete $allnames{$n};
+   #  $n = $colName;
+   #}
 		$allnames{$n} = 1;
 	}
 	my $sid = $owl->getSourceIdFromIRI($iri); 	

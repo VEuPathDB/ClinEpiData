@@ -76,9 +76,11 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
   foreach my $term ( @{$root->{ontologyTerm}} ) {
 
     my $sourceId = $term->{source_id};
+    my $type = $term->{type};
 
     my $names = $term->{name};
     my @names = sort map { lc } @$names;
+    unshift(@names, lc($sourceId)) if $type eq 'characteristicQualifier';
 		$term->{name} = \@names;
 
     my @ids = @names;

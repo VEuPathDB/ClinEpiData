@@ -104,7 +104,7 @@ while (my $row = $it->next) {
 }
 
 unless(@filters){
-  printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", sort keys %filterOptions));
+  printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", map {sprintf("%s\t%s",$_, $filterOptions{$_})} sort keys %filterOptions));
   exit;
 } 
 

@@ -22,13 +22,12 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   return if defined $hash->{primary_key};
   ## simplfy id column headers for this Reader code
-  for my $idcol (qw/subj_id visitdate visnum dfseq/){
+  foreach my $idcol (qw/subj_id visitdate visnum dfseq/){
     my ($realCol) = grep { /$idcol/ } keys %$hash;
     next unless defined($realCol);
-    #$self->debug("idcol $idcol => $realCol");
     $hash->{$idcol} = $hash->{$realCol};
   }
-  unless($hash->{subj_id}){ $self->skipRow($hash); return; }
+  unless(defined($hash->{subj_id})){ $self->skipRow($hash); return; }
   # if($hash->{dob} && $hash->{dob} eq '.u'){ printf STDERR ("%s has garbage dob\n", $self->getMetadataFile()) }
   foreach my $k (keys %$hash){
     next unless defined($hash->{$k});
@@ -44,7 +43,7 @@ sub cleanAndAddDerivedData {
     if($year && $mon && $day){
       $hash->{$col} = $self->formatDate(sprintf("%04d-%s-%02d", $year, $mon, $day));
     }
-    else { delete $hash->{$col} }
+    else { printf STDERR ("Bad date: $hash->{$col}"); delete $hash->{$col} }
   }
 }
 
@@ -138,6 +137,13 @@ sub getPrimaryKeyPrefix {
 	return "h";
 }
 
+#sub cleanAndAddDerivedData {
+#  my ($self, $hash) = @_;
+#  if(defined($hash->{primary_key})){ return }
+#  $self->SUPER::cleanAndAddDerivedData($hash);
+#  $hash->{country} = 'Mali';
+#}
+
 1;
 
 package ClinEpiData::Load::CromptonReader::ParticipantReader;
@@ -204,6 +210,15 @@ sub getPrimaryKeyPrefix {
   }
 	return "h";
 }
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  if(defined($hash->{primary_key})){ return }
+  $self->SUPER::cleanAndAddDerivedData($hash);
+  $hash->{country} = 'Mali';
+  if(defined($hash->{subj_id})){
+    $self->applyMappedIRI($hash);
+  }
+}
 
 1;
 
@@ -229,12 +244,20 @@ sub makePrimaryKey {
   if(defined($hash->{primary_key})) {
     return $hash->{primary_key};
   }
-  return unless($hash->{subj_id});
+  my $id = $self->getId($hash);
+  return unless defined($id);
+  my @idcols = ('visitdate', 'visnum', 'dfseq');
+  unless(
+    defined($hash->{visitdate}) || defined($hash->{visnum})|| defined($hash->{dfseq})){
+    my @vals = map { $hash->{$_} || '-' } @idcols;
+    printf STDERR ("cannot make key:%s:%s\n",join(",",@idcols), join(",", @vals));
+  }
   my $visit = sprintf("%04d", $hash->{visnum} || $hash->{dfseq} || "0");
   $hash->{visitdate} =~ s/^(\s+|nd|\*)$// if $hash->{visitdate};
   my $date = "na";
   $date = $self->formatDate($hash->{visitdate}) if $hash->{visitdate};
-  return sprintf("%s_%s_%s", $self->getId($hash), $date, $visit);
+  my $oid = sprintf("%s_%s_%s", $id, $date, $visit);
+  return $oid;
 }
 
 sub getPrimaryKeyPrefix {
@@ -246,24 +269,11 @@ sub getPrimaryKeyPrefix {
 }
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  return if defined($hash->{primary_key});
-# my $prefix = $self->getMetadataFileLCB();
-# my %idIRI = (
-#   eupath_0000095 => 'subj_id',
-#   eupath_0004991 => 'visitdate',
-#   bfo_0000015 => 'visnum',
-# ); 
-# map { $hash->{ $idIRI{$_} } = $hash->{$_} } keys %idIRI;
-# # $self->debug($prefix . "\n" . Dumper($hash));exit;
-# foreach my $idvar ( qw/subj_id visitdate visnum dfseq/ ){
-#   next if(defined($hash->{$idvar}));
-#   my $key = join("::", $prefix, $idvar);
-#   $hash->{$idvar} ||= $hash->{$key} if defined $hash->{$key};
-# }
-# return unless($hash->{subj_id});
+  if(defined($hash->{primary_key})){ printf STDERR ("No CLEANING will be done"); return; }
   $self->SUPER::cleanAndAddDerivedData($hash);
-  unless($self->getId($hash)) { $self->skipRow($hash) }
-  else { $self->applyMappedIRI($hash) }
+  if(defined($hash->{subj_id})){
+    $self->applyMappedIRI($hash);
+  }
 }
 
 1;

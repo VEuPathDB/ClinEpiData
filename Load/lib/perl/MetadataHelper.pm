@@ -32,7 +32,7 @@ sub getOntologyMapping { $_[0]->{_ontology_mapping} }
 sub setOntologyMapping { $_[0]->{_ontology_mapping} = $_[1] }
 
 sub new {
-  my ($class, $type, $metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName) = @_;
+  my ($class, $type, $metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName, $readerConfig) = @_;
 
   eval "require $packageName";
   die $@ if $@;  
@@ -67,7 +67,7 @@ sub new {
     my $readerClass = $packageName. "::" . $type . "Reader";
 
    my $reader = eval {
-     $readerClass->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFile);
+     $readerClass->new($metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFile, $readerConfig);
    };
     die $@ if $@;
 

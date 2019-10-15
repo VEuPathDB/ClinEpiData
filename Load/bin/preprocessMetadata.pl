@@ -13,7 +13,7 @@ use CBIL::Util::PropertySet;
 use Data::Dumper;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $INVESTIGATION_FILE = "investigationFile";
@@ -32,6 +32,7 @@ my $ONTOLOGY_OWL_FILE = "ontologyOwlFile";
 my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 my $IS_MERGED =  "isMerged";
+my $READER_CONFIG =  "readerConfig";
 
 &GetOptions(
 	'help|h' => \$help,
@@ -52,6 +53,7 @@ my $IS_MERGED =  "isMerged";
   "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
   "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
 	"m|$IS_MERGED" => \$isMerged,
+  "$READER_CONFIG=s" => \$readerConfig,
 );
 
 
@@ -77,6 +79,8 @@ if(-e $propFile) {
   $valueMappingFile ||= $properties->{props}->{$VALUE_MAPPING_FILE};
   $dateObfuscationFile ||= $properties->{props}->{$DATE_OBFUSCATION_FILE};
   $isMerged ||= $properties->{props}->{$IS_MERGED};
+  $readerConfig ||= $properties->{props}->{$READER_CONFIG};
+  $readerConfig = eval($readerConfig) if defined($readerConfig);
 
   unless(scalar @metadataFiles > 0) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};
@@ -135,7 +139,7 @@ unless($packageName) {
   $packageName = "ClinEpiData::Load::MetadataReader";
 }
 
-my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName);
+my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName, $readerConfig);
 
 #my $validator = ClinEpiData::Load::MetadataValidator->new($parentMergedFile, $ontologyMappingXmlFile);
 

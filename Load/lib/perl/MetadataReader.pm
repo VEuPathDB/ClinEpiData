@@ -27,7 +27,11 @@ sub setNestedReaders { $_[0]->{_nested_readers} = $_[1] }
 sub getAncillaryData { $_[0]->{_ancillary_data} }
 sub setAncillaryData { $_[0]->{_ancillary_data} = $_[1] }
 
+sub getConfig { return $_[0]->{_CONFIG}->{$_[1]} }
+sub setConfig { $_[0]->{_CONFIG}->{$_[1]} = $_[2] }
+
 sub cleanAndAddDerivedData {}
+sub updateConfig {}
 
 sub readAncillaryInputFile {
   die "Ancillary File provided bun no method implemented to read it.";
@@ -87,7 +91,7 @@ sub getDelimiter {
 
 
 sub new {
-  my ($class, $metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFile) = @_;
+  my ($class, $metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFile, $config) = @_;
 
   my $self = bless {}, $class;
 
@@ -102,7 +106,7 @@ sub new {
 
     $self->setAncillaryData($ancillaryData);
   }
-
+  $self->{_CONFIG} = $config;
   return $self;
 }
 
@@ -115,13 +119,19 @@ sub splitLine {
   return wantarray ? @a : \@a;
 }
 
+sub getMetadataFileLCB {
+  return lc(fileparse($_[0]->getMetadataFile(), qr/\.[^.]+$/));
+}
 
 sub read {
   my ($self) = @_;
+  $self->updateConfig();
   my $metadataFile = $self->getMetadataFile();
-  my ($fileBasename) = lc(fileparse($metadataFile, qr/\.[^.]+$/));
+  my ($fileBasename) = $self->getMetadataFileLCB();
   my $colExcludes = $self->getColExcludes();
   my $rowExcludes = $self->getRowExcludes();
+  my $forceFilePrefix = $self->getConfig('forceFilePrefix');
+  my $cleanFirst = $self->getConfig('cleanFirst');
   open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
   my $header = <FILE>;
   $header =~s/\n|\r//g;
@@ -137,12 +147,14 @@ sub read {
     my %rowData;
     for(my $i = 0; $i < scalar @$headersAr; $i++) {
       my $key = lc($headersAr->[$i]);
+      if($forceFilePrefix){ $key = join("::", $fileBasename, $key) }
       my $value = lc($valuesAr->[$i]);
       next if($value eq '[skipped]');
       $rowData{$key} = $value if(defined $value);
     }
     my $rowMulti = $self->rowMultiplier(\%rowData);
     foreach my $hash ( @$rowMulti ) {
+       $self->cleanAndAddDerivedData($hash) if $cleanFirst;
        my $primaryKey = $self->makePrimaryKey($hash);
        my $parent = $self->makeParent($hash);
        next if($self->skipIfNoParent() && !$parent);
@@ -158,7 +170,7 @@ sub read {
        if(defined($rowExcludes->{lc($primaryKey)}) && ($rowExcludes->{lc($primaryKey)} eq $fileBasename) || ($rowExcludes->{lc($primaryKey)} eq '__ALL__')){
          next;
        }
-       $self->cleanAndAddDerivedData($hash);
+       $self->cleanAndAddDerivedData($hash) unless $cleanFirst;
        foreach my $key (keys %$hash) {
          next if(defined($colExcludes->{$fileBasename}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
          next unless defined $hash->{$key}; # skip undef values
@@ -261,11 +273,13 @@ sub formatDate {
   my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");
 
   unless($formattedDate) {
-    die "Date Format not supported for $date\n";
+    die "Date Format not supported for [$date]\n";
   }
 
   return $formattedDate;
 }
+
+sub debug { printf STDERR ("DEBUG: %s\n", $_[1]) }
 
 1;
 

@@ -398,6 +398,7 @@ sub writeInvestigationTree {
 
   my %data;
   my %qualifierToHeaderNames;
+  my $totalRows = 0;
 
 
   foreach my $study (@$studies) {
@@ -413,7 +414,7 @@ sub writeInvestigationTree {
       }
 
       my $nodes = $study->getNodes();
-
+      $totalRows += scalar @$nodes;
 
       foreach my $node (@$nodes) {
         if($node->hasAttribute("MaterialType")) {
@@ -497,7 +498,7 @@ sub writeInvestigationTree {
     }
     else {
 			printf STDERR ("%d values %d distinct in %s %s\n", $total, $size, $sourceId, join(",", @altQualifiers) || "");
-			if(0){ # do not print huge list
+			if($size == $totalRows){ # do not print values when they are 1:1 
         $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
 			}
 			else {
@@ -536,12 +537,12 @@ sub writeInvestigationTree {
   #print Dumper $treeHashRef;
   my $json_text;
   eval {
-      $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1, canonical=>[0]});
+    $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1, canonical=>[0]});
   };
   if ($@){
-       print STDERR  Dumper $treeHashRef;
-       die "could not make tree.";     
-}
+    print STDERR  Dumper $treeHashRef;
+    die "could not make tree.";     
+  }
 
 
  # my $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});

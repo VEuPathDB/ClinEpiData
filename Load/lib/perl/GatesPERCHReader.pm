@@ -130,22 +130,7 @@ sub getPrimaryKeyPrefix {
 }
 
 
-=head
-sub makePrimaryKey {
-    my ($self, $hash) = @_;  
 
-    if($hash->{enrldate}){
-	$hash->{enrldate_obs} = $hash->{enrldate};
-	$hash->{enrldate} = undef;
-    }
-
-    my $date = $hash->{enrldate_obs};
-
-    $date= $self->formatdate($date);
-    return $hash->{patid} . "_" . $date;
-
-}
-=cut
 sub adjustHeaderArray {
     my ($self, $ha) = @_;
     my $colExcludes = $self->getColExcludes();
@@ -155,18 +140,33 @@ sub adjustHeaderArray {
     my @visit30days = grep (/^csf|30d$/i,@$ha);
     my @newcolExcludes=(@visit24hr,@visit48hr,@visit30days);
     
-#print Dumper \@newcolExcludes;                                                                                                    #exit;                                                                                                                            
 
     foreach my $newcol (@newcolExcludes){
 	$newcol=lc($newcol);
 	$colExcludes->{'__ALL__'}->{$newcol}=1;
     }
-#print Dumper $colExcludes;                                                                                                       
+
     return $ha;
 }
 
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
+
+    $hash->{observation_type}="enrollment";
+
+
+    my $file =  basename $self->getMetadataFile();
+
+    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+	$hash->{enrldate} = undef;
+	
+    }
+
+    if ($file eq "_lab_rev_de.txt"){
+	$hash->{_prabxur_3_lab_rev} = $hash->{_prabxur_3};
+	$hash->{_prabxur_3} = undef;
+    }
+
 
     if(defined($hash->{enrldate})){
 
@@ -180,7 +180,11 @@ sub cleanAndAddDerivedData {
 	$time =~ s/^0:/12:/;
 	$time = UnixDate(ParseDate($time), "%H%M");
 	$time ||= '0000';
+    }
 
+
+    if ($file eq "_clin_rev_de.txt"){
+	$hash->{_muc} = ($hash->{_muc})/10;
     }
 
 }
@@ -192,6 +196,9 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit24hrReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
+use Data::Dumper;
+
 
 sub makeParent {
     my ($self, $hash) = @_;
@@ -211,58 +218,22 @@ sub getPrimaryKeyPrefix {
     return "visit24h_";
 }
 
-=head
-sub makePrimaryKey {
-    my ($self, $hash) = @_;  
-
-    my $date= $hash->{cfuvisdt24};
-    $date= $self->formatdate($date);
-    return $date ? $hash->{patid} . "_" . $date . "_" . "24hr" : $hash->{patid} . "_" . "24hr";
-
-}
-=cut
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    if(defined($hash->{enrldate})){
+    $hash->{observation_type}="24 hour follow-up";
 
-            $hash->{enrldate_obs} = $hash->{enrldate};
-            $hash->{enrldate} = undef;
+    my $file =  basename $self->getMetadataFile();
+
+    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+	$hash->{csffudt} = undef;
     }
+
 }
 
 
 
 1;
-=head
-sub makeParent {
-    my ($self, $hash) = @_;  
-
-    if(defined($hash->{enrldate})){
-	$hash->{enrldate_obs} = $hash->{enrldate};
-	$hash->{enrldate} = undef;
-    }
-
-    my  $date=$hash->{enrldate_obs};
-
-    $date= $self->formatdate($date);
-    return $date ? $hash->{patid} . "_" . $date : $hash->{patid};
-
-}
-
-sub makePrimaryKey {
-    my ($self, $hash) = @_;  
-
-    if(defined($hash->{cfuvisdt24})){
-	$hash->{cfuvisdt24} = $hash->{cfuvisdt24};
-    }
-
-    my $date= $hash->{cfuvisdt24};
-    $date= $self->formatdate($date);
-    return $date ? $hash->{patid} . "_" . $date . "_" . "24hr" : $hash->{patid} . "_" . "24hr";
-
-}
-=cut
 
 =head
 sub makePrimaryKey {
@@ -326,6 +297,8 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
+    $hash->{observation_type}="48 hour follow-up";
+
     if(defined($hash->{enrldate})){
 
             $hash->{enrldate_obs} = $hash->{enrldate};
@@ -340,6 +313,9 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit30dayReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
+use Data::Dumper;
+
 
 sub makeParent {
     my ($self, $hash) = @_;
@@ -361,6 +337,15 @@ sub getPrimaryKeyPrefix {
 
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
+
+    $hash->{observation_type}="30 day follow-up";
+
+
+    my $file =  basename $self->getMetadataFile();
+
+    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+	$hash->{csffudt} = undef;
+    }
 
     if(defined($hash->{enrldate})){
 

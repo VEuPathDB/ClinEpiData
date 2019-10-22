@@ -152,7 +152,7 @@ sub adjustHeaderArray {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    $hash->{observation_type}="enrollment";
+    $hash->{observation_type}="Enrollment";
 
 
     my $file =  basename $self->getMetadataFile();

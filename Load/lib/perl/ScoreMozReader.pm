@@ -118,6 +118,7 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   return if(defined($hash->{primary_key})); 
+  $hash->{$_} =~ s/^\s+$// for keys %$hash;
   $hash->{village_study_year} = $hash->{study_year};
 }
 

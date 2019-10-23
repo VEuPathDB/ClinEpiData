@@ -166,7 +166,7 @@ sub cleanAndAddDerivedData {
 
     if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
 	$hash->{enrldate} = undef;
-	
+	$hash->{cdcdisdt} = undef;
     }
 
     if ($file eq "_lab_rev_de.txt"){
@@ -366,7 +366,9 @@ sub cleanAndAddDerivedData {
 
     if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
 	$hash->{csffudt} = undef;
+	$hash->{csfvitst} = undef;
     }
+
 
     if(defined($hash->{enrldate})){
 

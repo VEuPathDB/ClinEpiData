@@ -185,7 +185,21 @@ sub cleanAndAddDerivedData {
 
     if ($file eq "_clin_rev_de.txt"){
 	$hash->{_muc} = ($hash->{_muc})/10;
+	$hash->{chxotasp} = ucfirst $hash->{chxotasp};
+	$hash->{chxotbsp} = ucfirst $hash->{chxotbsp};
     }
+
+    if ($file eq "cdc.txt"){
+	$hash->{cdcodbsp} = ucfirst $hash->{cdcodbsp};
+	$hash->{cdcoebsp} = ucfirst $hash->{cdcoebsp};
+	$hash->{cdcofbsp} = ucfirst $hash->{cdcofbsp};
+    }
+    if ($file eq "csa.txt"){
+	$hash->{csadx1sp} = ucfirst $hash->{csadx1sp};
+	$hash->{csadx2sp} = ucfirst $hash->{csadx2sp};
+	$hash->{csadx3sp} = ucfirst $hash->{csadx3sp};
+    }
+
 
 }
 

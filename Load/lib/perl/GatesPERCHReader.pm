@@ -91,6 +91,11 @@ sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
     my $file =  basename $self->getMetadataFile();
 
+    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+	$hash->{enrldate} = undef;
+	
+    }
+
     if(defined($hash->{enrldate})){
             $hash->{enrldate_par} = $hash->{enrldate};
             $hash->{enrldate} = undef;
@@ -100,6 +105,8 @@ sub cleanAndAddDerivedData {
 	my $date = $hash->{cmrdthdt};
 	return undef unless $date;
     }
+
+
 
  }
 

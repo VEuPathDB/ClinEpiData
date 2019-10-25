@@ -1,9 +1,10 @@
 package ClinEpiData::Load::IcemrSouthAsiaReader;
-use base qw(ClinEpiData::Load::MetadataReader);
+use base qw(ClinEpiData::Load::MetadataReaderXT);
 use Data::Dumper;
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+  $self->applyMappedValues($hash);
 	for my $field ((
 		'x12._temperature_reading_date',
 		'x30._antimalarial_therapy_initiation_at_gmc_date',
@@ -151,6 +152,7 @@ my %remap = (
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
+  return if defined($hash->{primary_key});
   $self->SUPER::cleanAndAddDerivedData($hash);
 	if(defined($hash->{primary_key})){ return } ## I am doing getParentParsedOutput() in SampleReader
 	while(my ($a,$b) = each(%remap)){

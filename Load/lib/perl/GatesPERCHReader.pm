@@ -28,15 +28,14 @@ sub cleanAndAddDerivedData {
 
 package ClinEpiData::Load::GatesPERCHReader::HouseholdReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
 use Data::Dumper;
 use strict;
-
 
 sub makeParent {
     my ($self, $hash) = @_;
     return undef;
 }
-
 
 sub makePrimaryKey {
     my ($self, $hash) = @_;
@@ -46,7 +45,6 @@ sub makePrimaryKey {
 	return undef;
     }
 }
-
 
 sub getPrimaryKeyPrefix {
     my ($self, $hash) = @_;
@@ -91,7 +89,7 @@ sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
 	$hash->{enrldate} = undef;
 	
     }
@@ -164,9 +162,10 @@ sub cleanAndAddDerivedData {
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
 	$hash->{enrldate} = undef;
 	$hash->{cdcdisdt} = undef;
+	$hash->{csahr} = undef;
     }
 
     if ($file eq "_lab_rev_de.txt"){
@@ -196,12 +195,12 @@ sub cleanAndAddDerivedData {
 	$hash->{chxotbsp} = ucfirst $hash->{chxotbsp};
     }
 
-    if ($file eq "cdc.txt"){
+    if ($file eq "cdc_R.txt"){
 	$hash->{cdcodbsp} = ucfirst $hash->{cdcodbsp};
 	$hash->{cdcoebsp} = ucfirst $hash->{cdcoebsp};
 	$hash->{cdcofbsp} = ucfirst $hash->{cdcofbsp};
     }
-    if ($file eq "csa.txt"){
+    if ($file eq "csa_R.txt"){
 	$hash->{csadx1sp} = ucfirst $hash->{csadx1sp};
 	$hash->{csadx2sp} = ucfirst $hash->{csadx2sp};
 	$hash->{csadx3sp} = ucfirst $hash->{csadx3sp};
@@ -246,7 +245,7 @@ sub cleanAndAddDerivedData {
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
 	$hash->{csffudt} = undef;
     }
 
@@ -364,7 +363,7 @@ sub cleanAndAddDerivedData {
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc.txt" || $file eq "csa.txt" || $file eq "csf.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
 	$hash->{csffudt} = undef;
 	$hash->{csfvitst} = undef;
     }

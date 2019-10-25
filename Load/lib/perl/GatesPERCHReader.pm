@@ -224,11 +224,12 @@ sub makeParent {
     my ($self, $hash) = @_;
     return $hash->{patid};
 }
+=head
 sub getParentPrefix {
     my ($self, $hash) = @_;
     return "O_";
 }
-
+=cut
 sub makePrimaryKey {
     my ($self, $hash) = @_;
     return $hash->{patid};
@@ -255,44 +256,6 @@ sub cleanAndAddDerivedData {
 
 1;
 
-=head
-sub makePrimaryKey {
-    my ($self, $hash) = @_;
-
-    my $date;
-    if (defined $hash->{cfuvisdt24}){
-        $date=$hash->{cfuvisdt24};
-    }
-    else {
-        die 'Could not find the visit24hr date';
-    }
-
-    $date= $self->formatdate($date);
-    return $hash->{patid} . "_" . $date . "_" . "24hr";
-}
-
-sub adjustHeaderArray {
-    my ($self, $ha) = @_;
-    my $colExcludes = $self->getColExcludes();
-
-    my @visit48hr = grep (/48$/i,@$ha);
-    my @visit30days = grep (/^csf|30d$/i,@$ha);
-    my @newcolExcludes=(@visit48hr,@visit30days);
-    
-    print Dumper \@newcolExcludes;                                                                                                    exit;                                                                                                                            
-
-    foreach my $newcol (@newcolExcludes){
-	$newcol=lc($newcol);
-	$colExcludes->{'__ALL__'}->{$newcol}=1;
-    }
-    return $ha;
-}
-
-=cut
-
-
-
-
 package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit48hrReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
 
@@ -300,11 +263,12 @@ sub makeParent {
     my ($self, $hash) = @_;
     return $hash->{patid};
 }
+=head
 sub getParentPrefix {
     my ($self, $hash) = @_;
     return "O_";
 }
-
+=cut
 sub makePrimaryKey {
     my ($self, $hash) = @_;
     return $hash->{patid};
@@ -341,11 +305,12 @@ sub makeParent {
     my ($self, $hash) = @_;
     return $hash->{patid};
 }
+=head
 sub getParentPrefix {
     my ($self, $hash) = @_;
     return "O_";
 }
-
+=cut
 sub makePrimaryKey {
     my ($self, $hash) = @_;
     return $hash->{patid};

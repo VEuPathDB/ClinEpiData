@@ -53,7 +53,7 @@ sub getPrimaryKeyPrefix {
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{hhobservationprotocol}="enrollment";
+    $hash->{hhobservationprotocol}="Enrollment";
 
 }
 
@@ -181,7 +181,7 @@ sub adjustHeaderArray {
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
     
-    $hash->{observationprotocol}="enrollment";
+    $hash->{observationprotocol}="Enrollment";
     
     Date_Init("DateFormat=US");
 

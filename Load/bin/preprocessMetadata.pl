@@ -76,11 +76,23 @@ if(-e $propFile) {
   $ontologyMappingXmlFile ||= $properties->{props}->{$ONTOLOGY_MAPPING_XML_FILE};
 
   $ontologyOwlFile ||= $properties->{props}->{$ONTOLOGY_OWL_FILE};
+  unless(-e $ontologyOwlFile){
+    $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
+  }
   $valueMappingFile ||= $properties->{props}->{$VALUE_MAPPING_FILE};
   $dateObfuscationFile ||= $properties->{props}->{$DATE_OBFUSCATION_FILE};
   $isMerged ||= $properties->{props}->{$IS_MERGED};
   $readerConfig ||= $properties->{props}->{$READER_CONFIG};
-  $readerConfig = eval($readerConfig) if defined($readerConfig);
+  if(defined($readerConfig)){
+    if(-e $readerConfig){
+      open(FH, "<$readerConfig") or die "$!Cannot read $readerConfig:$!\n";
+      my @lines = <FH>;
+      $readerConfig = eval (join("", @lines));
+    }
+    else {
+      $readerConfig = eval($readerConfig) if defined($readerConfig);
+    }
+  }
 
   unless(scalar @metadataFiles > 0) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};

@@ -46,13 +46,13 @@ sub applyMappedValues {
 }
 
 sub applyMappedIRI {
-  my ($self,$hash) = @_;
+  my ($self,$hash,$keep) = @_;
   my $anc = $self->getAncillaryData();
   while(my ($col, $val) = each %$hash){
     my $iri = $anc->{iri}->{$col};
     if($iri){
       $hash->{$iri} = $hash->{$col};
-      delete($hash->{$col});
+      delete($hash->{$col}) unless $keep;
     }
   }
 }

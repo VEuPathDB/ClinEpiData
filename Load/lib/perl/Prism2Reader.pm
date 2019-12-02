@@ -134,6 +134,14 @@ sub cleanAndAddDerivedData {
   if($hash->{date}) {
     $hash->{collectiondate} = $hash->{date};
   }
+ #foreach my $var (qw/trapcollected trapset/){
+ #  if(defined($hash->{$var})){
+ #    my $hr = sprintf("%d", $hash->{$var} / 100);
+ #    my $min = $hash->{$var} % 100;
+ #    $min = $min / 100;
+ #    $hash->{$var} = sprintf('%.03f',$hr + $min);
+ #  }
+ #}
 }
 
 

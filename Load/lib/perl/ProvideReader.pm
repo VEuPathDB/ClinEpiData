@@ -156,34 +156,6 @@ sub makePrimaryKey {
 
 1;
 
-package ClinEpiData::Load::ProvideReader::HouseholdObservationReader;
-use base qw(ClinEpiData::Load::ProvideReader::ParticipantReader);
-use strict;
-use warnings;
-use Data::Dumper;
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  my $visit = $hash->{visnum} || $hash->{dfseq} || "0";
-  my $id = $self->getId($hash);
-  return unless defined($id);
-  #die "No ID " . Dumper $hash unless defined $id; 
-  return sprintf("%s_%04d", $self->getId($hash), $visit);
-}
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "h";
-}
-
-1;
-
 
 package ClinEpiData::Load::ProvideReader::ObservationReader;
 use base qw(ClinEpiData::Load::ProvideReader);
@@ -221,11 +193,20 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   if(defined($hash->{primary_key})){ return }
   $self->SUPER::cleanAndAddDerivedData($hash);
-  foreach my $var (qw/ext_bv_dir_st::dov ext_mgmt_bv_ddep_st::epidate ext_bv_dep_st::dedt ext_bv_dep_st::dedt/){
-    if(defined($hash->{$var})){
-      $hash->{$var} = $self->formatDate($hash->{$var},"US");
-    }
-  }
+  $self->applyMappedIRI($hash,1);
+
+  $self->applyMappedValues($hash);
+
+ #if(defined($hash->{observation_date})){
+ #  $hash->{observation_date} = $self->formatDate($hash->{observation_date},"US");
+ #}
+
+ foreach my $var (qw/ext_bv_dir_st::dov ext_mgmt_bv_ddep_st::epidate ext_bv_dep_st::dedt ext_bv_dep_st::dedt/){
+   if(defined($hash->{$var})){
+     $hash->{$var} = $self->formatDate($hash->{$var},"US");
+   }
+ }
+
 }
 
 1;
@@ -278,6 +259,7 @@ sub cleanAndAddDerivedData {
   foreach my $var (@dateVars){
     if(defined($hash->{$var}) && ($hash->{$var} ne "na")){
       $hash->{$var} = $self->formatDate($hash->{$var},"US");
+      if($hash->{$var} eq '1999-09-09'){ delete $hash->{$var} }
     }
   }
   $self->SUPER::cleanAndAddDerivedData($hash);

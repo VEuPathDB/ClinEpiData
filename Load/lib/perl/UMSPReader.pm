@@ -23,7 +23,7 @@ sub makePrimaryKey {
   }
   #return $self->getId($hash);
   my $id = sprintf("%s%09d%09d",substr($hash->{site},0,4),$hash->{parish},$hash->{village});
-  print STDERR "$id\n";
+#  print STDERR "$id\n";
   return $id;
 }
 

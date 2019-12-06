@@ -8,12 +8,12 @@ sub formatdate{
     return $date;
 }
 
-
+=head
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
         for my $field ((
-                'seaettm','clalatm','spfpftm'
+                'seaettm','clalatm','spfpftm', 'cam1abtm'
 		       )){
 	    if(defined($hash->{$field}) &&
 	       $hash->{$field} eq 'na'){
@@ -24,7 +24,7 @@ sub cleanAndAddDerivedData {
 }
 
 1;
-
+=cut
 
 package ClinEpiData::Load::GatesPERCHReader::HouseholdReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
@@ -89,7 +89,8 @@ sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt" || $file eq "cfu.txt" || $file eq "lrt.txt")
+    {
 	$hash->{enrldate} = undef;
 	
     }
@@ -157,12 +158,12 @@ sub adjustHeaderArray {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    $hash->{observation_type}="Enrollment";
+    $hash->{observation_type}="1) Enrollment";
 
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt" || $file eq "cfu.txt" || $file eq "lrt.txt"){
 	$hash->{enrldate} = undef;
 	$hash->{cdcdisdt} = undef;
 	$hash->{csahr} = undef;
@@ -180,15 +181,14 @@ sub cleanAndAddDerivedData {
             $hash->{enrldate} = undef;
     }
 
+=head
     if(defined ($hash->{'cam1abtm'})){
-
 	my $time = $hash->{'cam1abtm'};
 	$time =~ s/^0:/12:/;
 	$time = UnixDate(ParseDate($time), "%H%M");
 	$time ||= '0000';
     }
-
-
+=cut
     if ($file eq "_clin_rev_de.txt"){
 	$hash->{_muc} = ($hash->{_muc})/10;
 	$hash->{chxotasp} = ucfirst $hash->{chxotasp};
@@ -205,7 +205,6 @@ sub cleanAndAddDerivedData {
 	$hash->{csadx2sp} = ucfirst $hash->{csadx2sp};
 	$hash->{csadx3sp} = ucfirst $hash->{csadx3sp};
     }
-
 
 }
 
@@ -224,7 +223,7 @@ sub makeParent {
     my ($self, $hash) = @_;
     return $hash->{patid};
 }
-=head
+=head -- here we changed its PARENT to Participant instead of Observation !!!!!!!!!!!!!!!!!!!!!!!
 sub getParentPrefix {
     my ($self, $hash) = @_;
     return "O_";
@@ -242,22 +241,26 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    $hash->{observation_type}="24 hour follow-up";
+    $hash->{observation_type}="2) 24 hour follow-up";
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"|| $file eq "cfu_24h.txt" || $file eq "cfu_48h.txt"|| $file eq "lrt.txt"){
 	$hash->{csffudt} = undef;
     }
-
+ 
+    if($file eq "cfu_24h.txt"){
+	$hash->{cfumvent_24h} = $hash->{cfumvent};
+	$hash->{cfumvent} = undef;
+	
+    }
 }
-
-
 
 1;
 
 package ClinEpiData::Load::GatesPERCHReader::SubObservationVisit48hrReader;
 use base qw(ClinEpiData::Load::GatesPERCHReader);
+use File::Basename;
 
 sub makeParent {
     my ($self, $hash) = @_;
@@ -281,13 +284,16 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    $hash->{observation_type}="48 hour follow-up";
+    $hash->{observation_type}="3) 48 hour follow-up";
 
-    if(defined($hash->{enrldate})){
-
-            $hash->{enrldate_obs} = $hash->{enrldate};
-            $hash->{enrldate} = undef;
+    my $file =  basename $self->getMetadataFile();
+    
+    if($file eq "cfu_48h.txt"){
+	$hash->{cfumvent_48h} = $hash->{cfumvent};
+	$hash->{cfumvent} = undef;
+	
     }
+    
 }
 
 
@@ -323,22 +329,21 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
 
-    $hash->{observation_type}="30 day follow-up";
+    $hash->{observation_type}="4) 30 day follow-up";
 
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"){
+    if ($file eq "cdc_R.txt" || $file eq "csa_R.txt" || $file eq "csf_R.txt"|| $file eq "cfu.txt" || $file eq "lrt.txt"){
 	$hash->{csffudt} = undef;
 	$hash->{csfvitst} = undef;
     }
 
-
-    if(defined($hash->{enrldate})){
-
-            $hash->{enrldate_obs} = $hash->{enrldate};
-            $hash->{enrldate} = undef;
+    if ($file eq "csf_R.txt"){
+	$hash->{csfarmci} = ($hash->{csfarmci})/10;
     }
+
+
 }
 
 1;
@@ -397,12 +402,6 @@ sub cleanAndAddDerivedData {
 	if( ($hash->{is_nt} ==9) && ($hash->{is_hinf} ==9)){
 	    $hash->{is_hinf_nt_all} = 9;
 	    
-	   # $hash->{is_nt_hinf_st} = $hash->{is_nt};
-	   # $hash->{is_nt} = undef;
-	    
-	    #$hash->{is_nt_hinf_st} = undef;
-	    #$hash->{is_hinf} = undef;
-	    
 	}elsif(($hash->{is_nt} == 1) || ($hash->{is_hinf} == 1)){
 	    $hash->{is_hinf_nt_all} = 1;
 	    
@@ -432,9 +431,11 @@ sub cleanAndAddDerivedData {
 	#$hash->{is_b} = undef;
 	#$hash->{is_hinb} = undef;
 
+	    
     }
 
 ############## we may don't need the following in PERCH
+=head
     if(defined ($hash->{'seaettm'} || $hash->{'clalatm'} || $hash->{'spfpftm'})){
 
     my $time = $hash->{'seaettm'} || $hash->{'clalatm'} || $hash->{'spfpftm'};
@@ -445,6 +446,7 @@ sub cleanAndAddDerivedData {
     }
 
 
+=cut
 }
 
 

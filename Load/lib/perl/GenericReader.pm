@@ -4,10 +4,12 @@ use base qw(ClinEpiData::Load::MetadataReaderXT);
 use strict;
 use warnings;
 use Data::Dumper;
+my $DEBUG=0;
 
 sub updateConfig {
   my ($self) = @_;
   my $idMappingFile = $self->getConfig('idMappingFile');
+  my $noFilePrefix = $self->getConfig('noFilePrefix');
   if($idMappingFile){
     open(FH, "<", $idMappingFile) or die "Cannot open $idMappingFile:$!\n";
     my $idMap = {};
@@ -20,7 +22,13 @@ sub updateConfig {
       my @cols = split(/\//,lc($col));
       for (my $i = 0; $i < @types; $i++){
         unless($types[$i] && $cols[$i]){ print STDERR "WARN: check syntax on row:\n$row\n" }
-        my(@idCols) = map { join("::", $mdfile, $_) } split(/\+/, $cols[$i]);
+        my @idCols;
+        if($noFilePrefix){
+          (@idCols) = split(/\+/, $cols[$i]);
+        }
+        else{
+          (@idCols) = map { join("::", $mdfile, $_) } split(/\+/, $cols[$i]);
+        }
         $idMap->{$mdfile}->{$types[$i]} = \@idCols;
         $idMap->{idHash}->{$mdfile}->{$types[$i]}->{$_} = 1 for @idCols;
         
@@ -73,6 +81,7 @@ sub getId {
     push(@idValues,$val);
   }
   my $id = join("_", @idValues);
+  printf STDERR "ID: $id\n" if $DEBUG;
   return $id;
 }
 
@@ -80,17 +89,20 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   return if defined $hash->{primary_key};
   my $type = lc($self->getConfig('type'));
-  my $idMap = $self->getConfig('idMap');
   my $renameColumns = $self->getConfig('renameColumns');
   my $mdfile = $self->getMetadataFileLCB();
+# my $idMap = $self->getConfig('idMap');
 # unless(defined($idMap->{$mdfile}->{$type})){
 #   # print STDERR ("$type:$mdfile - deleting row\n");
 #   $self->skipRow($hash);
 #   return;
 # }
-  foreach my $var (keys %$hash){
-    $hash->{join("::",$mdfile,$var) } = $hash->{$var};
-    delete($hash->{$var});
+  my $noFilePrefix = $self->getConfig('noFilePrefix');
+  unless($noFilePrefix){
+    foreach my $var (keys %$hash){
+      $hash->{join("::",$mdfile,$var) } = $hash->{$var};
+      delete($hash->{$var});
+    }
   }
   if($renameColumns){
     $self->applyMappedIRI($hash,1);

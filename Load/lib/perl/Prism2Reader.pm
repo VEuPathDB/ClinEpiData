@@ -73,7 +73,7 @@ sub makePrimaryKey {
 }
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  foreach my $col ( qw/reenrolldate dow lastdate cause3 death participantdie r2malaria withdrawnreason/ ){
+  foreach my $col ( qw/reenrolldate dow lastdate cause3 death participantdie r2malaria withdrawnreason withdrawnreason2nd dow2nd/ ){
     next unless $hash->{$col} eq 'na';
     delete($hash->{$col});
   }

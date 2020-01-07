@@ -68,10 +68,10 @@ sub makePrimaryKey {
     #my $suffix = $self->getSuffix();                                                                                             
     return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
 
-sub cleanAndAddDerivedData{                                                                                                       
-    my ($self,$hash)=@_; 
-    if ($hash->{dom} eq "61b" || $hash->{dom} eq "35a" ) { for my $key ( keys %$hash ) { $hash->{$key} =~ s/^na$//; } } 
-}     
+#sub cleanAndAddDerivedData{                                                                                                       
+ #   my ($self,$hash)=@_; 
+ #   if ($hash->{dom} eq "61b" || $hash->{dom} eq "35a" ) { for my $key ( keys %$hash ) { $hash->{$key} =~ s/^na$//; } } 
+#}     
 
 
 =head
@@ -141,6 +141,19 @@ sub makePrimaryKey {
 
 sub getPrimaryKeyPrefix {
     return "O_";
+}
+
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    my $file =  basename $self->getMetadataFile();
+
+    if ($file eq "ICEMR1_Brazil_observation_05jul18z_st.csv" ){
+
+	$hash->{wave_obs} = $hash->{wave};
+	$hash->{wave} = undef;
+    }
 }
 
 1;

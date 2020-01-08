@@ -68,29 +68,14 @@ sub makePrimaryKey {
     #my $suffix = $self->getSuffix();                                                                                             
     return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
 
-#sub cleanAndAddDerivedData{                                                                                                       
- #   my ($self,$hash)=@_; 
- #   if ($hash->{dom} eq "61b" || $hash->{dom} eq "35a" ) { for my $key ( keys %$hash ) { $hash->{$key} =~ s/^na$//; } } 
-#}     
 
-
-=head
-sub getSuffix{                                                                                                                    
-    my ($self, $hash) = @_;                                                                                                      
-
-    return $hash->{wave};                                                                                                
-}
-=cut
-
-=head
-sub cleanAndAddDerivedData{
-    my ($self,$hash)=@_;
-    if ($hash->{wave} == 1){$hash->{wave}="enrollment";}
-    else $hash->{wave}="followup";
-
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    
+    $hash->{cob} = ucfirst($hash->{cob})
 
 }
-=cut
+
 1;
 
 
@@ -120,6 +105,40 @@ sub getParentPrefix {
     my ($self, $hash) = @_;
     return "HH";
 }
+
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    
+    $hash->{localnas} = ucfirst($hash->{localnas});
+    $hash->{occupa} = ucfirst($hash->{occupa});
+    $hash->{occupb} = ucfirst($hash->{occupb});
+    $hash->{lococcupa} = ucfirst($hash->{lococcupa});
+    $hash->{lococcupb} = ucfirst($hash->{lococcupb});
+    $hash->{rempa} = ucfirst($hash->{rempa});
+    $hash->{quelrema} = ucfirst($hash->{quelrema});
+    $hash->{rempb} = ucfirst($hash->{rempb});
+    $hash->{quelremb} = ucfirst($hash->{quelremb});
+    $hash->{motinta} = ucfirst($hash->{motinta});
+    $hash->{motintb} = ucfirst($hash->{motintb});
+    $hash->{motintc} = ucfirst($hash->{motintc});
+    $hash->{cidainta} = ucfirst($hash->{cidainta});
+    $hash->{cidaintb} = ucfirst($hash->{cidaintb});
+    $hash->{cidaintc} = ucfirst($hash->{cidaintc});
+    $hash->{estado1an} = ucfirst($hash->{estado1an});
+    $hash->{estado2an} = ucfirst($hash->{estado2an});
+    $hash->{estado3an} = ucfirst($hash->{estado3an});
+    $hash->{estado4an} = ucfirst($hash->{estado4an});
+    $hash->{estado5an} = ucfirst($hash->{estado5an});
+    $hash->{ocupb} = ucfirst($hash->{ocupb});
+    $hash->{ocupa} = ucfirst($hash->{ocupa});
+    $hash->{lococupa} = ucfirst($hash->{lococupa});
+    $hash->{lococupb} = ucfirst($hash->{lococupb});
+    $hash->{qualrema} = ucfirst($hash->{qualrema});
+    $hash->{qualremb} = ucfirst($hash->{qualremb});
+
+}
+
 
 1;
 
@@ -154,6 +173,19 @@ sub cleanAndAddDerivedData {
 	$hash->{wave_obs} = $hash->{wave};
 	$hash->{wave} = undef;
     }
+
+    $hash->{outr30d} = ucfirst($hash->{outr30d});
+    $hash->{outr7d} = ucfirst($hash->{outr7d});
+    $hash->{ordsin} = ucfirst($hash->{ordsin});
+    $hash->{remcasei} = ucfirst($hash->{remcasei});
+    $hash->{qrem} = ucfirst($hash->{qrem});
+    $hash->{qualmed} = ucfirst($hash->{qualmed});
+    $hash->{pq_itn} = ucfirst($hash->{pq_itn});
+    $hash->{desloc30d} = ucfirst($hash->{desloc30d});
+    $hash->{desloc6d} = ucfirst($hash->{desloc6d});
+    $hash->{localout} = ucfirst($hash->{localout});
+    $hash->{qualmeto} = ucfirst($hash->{qualmeto});
+
 }
 
 1;
@@ -180,6 +212,14 @@ sub makePrimaryKey {
 
 sub getPrimaryKeyPrefix {
     return "S_";
+}
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    $hash->{gametoci} = ucfirst($hash->{gametoci});
+
+
 }
 
 1;

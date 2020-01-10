@@ -116,8 +116,12 @@ foreach my $filter (@filters){
   #my @keys = $itr->binding_names;
   #printf ("%s\n", join("\t", @keys)) if @keys;
   while (my $row = $itr->next) {
-    my $col = pp($row->{col}->as_sparql);
     my $entity = lc(basename($row->{entity}->as_hash()->{iri}));
+    unless(defined($row->{col})){
+      printf STDERR ("WARNING: no column defined for %s\n", $entity);
+      next;
+    }
+    my $col = pp($row->{col}->as_sparql);
     $entities{$entity} = 1;
     my @cols;
     if($col =~ /,/){

@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib $ENV{GUS_HOME} . "/lib/perl";
+
+use ClinEpiData::Load::MetadataHelper;
+# use JSON;
+use File::Basename;
+
+my ($owlFile) = @ARGV;
+unless ( $owlFile ){
+  print "\nUsage: owl2txt [path/to/file.owl]\n\nCreates file.owl.txt in the current working directory\n\n";
+  exit;
+}
+unless( -f $owlFile){
+  print "$owlFile not found\n";
+  exit;
+}
+
+my $packageName = "ClinEpiData::Load::MetadataReader";
+my $metadataHelper = ClinEpiData::Load::MetadataHelper->new(undef, undef, undef, undef, undef, undef, undef, undef, $packageName);
+my $basename =basename($owlFile);
+
+my ($treeObjRoot, $nodeLookup) = $metadataHelper->makeTreeObjFromOntology($owlFile);
+open(FH, ">$basename.txt");
+print FH map { "$_\n" if defined($_) } @{$treeObjRoot->tree2string({no_attributes => 0, keep_all => 1})};
+close(FH);
+
+# open(FH, ">$basename.json");
+# bless($treeObjRoot, "ClinEpiData::Load::OntologyDAGNode");
+# my $treeHashRef = $treeObjRoot->transformToHashRef(1);
+# my $json_text = to_json($treeHashRef,{utf8=>1, pretty=>1});
+# print FH "$json_text\n";
+# close(FH);

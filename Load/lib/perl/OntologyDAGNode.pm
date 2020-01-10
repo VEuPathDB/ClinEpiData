@@ -1,8 +1,6 @@
 package ClinEpiData::Load::OntologyDAGNode;
 use parent 'Tree::DAG_Node';
 
-use Data::Dumper;
-
 sub format_node {
   my ($self, $options, $node) = @_;
 
@@ -34,7 +32,7 @@ sub node2string {
   my ($self, $options, $node, $vert_dashes) = @_;
 
   my $keep = $node->{attributes}->{keep};
-  unless($keep) {
+  unless($keep || $options->{keep_all}) {
     return undef;
   }
 

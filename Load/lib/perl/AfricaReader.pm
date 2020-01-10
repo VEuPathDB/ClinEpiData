@@ -133,6 +133,7 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	$self->SUPER::cleanAndAddDerivedData($hash);
 	$hash->{today_observation} = $hash->{today};
+	($hash->{today_month}) = split(/\//, $hash->{today});
 	delete $hash->{today};
 	if($hash->{age_months} > 0){
 		$hash->{age_years} = sprintf("%0.2f", $hash->{age_years} + ($hash->{age_months} / 12.0));

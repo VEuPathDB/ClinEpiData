@@ -28,7 +28,7 @@ sub makePrimaryKey {
   my ($self, $hash) = @_;
   #my $metadataFilename=$self->getMetadataFileLCB();
 
-  return $hash->{dom} .  "_" . $hash->{wave};
+  return $hash->{dom};
   #return $hash->{ $metadataFilename . "::dom" };
 }
 
@@ -54,16 +54,14 @@ use Data::Dumper;
 sub makeParent {
   my ($self, $hash) = @_;
 
-  return $hash->{dom} .  "_1" ;
+  return $hash->{dom} ;
 
  }
 
 
 sub makePrimaryKey {                                                                                                             
-    my ($self, $hash) = @_;                                                                                                      
-    my $file =  basename $self->getMetadataFile();
-    if ($file eq "HouseholdObservations.csv"){
-	return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
+    my ($self, $hash) = @_;
+    return $hash->{dom} .  "_" . $hash->{wave};                                                                               
 }
 
 
@@ -90,7 +88,7 @@ use Data::Dumper;
 
 sub makeParent {
     my ($self, $hash) = @_;
-    return $hash->{dominicial} . "_1";
+    return $hash->{dominicial};
 }
 
 sub makePrimaryKey {
@@ -133,9 +131,7 @@ sub cleanAndAddDerivedData {
     $hash->{comdor_par} = $hash->{comdor};
     $hash->{comdor} = undef;
 
-
 }
-
 
 1;
 
@@ -182,6 +178,11 @@ sub cleanAndAddDerivedData {
     $hash->{desloc6d} = ucfirst($hash->{desloc6d});
     $hash->{localout} = ucfirst($hash->{localout});
     $hash->{qualmeto} = ucfirst($hash->{qualmeto});
+
+
+    if($hash->{dtmal1c} eq "4/5/2010"){$hash->{dtmal1c} = "2010-04-05"};
+    if($hash->{dtmal1c} eq "4/25/2010"){$hash->{dtmal1c} = "2010-04-25"};
+    if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
 }
 

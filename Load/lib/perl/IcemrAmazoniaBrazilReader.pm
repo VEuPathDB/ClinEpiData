@@ -28,12 +28,8 @@ sub makePrimaryKey {
   my ($self, $hash) = @_;
   #my $metadataFilename=$self->getMetadataFileLCB();
 
-  return $hash->{dom};
+  return $hash->{dom} .  "_" . $hash->{wave};
   #return $hash->{ $metadataFilename . "::dom" };
-}
-
-sub getPrimaryKeyPrefix {
-    return "HH"; 
 }
 
 
@@ -44,29 +40,31 @@ sub cleanAndAddDerivedData{
 
 }
 =cut
+
 1;
 
 
 
 package ClinEpiData::Load::IcemrAmazoniaBrazilReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::IcemrAmazoniaBrazilReader);
+use File::Basename;
+use Data::Dumper;
 
 
 sub makeParent {
   my ($self, $hash) = @_;
-  return $hash->{dom};
-}
 
-sub getParentPrefix {                                                                                                            
+  return $hash->{dom} .  "_1" ;
 
-    my ($self, $hash) = @_;                                                                                                      
-    return "HH";                                                                                                                 
-}
+ }
+
 
 sub makePrimaryKey {                                                                                                             
     my ($self, $hash) = @_;                                                                                                      
-    #my $suffix = $self->getSuffix();                                                                                             
-    return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
+    my $file =  basename $self->getMetadataFile();
+    if ($file eq "HouseholdObservations.csv"){
+	return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
+}
 
 
 sub cleanAndAddDerivedData {
@@ -92,7 +90,7 @@ use Data::Dumper;
 
 sub makeParent {
     my ($self, $hash) = @_;
-    return $hash->{dominicial};
+    return $hash->{dominicial} . "_1";
 }
 
 sub makePrimaryKey {
@@ -100,11 +98,6 @@ sub makePrimaryKey {
     return $hash->{rg};
 }
 
-
-sub getParentPrefix {
-    my ($self, $hash) = @_;
-    return "HH";
-}
 
 
 sub cleanAndAddDerivedData {
@@ -136,6 +129,10 @@ sub cleanAndAddDerivedData {
     $hash->{lococupb} = ucfirst($hash->{lococupb});
     $hash->{qualrema} = ucfirst($hash->{qualrema});
     $hash->{qualremb} = ucfirst($hash->{qualremb});
+
+    $hash->{comdor_par} = $hash->{comdor};
+    $hash->{comdor} = undef;
+
 
 }
 

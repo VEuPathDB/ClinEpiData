@@ -33,13 +33,11 @@ sub makePrimaryKey {
 }
 
 
-=head
-sub cleanAndAddDerivedData{
-    my ($self,$hash)=@_;
-    $hash->{hhobservationprotocol}="Enrollment";
-
+sub getPrimaryKeyPrefix {
+    my ($self, $hash) = @_;
+    return "HH";
 }
-=cut
+
 
 1;
 
@@ -58,11 +56,21 @@ sub makeParent {
 
  }
 
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "HH";
+}
 
 sub makePrimaryKey {                                                                                                             
     my ($self, $hash) = @_;
     return $hash->{dom} .  "_" . $hash->{wave};                                                                               
 }
+
+sub getPrimaryKeyPrefix {
+    my ($self, $hash) = @_;
+    return "HO";
+}
+
 
 
 sub cleanAndAddDerivedData {
@@ -91,11 +99,15 @@ sub makeParent {
     return $hash->{dominicial};
 }
 
+sub getParentPrefix {
+    my ($self, $hash) = @_;
+    return "HH";
+}
+
 sub makePrimaryKey {
     my ($self, $hash) = @_;
     return $hash->{rg};
 }
-
 
 
 sub cleanAndAddDerivedData {

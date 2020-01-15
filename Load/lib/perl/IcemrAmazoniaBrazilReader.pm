@@ -32,10 +32,6 @@ sub makePrimaryKey {
   #return $hash->{ $metadataFilename . "::dom" };
 }
 
-sub getPrimaryKeyPrefix {
-    return "HH"; 
-}
-
 
 =head
 sub cleanAndAddDerivedData{
@@ -44,29 +40,29 @@ sub cleanAndAddDerivedData{
 
 }
 =cut
+
 1;
 
 
 
 package ClinEpiData::Load::IcemrAmazoniaBrazilReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::IcemrAmazoniaBrazilReader);
+use File::Basename;
+use Data::Dumper;
 
 
 sub makeParent {
   my ($self, $hash) = @_;
-  return $hash->{dom};
-}
 
-sub getParentPrefix {                                                                                                            
+  return $hash->{dom} ;
 
-    my ($self, $hash) = @_;                                                                                                      
-    return "HH";                                                                                                                 
-}
+ }
+
 
 sub makePrimaryKey {                                                                                                             
-    my ($self, $hash) = @_;                                                                                                      
-    #my $suffix = $self->getSuffix();                                                                                             
-    return $hash->{dom} .  "_" . $hash->{wave};                                                                                    }
+    my ($self, $hash) = @_;
+    return $hash->{dom} .  "_" . $hash->{wave};                                                                               
+}
 
 
 sub cleanAndAddDerivedData {
@@ -101,11 +97,6 @@ sub makePrimaryKey {
 }
 
 
-sub getParentPrefix {
-    my ($self, $hash) = @_;
-    return "HH";
-}
-
 
 sub cleanAndAddDerivedData {
     my ($self, $hash) = @_;
@@ -137,8 +128,10 @@ sub cleanAndAddDerivedData {
     $hash->{qualrema} = ucfirst($hash->{qualrema});
     $hash->{qualremb} = ucfirst($hash->{qualremb});
 
-}
+    $hash->{comdor_par} = $hash->{comdor};
+    $hash->{comdor} = undef;
 
+}
 
 1;
 
@@ -185,6 +178,11 @@ sub cleanAndAddDerivedData {
     $hash->{desloc6d} = ucfirst($hash->{desloc6d});
     $hash->{localout} = ucfirst($hash->{localout});
     $hash->{qualmeto} = ucfirst($hash->{qualmeto});
+
+
+    if($hash->{dtmal1c} eq "4/5/2010"){$hash->{dtmal1c} = "2010-04-05"};
+    if($hash->{dtmal1c} eq "4/25/2010"){$hash->{dtmal1c} = "2010-04-25"};
+    if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
 }
 

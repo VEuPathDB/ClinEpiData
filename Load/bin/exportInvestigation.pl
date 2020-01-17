@@ -151,7 +151,7 @@ foreach my $study (@$studies){ ## studies are in order: household, participant, 
 				}
 			}
 			elsif( $typeOf{$id} ne $root ){
-				die "Orphan: $id\n type $typeOf{$id} ne $root" . Dumper({ PIDS => \@pids, TREE => $tree});
+				die "Orphan: $id\n type $typeOf{$id} ne $root" . Dumper({ PIDS => \@pids});#, TREE => $tree});
 			}
 	 		else {
 	 			push(@pids, [ $type, $id]);

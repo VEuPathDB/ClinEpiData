@@ -160,7 +160,9 @@ sub makeParent {
 
 sub makePrimaryKey {                                                                                                             
     my ($self, $hash) = @_;                                                                                                      
-    return $hash->{rg} .  "_" . $hash->{wave};  
+    
+    return $hash->{rg} .  "_" . $hash->{wave};
+
 }
 
 sub getPrimaryKeyPrefix {
@@ -173,7 +175,7 @@ sub cleanAndAddDerivedData {
 
     my $file =  basename $self->getMetadataFile();
 
-    if ($file eq "ICEMR1_Brazil_observation_05jul18z_st.csv" ){
+    if ($file eq "Observations.csv" ){
 
 	$hash->{wave_obs} = $hash->{wave};
 	$hash->{wave} = undef;
@@ -196,8 +198,10 @@ sub cleanAndAddDerivedData {
     if($hash->{dtmal1c} eq "4/25/2010"){$hash->{dtmal1c} = "2010-04-25"};
     if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
-}
 
+    
+    
+}
 1;
 
 

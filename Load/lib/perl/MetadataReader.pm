@@ -3,7 +3,7 @@ package ClinEpiData::Load::MetadataReader;
 use strict;
 
 use File::Basename;
-use Date::Manip qw(Date_Init ParseDate UnixDate);
+use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Data::Dumper;
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
@@ -268,15 +268,30 @@ sub countValues {
 sub formatDate {
   my ($self, $date, $format) = @_;
 	return unless $date;
-	$format ||= "non-US";
+  unless($format){
+    if($date =~ /^\d{1,2}\/\d{1,2}\/\d{2,4}$/){ $format = "US" }
+  }
+	else{ $format ||= "non-US" }
   Date_Init("DateFormat=$format"); 
   my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");
 
   unless($formattedDate) {
-    die "Date Format not supported for [$date]\n";
+    warn "Date Format not supported for [$date]\n";
+    return undef;
   }
 
   return $formattedDate;
+}
+
+sub dateDiff {
+  my($self, $var1, $var2) = @_;
+  if($var1 && $var2){
+    my $start = ParseDate($var1);
+    my $end = ParseDate($var2);
+    my @delta = split(/:/, DateCalc($start,$end));
+    return int(($delta[4] / 24) + 0.5);
+  }
+  return undef;
 }
 
 sub debug { printf STDERR ("DEBUG: %s\n", $_[1]) }

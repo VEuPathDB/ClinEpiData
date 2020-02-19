@@ -7,13 +7,13 @@ use Getopt::Long;
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ClinEpiData::Load::MetadataHelper;
-
+use ApiCommonData::Load::OwlReader;
 use CBIL::Util::PropertySet;
 
 use Data::Dumper;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $INVESTIGATION_FILE = "investigationFile";
@@ -29,6 +29,7 @@ my $PACKAGE_NAME = "packageName";
 
 my $VALUE_MAPPING_FILE = "valueMappingFile";
 my $ONTOLOGY_OWL_FILE = "ontologyOwlFile";
+my $VALUES_OWL_FILE = "valuesOwlFile";
 my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 my $IS_MERGED =  "isMerged";
@@ -50,6 +51,7 @@ my $READER_CONFIG =  "readerConfig";
   "$PACKAGE_NAME=s" => \$packageName,
   "$VALUE_MAPPING_FILE=s" => \$valueMappingFile,
   "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
+  "$VALUES_OWL_FILE=s" => \$valuesOwlFile,
   "$DATE_OBFUSCATION_FILE=s" => \$dateObfuscationFile,
   "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
 	"m|$IS_MERGED" => \$isMerged,
@@ -79,6 +81,7 @@ if(-e $propFile) {
   unless(-e $ontologyOwlFile){
     $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
   }
+  $valuesOwlFile ||= $properties->{props}->{$VALUES_OWL_FILE};
   $valueMappingFile ||= $properties->{props}->{$VALUE_MAPPING_FILE};
   $dateObfuscationFile ||= $properties->{props}->{$DATE_OBFUSCATION_FILE};
   $isMerged ||= $properties->{props}->{$IS_MERGED};
@@ -145,6 +148,7 @@ if($parentMergedFile) {
 }
 
 
+if($valuesOwlFile){ updateValueMappingFile($valueMappingFile,$valuesOwlFile) }
 
 
 unless($packageName) {
@@ -207,4 +211,48 @@ preprocessMetadata.pl --metadataFile fileA.csv --metadataFile fileB.csv --type D
 ";
 #TODO:  fix error message here
   die "error running preprocessMetadata.pl ";
+}
+
+
+sub updateValueMappingFile {
+  my ($valueMappingFile, $valuesOwlFile) = @_;
+  $valuesOwlFile ||= 'clinEpi_values';
+  unless(-e $valuesOwlFile){
+    $valuesOwlFile = sprintf("%s/ApiCommonData/Load/ontology/harmonization/%s.owl", $ENV{PROJECT_HOME}, $valuesOwlFile);
+  }
+  printf STDERR ("Updating %s using %s\n", $valueMappingFile, $valuesOwlFile);
+  my $owl = ApiCommonData::Load::OwlReader->new($valuesOwlFile);
+  my $terms = $owl->getTerms();
+  my %values;
+  foreach my $term (@$terms){ $values{$term->{sid}} = $term->{name} }
+  open(FH, "<$valueMappingFile") or die "Cannot read $valueMappingFile:$!\n";
+  my @finalValues;
+  my $wasUpdated = 0;
+  while(my $row = <FH>){
+    chomp $row;
+    next unless $row;
+    my(@data) = split(/\t/, $row);
+    unless($data[3]){ push(@finalValues,$row); next }
+    my ($sid) = ($data[3] =~ m/^\{\{(.*)\}\}$/);
+    if(defined($sid)){
+      if(defined($values{$sid})){
+        $data[4] = $data[3];
+        $data[3] = $values{$sid};
+        $row = join("\t", @data);
+        $wasUpdated = 1;
+      }
+      else{
+        print STDERR "ERROR: $sid not found in $valuesOwlFile\n"
+      }
+    }
+    push(@finalValues, $row);
+  }
+  close(FH);
+  if($wasUpdated){
+    rename($valueMappingFile,"$valueMappingFile.orig") or die "Cannot create backup $valueMappingFile.orig: $!";
+    open(OF, ">$valueMappingFile") or die "Cannot write $valueMappingFile:$!";
+    print OF "$_\n" for @finalValues;
+    close(OF);
+    printf STDERR ("%s updated, original saved as %s.orig\n", $valueMappingFile, $valueMappingFile);
+  }
 }

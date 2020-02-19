@@ -38,6 +38,12 @@ sub getPrimaryKeyPrefix {
     return "HH";
 }
 
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+    
+    $hash->{ramal2} = ucfirst($hash->{ramal2})
+
+}
 
 1;
 

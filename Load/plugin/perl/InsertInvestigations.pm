@@ -546,6 +546,7 @@ sub mungeCharacteristics {
           my $valueOntologyTerm = $self->getOntologyTermGusObj($characteristic, 0);
     #     $gusChar->setOntologyTermId($valueOntologyTerm->getId());
               $charOntologyTermId = $valueOntologyTerm->getId();
+              $charValue = $characteristic->getTerm();
         }
         else {
     #     $gusChar->setValue($characteristic->getTerm());

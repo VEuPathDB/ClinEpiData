@@ -4,6 +4,7 @@ use strict;
 
 use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
+use Text::CSV_XS;
 use Data::Dumper;
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
@@ -11,6 +12,9 @@ sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
 
 sub getMetadataFile { $_[0]->{_metadata_file} }
 sub setMetadataFile { $_[0]->{_metadata_file} = $_[1] }
+
+sub getLineParser { $_[0]->{_line_parser} }
+sub setLineParser { $_[0]->{_line_parser} = $_[1] }
 
 sub getRowExcludes { $_[0]->{_row_excludes} }
 sub setRowExcludes { $_[0]->{_row_excludes} = $_[1] }
@@ -76,13 +80,14 @@ sub skipIfNoParent { return 0; }
 
 sub getDelimiter { 
   my ($self, $header, $guessDelimter) = @_;
-
+  my $csv = $self->getLineParser();
   if($header) {
     if($header =~ /\t/) {
-      return qr/\t/;
+      return "\t";
     }
     else {
-      return qr/,/;
+      $csv->sep_char(",");
+      return ",";
     }
   }
 
@@ -107,6 +112,10 @@ sub new {
     $self->setAncillaryData($ancillaryData);
   }
   $self->{_CONFIG} = $config;
+  my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"' }) 
+      or die "Cannot use CSV: ".Text::CSV_XS->error_diag ();  
+
+  $self->setLineParser($csv);
   return $self;
 }
 
@@ -114,9 +123,18 @@ sub new {
 sub splitLine {
   my ($self, $delimiter, $line) = @_;
 
-  my @a = split($delimiter, $line);
+  my $csv = $self->getLineParser();
 
-  return wantarray ? @a : \@a;
+  my @columns;
+  if($csv->parse($line)) {
+    @columns = $csv->fields();
+  }
+  else {
+      my $error= "".$csv->error_diag;
+    die "Could not parse line: $error";
+  }
+
+  return wantarray ? @columns : \@columns;
 }
 
 sub getMetadataFileLCB {

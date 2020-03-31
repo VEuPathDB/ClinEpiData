@@ -131,7 +131,7 @@ sub splitLine {
   }
   else {
       my $error= "".$csv->error_diag;
-    die "Could not parse line: $error";
+    die "Could not parse line: $error\nin file " . $self->getMetadataFile();
   }
 
   return wantarray ? @columns : \@columns;
@@ -152,7 +152,8 @@ sub read {
   my $cleanFirst = $self->getConfig('cleanFirst');
   open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
   my $header = <FILE>;
-  $header =~s/\n|\r//g;
+  $header =~ s/\n|\r//g;
+  $header =~ s/^\x{FEFF}//g; # zero width no-break space
   my $delimiter = $self->getDelimiter($header);
   my @headers = $self->splitLine($delimiter, $header);
   my $headersAr = $self->adjustHeaderArray(\@headers);

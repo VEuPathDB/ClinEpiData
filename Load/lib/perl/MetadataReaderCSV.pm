@@ -28,7 +28,7 @@ sub new {
 
   my $csv = Text::CSV_XS->new({ binary => 1, 
                                sep_char => ",", 
-				   quote_char => '"'
+				   quote_char => '"', allow_loose_quotes => 1
                            }) 
       or die "Cannot use CSV: ".Text::CSV_XS->error_diag ();  
 

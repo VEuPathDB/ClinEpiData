@@ -47,8 +47,6 @@ sub cleanAndAddDerivedData {
 
 1;
 
-
-
 package ClinEpiData::Load::IcemrAmazoniaBrazilReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::IcemrAmazoniaBrazilReader);
 use File::Basename;
@@ -149,6 +147,7 @@ sub cleanAndAddDerivedData {
     $hash->{comdor_par} = $hash->{comdor};
     $hash->{comdor} = undef;
 
+    $hash->{idade_en} = int $hash->{idade_en};
 }
 
 1;
@@ -204,9 +203,8 @@ sub cleanAndAddDerivedData {
     if($hash->{dtmal1c} eq "4/25/2010"){$hash->{dtmal1c} = "2010-04-25"};
     if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
-
     
-    
+    $hash->{idadeno} = int $hash->{idadeno};
 }
 1;
 

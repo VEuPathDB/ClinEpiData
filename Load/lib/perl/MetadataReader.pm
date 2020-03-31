@@ -112,7 +112,8 @@ sub new {
     $self->setAncillaryData($ancillaryData);
   }
   $self->{_CONFIG} = $config;
-  my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"' }) 
+
+  my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 
       or die "Cannot use CSV: ".Text::CSV_XS->error_diag ();  
 
   $self->setLineParser($csv);

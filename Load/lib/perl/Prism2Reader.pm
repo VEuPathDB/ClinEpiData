@@ -86,14 +86,14 @@ package ClinEpiData::Load::Prism2Reader::ObservationReader;
 use base qw(ClinEpiData::Load::Prism2Reader);
 
 use strict;
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  $self->filterNaRows($hash);
-  my %hack = (374621500 => 1, 374721500 => 1, 374921500 => 1);
-  if($hack{$hash->{uniqueid}}){
-    delete($hash->{totalanopheles});
-  }
-}
+# sub cleanAndAddDerivedData {
+#   my ($self, $hash) = @_;
+#   $self->filterNaRows($hash);
+#   my %hack = (374621500 => 1, 374721500 => 1, 374921500 => 1);
+#   if($hack{$hash->{uniqueid}}){
+#     delete($hash->{totalanopheles});
+#   }
+# }
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;
@@ -171,10 +171,10 @@ use base qw(ClinEpiData::Load::Prism2Reader);
 
 use strict;
 
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  $self->filterNaRows($hash);
-}
+# sub cleanAndAddDerivedData {
+#   my ($self, $hash) = @_;
+#   $self->filterNaRows($hash);
+# }
 
 sub makePrimaryKey {
   my ($self, $hash) = @_;

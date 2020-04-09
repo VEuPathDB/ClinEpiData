@@ -1,0 +1,25 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE);
+if(length(args) < 2) {
+  stop("usage:  convertStataToText inputFile outputFile [isStata13]", call.=FALSE)
+} 
+
+inputFile = args[1];
+outputFile = args[2];
+isStata13 = args[3];
+del = "\t";
+data = NULL;
+if(isStata13 == 1){
+  library(readstata13);
+  data = read.dta13(inputFile);
+} else {
+  library(foreign);
+  data = read.dta(inputFile);
+}
+output=NULL;
+outputColumnNames = vector();
+for(i in 1:ncol(data)) {
+  output = cbind(output, as.vector(data[, i]));
+  outputColumnNames[length(outputColumnNames)+1] = colnames(data)[i];
+}
+write.table(output, outputFile, na="", row.names=FALSE, col.names=outputColumnNames, quote=FALSE, sep=del);

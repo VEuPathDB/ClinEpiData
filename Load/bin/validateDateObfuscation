@@ -52,6 +52,8 @@ while(my $row = <FH>){
 }
 close(FH);
 
+my %bad;
+
 foreach my $id (keys %$map ){
   #check all ancestors if $id
   my $nextId = $id;
@@ -59,10 +61,11 @@ foreach my $id (keys %$map ){
     my $pid = $map->{$nextId};
     my $status = ""; # = "NONE";
     if(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} eq $deltas{$pid}){
-      $status = "OK"
+      $status = "OK";
     }
     elsif(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} ne $deltas{$pid}){
-      $status = "BAD"
+      $status = "BAD";
+      $bad{$id} = 1;
     }
     if($status){
       printf("%s\n", join("\t", $id, $deltas{$id} || "-", $pid, $deltas{$pid} || "-", $status));
@@ -70,6 +73,8 @@ foreach my $id (keys %$map ){
     $nextId = $pid;
   }
 }
+
+printf STDERR ("%d IDs checked, %s bad\n", scalar keys %$map, scalar keys %bad);
 
 exit;
 

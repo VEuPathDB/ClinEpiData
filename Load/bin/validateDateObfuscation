@@ -1,0 +1,122 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use lib "$ENV{GUS_HOME}/lib/perl";
+
+use Getopt::Long;
+use GUS::Supported::GusConfig;
+use GUS::ObjRelP::DbiDatabase;
+use Data::Dumper;
+use File::Basename;
+
+my ($datasetName, $deltaFile) = @ARGV;
+
+
+my $gusConfigFile;
+my $gusconfig = GUS::Supported::GusConfig->new($gusConfigFile);
+
+my $dbVendor = $gusconfig->getDatabaseVendor;
+my $dsn = $gusconfig->getDbiDsn();
+my $db = GUS::ObjRelP::DbiDatabase->new($dsn,
+  $gusconfig->getDatabaseLogin(),
+  $gusconfig->getDatabasePassword(),
+  0,0,1,
+  $gusconfig->getCoreSchemaName());
+
+my $dbh = $db->getQueryHandle(0);
+
+my $datasets = getDSP();
+
+unless ($datasetName){
+  printf("Available datasets:\n%s\n", join("\n\t", sort keys %$datasets));
+  exit;
+}
+unless ($deltaFile){
+  my $cmd = basename($0);
+  printf("Usage: $cmd [dataset] [dateObfuscation.txt]\n");
+  exit;
+}
+
+
+
+my $dsid = $datasets->{$datasetName};
+my $map = getParentHash($dsid);
+my %deltas;
+
+open(FH, "<$deltaFile") or die "$deltaFile: $!";
+while(my $row = <FH>){
+  chomp $row;
+  my($iri,$id,$delta) = split(/\t/, $row);
+  $deltas{$id} = $delta;
+}
+close(FH);
+
+foreach my $id (keys %$map ){
+  #check all ancestors if $id
+  my $nextId = $id;
+  while(defined($map->{$nextId})){
+    my $pid = $map->{$nextId};
+    my $status = ""; # = "NONE";
+    if(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} eq $deltas{$pid}){
+      $status = "OK"
+    }
+    elsif(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} ne $deltas{$pid}){
+      $status = "BAD"
+    }
+    if($status){
+      printf("%s\n", join("\t", $id, $deltas{$id} || "-", $pid, $deltas{$pid} || "-", $status));
+    }
+    $nextId = $pid;
+  }
+}
+
+exit;
+
+
+
+sub getDSP {
+  my $qry = 'SELECT name,dataset_presenter_id from apidbtuning.datasetpresenter';
+  my $res = runQuery('SELECT name,dataset_presenter_id from apidbtuning.datasetpresenter');
+  my $datasets = {};
+  foreach my $row (@$res){
+    my($name,$id) = @$row;
+    $id =~ s/^DS_/D/;
+    $datasets->{$name} = $id;
+  }
+  return $datasets;
+}
+
+sub getParentHash {
+  ## returns hash { ID } = PID
+  my ($datasetId) = @_;
+  my $query = sprintf("SELECT parent.pan_name PID, child.pan_name ID
+    FROM apidbtuning.%sPANIO io, apidbtuning.%spanrecord parent, APIDBTUNING.%sPANRECORD child
+    WHERE io.input_pan_id=parent.pan_id AND io.output_pan_id=child.pan_id",
+    $datasetId, $datasetId, $datasetId);
+  my $res = runQuery($query);
+  my $map = {};
+  foreach my $row (@$res){
+    $map->{$row->[1]} = $row->[0];
+  }
+  return $map;
+}
+
+sub runQuery {
+  my ($sql, @args) = @_;
+	my $sth = $dbh->prepare($sql);
+  #printf STDERR ("%s\n",join(", ", $sql, @args));
+  if(@args){ $sth->execute(@args) }
+	else { $sth->execute() }
+  my @cols = @{$sth->{NAME}}; 
+  my @results;
+ 	while(my @row = $sth->fetchrow_array()){
+  	my @vals = map { $_ || "" } @row;
+    push(@results, \@vals);
+  }
+  return \@results;
+}
+
+1;
+
+

@@ -32,7 +32,16 @@ unless ($datasetName){
   printf("Available datasets:\n%s\n", join("\n\t", sort keys %$datasets));
   exit;
 }
-unless ($deltaFile){
+unless ($deltaFile){ ## try the default location
+  my $path = $datasetName;
+# /eupath/data/EuPathDB/manualDelivery/ClinEpiDB/Gates/GEMS/gems1a_case_control/dateObfuscation/dateObfuscation.txt
+# ISASimple_Gates_GEMS_gems1a_case_control_RSRC
+  $path =~ s/ISASimple_|_RSRC//g;
+  my ($subProject,$groupName,@study) = split(/_/,$path);
+  my $studyName = join("_", @study);
+  $deltaFile = join("/", '/eupath/data/EuPathDB/manualDelivery/ClinEpiDB', $subProject,$groupName,$studyName, 'dateObfuscation/dateObfuscation.txt');
+}
+unless ( -e $deltaFile ){
   my $cmd = basename($0);
   printf("Usage: $cmd [dataset] [dateObfuscation.txt]\n");
   exit;
@@ -53,6 +62,7 @@ while(my $row = <FH>){
 close(FH);
 
 my %bad;
+my %good;
 
 foreach my $id (keys %$map ){
   #check all ancestors if $id
@@ -62,20 +72,25 @@ foreach my $id (keys %$map ){
     my $status = ""; # = "NONE";
     if(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} eq $deltas{$pid}){
       $status = "OK";
+      $good{$id} = 1;
     }
     elsif(defined($deltas{$id}) && defined($deltas{$pid}) && $deltas{$id} ne $deltas{$pid}){
       $status = "BAD";
       $bad{$id} = 1;
+      delete($good{$id});
     }
     if($status){
-      printf("%s\n", join("\t", $id, $deltas{$id} || "-", $pid, $deltas{$pid} || "-", $status));
+      printf("%s\n", join("\t", $id, $deltas{$id} || "-", $pid, $deltas{$pid} || "-", $status || "NONE"));
     }
     $nextId = $pid;
   }
 }
 
-printf STDERR ("%d IDs checked, %s bad\n", scalar keys %$map, scalar keys %bad);
-
+my ($ctall, $ctgood, $ctbad) = (scalar keys %$map, scalar keys %good, scalar keys %bad);
+printf STDERR ("%d IDs checked, %d good, %d bad\n", $ctall, $ctgood, $ctbad);
+unless($ctgood || $ctbad){
+  print "Are you sure $deltaFile is the correct file for $datasetName?\n";
+}
 exit;
 
 

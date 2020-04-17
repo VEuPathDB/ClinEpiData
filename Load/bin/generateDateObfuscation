@@ -1,0 +1,96 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+# use lib "$ENV{GUS_HOME}/lib/perl";
+
+use File::Basename;
+use Data::Dumper;
+use Getopt::Long;
+
+my ($type, $file, $primary, $parent, $deltaFile, $delim);
+
+GetOptions(
+  't|type=s' => \$type,
+  'f|file=s' => \$file,
+  'k|primary=s' => \$primary,
+  'p|parent=s' => \$parent,
+  'd|dateObfuscationFile=s' => \$deltaFile,
+  'c|delimeter=s' => \$delim
+);
+
+$delim ||= "\t";
+$primary ||= 'PRIMARY_KEY';
+$parent ||= 'PARENT';
+
+my %type2iri = (
+household => 'PCO_0000024',
+entomology => 'EUPATH_0000327',
+participant => 'EUPATH_0000096',
+observation => 'EUPATH_0000738',
+sample => 'EUPATH_0000609'
+);
+
+die "$type not recognized" unless $type2iri{$type};
+
+my %deltas;
+
+if(defined($deltaFile) && -e $deltaFile){
+  open(FH, "<$deltaFile") or die "$deltaFile: $!";
+  while(my $row = <FH>){
+    chomp $row;
+    my($iri,$id,$delta) = split(/\t/, $row);
+    $deltas{$id} = $delta;
+  }
+  close(FH);
+}
+
+my $pids = getColumnFromFile($file,$parent);
+my $ids = getColumnFromFile($file,$primary);
+my %parentOf;
+@parentOf{@$ids} = @$pids; 
+
+foreach my $id (@$ids){
+  my $pid = $parentOf{$id};
+  if(defined($pid) && defined($deltas{$pid}) ){
+    $deltas{$id} = $deltas{$pid};
+  }
+  elsif(defined($deltas{$id}) && defined($deltas{$pid})){
+    die "$id and $pid have different deltas\n" unless($deltas{$id} eq $deltas{$pid});
+  }
+  else {
+    $deltas{$id} ||= calculateDelta();
+  }
+  printf("%s\n", join($delim, $type2iri{$type}, $id, $deltas{$id}));
+}
+
+
+sub getColumnFromFile {
+  my ($mdfile,$col) = @_;
+  my @values;
+  open(FH, "<$mdfile") or die "$mdfile: $!\n";
+  my $row = <FH>;
+  chomp $row;
+  my @cols = split(/$delim/, $row);
+  while($row = <FH>){
+    chomp $row;
+    my @vals = split(/$delim/, $row);
+    my %h;
+    @h{@cols} = @vals;
+    push(@values, $h{$col});
+  }
+  close(FH);
+  return \@values;
+}
+
+
+
+sub calculateDelta {
+## copied from CBIL::ISA::Functions
+  my $plusOrMinusDays = 7; # TODO: parameterize this
+  my $direction = int (rand(2)) ? 1 : -1;
+  my $magnitude = 1 + int(rand($plusOrMinusDays));
+  my $days = $direction * $magnitude; 
+  my $deltaString = "0:0:0:$days:0:0:0";
+  return $deltaString;
+}

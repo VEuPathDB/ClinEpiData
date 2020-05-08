@@ -147,7 +147,9 @@ sub cleanAndAddDerivedData {
     $hash->{comdor_par} = $hash->{comdor};
     $hash->{comdor} = undef;
 
-    $hash->{idade_en} = int $hash->{idade_en};
+    #$hash->{idade_en} = int $hash->{idade_en};
+    if($hash->{idade_en} eq 'na'){$hash->{idade_en} = $hash->{idade_en}}
+    else{$hash->{idade_en} = int $hash->{idade_en}};
 }
 
 1;
@@ -204,7 +206,12 @@ sub cleanAndAddDerivedData {
     if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
     
-    $hash->{idadeno} = int $hash->{idadeno};
+    #$hash->{idadeno} = int $hash->{idadeno};
+
+    if($hash->{idadeno} eq 'na'){$hash->{idadeno} = $hash->{idadeno}}
+    else{$hash->{idadeno} = int $hash->{idadeno}};
+
+
 }
 1;
 

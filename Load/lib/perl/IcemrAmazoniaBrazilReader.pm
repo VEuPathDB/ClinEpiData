@@ -206,11 +206,11 @@ sub cleanAndAddDerivedData {
     if($hash->{dtmal1c} eq "4/1/2010"){$hash->{dtmal1c} = "2010-04-01"};
 
     
-    #$hash->{idadeno} = int $hash->{idadeno};
-
     if($hash->{idadeno} eq 'na'){$hash->{idadeno} = $hash->{idadeno}}
     else{$hash->{idadeno} = int $hash->{idadeno}};
 
+
+    if($hash->{dtentrev} eq "41010"){$hash->{dtentrev} = "04/10/2010"};
 
     if($hash->{inisint}){
 

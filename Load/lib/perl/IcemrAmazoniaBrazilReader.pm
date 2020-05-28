@@ -212,6 +212,22 @@ sub cleanAndAddDerivedData {
     else{$hash->{idadeno} = int $hash->{idadeno}};
 
 
+    if($hash->{inisint}){
+
+	if($hash->{inisint} =~ m/(\d\d).(\d\d).(\d\d)/){
+	    $hash->{inisint} = join('/',$2,$1,join('','20',$3)), "\n";
+	}
+    }
+
+    if($hash->{sintno}){
+
+	if($hash->{sintno} =~ m/(\d\d).(\d\d).(\d\d)/){
+	    $hash->{sintno} = join('/',$2,$1,join('','20',$3)), "\n";
+	}
+    }
+
+
+
 }
 1;
 

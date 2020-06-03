@@ -62,6 +62,9 @@ sub new {
     $self->setParentParsedOutput($parentParsedOutput);
   }
 
+  $readerConfig ||= {};
+  $readerConfig->{type} ||= $type;
+  $readerConfig->{parentType} ||= $parentType;
   my @readers;
   foreach my $metadataFile (@$metadataFiles) {
     my $readerClass = $packageName. "::" . $type . "Reader";

@@ -151,7 +151,7 @@ sub makeParent {
   if(defined($parentType)){
     return $self->getId($hash,lc($parentType));
   }
-  else{ print STDERR Dumper $self->{_CONFIG}; exit }
+  #else{ print STDERR Dumper $self->{_CONFIG}; exit }
 }
 
 sub getParentPrefix {

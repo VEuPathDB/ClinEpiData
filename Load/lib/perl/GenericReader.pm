@@ -3,8 +3,6 @@ use base qw(ClinEpiData::Load::MetadataReaderXT);
 
 use strict;
 use warnings;
-use Data::Dumper;
-my $DEBUG=1;
 
 sub updateConfig {
   my ($self) = @_;
@@ -45,6 +43,7 @@ sub getId {
   my ($self, $hash, $type) = @_;
   unless($type){
     $type = $self->getConfig('type');
+    $type = lc($type) if $type;
   }
   my $idMap = $self->getConfig('idMap');
   my $placeholder = $self->getConfig('placeholder');
@@ -56,7 +55,7 @@ sub getId {
   my $mdfile = $self->getMetadataFileLCB();
   # die "$mdfile has no ID mapping" unless $mdfile;
   unless(defined($idMap->{$mdfile}->{$type})){
-    my $warn = "WARNING: $type not defined for $mdfile";
+    my $warn = "[a] WARNING: $type not defined for $mdfile";
     printf STDERR ("$warn\n") unless $warnings->{$warn};
     $warnings->{$warn} = 1;
     return undef;
@@ -65,22 +64,39 @@ sub getId {
   my @idCols = @{ $idMap->{$mdfile}->{$type} };
   foreach my $col (@idCols){
     next if(defined($hash->{$col}));
-    next if($col =~ /^\{\{.*\}\}$/);
-    my $warn = "$col not defined in $mdfile for $type";
+    next if($col =~ /^\{.*\}$/);
+    my $warn = "[b] $col not defined in $mdfile for $type";
     printf STDERR ("$warn\n") unless $warnings->{$warn};
     $warnings->{$warn} = 1;
   }
   my @idValues;
+  my @qaCheck;
   foreach my $col (@idCols){
+    my $origValue = $hash->{$col};
+    push(@qaCheck, "$col=$origValue");
+    $origValue =~ s/^\s*|\s*$//g;
     my $val = "UnDeF";
-    if($col =~ /^\{\{.*\}\}$/){
+    if($col =~ /^\{\{.*\}\}$/){ # the "column" is a literal string, ex. "id+{{time0}}" gets the value from column "id" and adds "time0", result 00129_time0 for id=00129
       ($val) = ($col =~ m/^\{\{(.*)\}\}$/);
     }
-    elsif($col =~ /\{\{/){
+    elsif($col =~ /\{\{/){ # bad syntax?
       die "$col did not match\n"
     }
+    elsif($col =~ /.+\{\d*,\d*\}$/){ # substring, ex. "id{3,99}" to get "id" minus the first 3 characters
+      my ($start, $end) = ($col =~ m/\{(\d*),(\d*)\}$/);
+      $col =~ s/\{.*$//;
+      unless(defined($origValue)){
+        my $warn = "[c] $col not defined in $mdfile for $type";
+        printf STDERR ("$warn\n") unless $warnings->{$warn};
+        $warnings->{$warn} = 1;
+      }
+      else{
+        $val = substr($origValue, $start, $end);
+        print STDERR ("$origValue = $val\n");
+      }
+    }
     else {
-      $val = $hash->{$col};
+      $val = $origValue;
     }
     if(!(defined($val) && length($val)) && defined($placeholder)){
       $val = $placeholder;
@@ -91,7 +107,7 @@ sub getId {
     push(@idValues,$val);
   }
   my $id = join("_", @idValues);
-  #printf STDERR "ID: $id\n" if $DEBUG;
+  # printf STDERR ("QA CHECK: %s => %s\n", join("+", @qaCheck), $id);
   return $id;
 }
 
@@ -122,6 +138,9 @@ sub cleanAndAddDerivedData {
 1;
 package ClinEpiData::Load::GenericReader::CategoryReader;
 use base qw(ClinEpiData::Load::GenericReader);
+use strict;
+use warnings;
+use Data::Dumper;
 
 sub makeParent {
   my ($self, $hash) = @_;
@@ -130,8 +149,9 @@ sub makeParent {
   }
   my $parentType = $self->getConfig('parentType');
   if(defined($parentType)){
-    return $self->getId($hash,$parentType);
+    return $self->getId($hash,lc($parentType));
   }
+  else{ print STDERR Dumper $self->{_CONFIG}; exit }
 }
 
 sub getParentPrefix {
@@ -141,7 +161,7 @@ sub getParentPrefix {
   }
   my $parentType = $self->getConfig('parentType');
   return unless defined $parentType;
-	return $self->getConfig('prefix/'. $parentType);
+	return $self->getConfig('prefix/'. lc($parentType));
 }
 
 sub makePrimaryKey {
@@ -160,35 +180,29 @@ sub getPrimaryKeyPrefix {
   }
   my $type = $self->getConfig('type');
   return unless defined $type;
-	return $self->getConfig('prefix/' . $type);
+	return $self->getConfig('prefix/' . lc($type));
 }
 
 1;
 
 package ClinEpiData::Load::GenericReader::HouseholdReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
-
+1;
+package ClinEpiData::Load::GenericReader::EntomologyReader;
+use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
 1;
 package ClinEpiData::Load::GenericReader::HouseholdObservationReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
-
 1;
-
 package ClinEpiData::Load::GenericReader::ParticipantReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
-
 1;
-
 package ClinEpiData::Load::GenericReader::ObservationReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
-
 1;
-
 package ClinEpiData::Load::GenericReader::SampleReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
-
 1;
-
 package ClinEpiData::Load::GenericReader::OutputReader;
 use base qw(ClinEpiData::Load::MetadataReader);
 

@@ -6,6 +6,7 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV_XS;
 use Data::Dumper;
+use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
@@ -90,7 +91,6 @@ sub getDelimiter {
       return ",";
     }
   }
-
   die "Must provide header row to determine the delimiter OR override this function";
 }
 
@@ -154,7 +154,10 @@ sub read {
   open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
   my $header = <FILE>;
   $header =~ s/\n|\r//g;
-  $header =~ s/^\x{FEFF}//g; # zero width no-break space
+  $header =~ s/^\x{FEFF}//;
+  $header =~ s/^\N{U+FEFF}//;
+  $header =~ s/^\N{ZERO WIDTH NO-BREAK SPACE}//;
+  $header =~ s/^\N{BOM}//;
   my $delimiter = $self->getDelimiter($header);
   my @headers = $self->splitLine($delimiter, $header);
   my $headersAr = $self->adjustHeaderArray(\@headers);

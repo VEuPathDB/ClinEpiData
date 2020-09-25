@@ -548,7 +548,14 @@ sub cleanAndAddDerivedData {
     if ($hash->{f4b_date_death} eq "10/27/2012"){
         $hash->{f5_date_death} = $hash->{f4b_date_death};
     }
- }
+
+
+
+    if ($hash->{study}) {
+	$hash->{study} = ucfirst($hash->{study});
+    }
+
+}
 
 
 

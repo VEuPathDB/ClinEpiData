@@ -72,15 +72,19 @@ sub makeParent {
   return $hash->{childid};
 }
 
-sub getParentPrefix {                                                                                                                  my ($self, $hash) = @_;                                                                                                            return "HH";                                                                                                                   }
+sub getParentPrefix {                                                                                                           
+    my ($self, $hash) = @_;   
+    return "HH";                                                                                                                 
+}
 
-sub makePrimaryKey {                                                                                                                
-    my ($self, $hash) = @_;                                                                                                           
+sub makePrimaryKey {                                                                                                             
+    my ($self, $hash) = @_;                                                                                                     
     my $suffix = $self->getSuffix();                                                                                               
-    return $hash->{childid} .  "_" . $suffix;                                                                                      }     
+    return $hash->{childid} .  "_" . $suffix;                                                                                    
+}    
 
-sub getSuffix{                                                                                                                      
-    return "household_followup";                                                                                                    
+sub getSuffix{                                                                                                                     
+    return "household_followup";                                                                                                 
 }
 
 
@@ -434,6 +438,14 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();    
     my $ancillaryData =  $self->getAncillaryData();
     
+    if ($file eq "GEMS1_Case_control_Study_data.csv")
+    {
+	$hash->{eaec} = undef;
+	$hash->{aepec} = undef;
+	$hash->{tepec} = undef;
+	$hash->{stec} = undef;
+	
+    }
 
     if ($file eq "GEMS1_Case_control_Study_data.csv"){
 	$f11_specimen_id =  $hash->{f11_specimen_id};
@@ -442,8 +454,6 @@ sub cleanAndAddDerivedData {
 	    if ($_ == $f11_specimen_id){
 		$hash->{microbiome} = 1;
 	    }
-	
-	    
 	}
     }elsif($file eq "TAC.csv"){
 	$sid =  $hash->{sid};

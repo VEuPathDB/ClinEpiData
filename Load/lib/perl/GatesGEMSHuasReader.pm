@@ -87,13 +87,13 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();
     
     if ($file eq "gems1_huas_data.csv"){
-	$hash->{study_arm}=uc("HUAS");
+	$hash->{study_type}=uc("HUAS");
 
     }elsif($file eq "gems1_huas_lite_data_6_sites.csv"){
-	$hash->{study_arm}="HUAS lite";
+	$hash->{study_type}="HUAS lite";
 
     }elsif($file eq "gems1_huas_lite_data_kenya.csv"){
-	$hash->{study_arm}="HUAS lite - Kenya";
+	$hash->{study_type}="HUAS lite - Kenya";
 
 	$hash->{kenya_consent} = $hash->{consent};
 	$hash->{consent} = undef;
@@ -254,10 +254,10 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();
     
     if ($file eq "gems1a_huas_lite_data_6_sites.csv"){
-	$hash->{study_arm}="HUAS Lite";
+	$hash->{study_type}="HUAS Lite";
 
     }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){
-	$hash->{study_arm}="HUAS Lite - Kenya";
+	$hash->{study_type}="HUAS Lite - Kenya";
 
 
 	$hash->{kenya_consent} = $hash->{consent};
@@ -302,7 +302,7 @@ sub cleanAndAddDerivedData {
     my $file =  basename $self->getMetadataFile();
     
     if ($file eq "gems1a_huas_lite_data_6_sites.csv"){
-	$hash->{study_arm}="HUAS Lite";
+	$hash->{study_type}="HUAS Lite";
 	
 	$hash->{diarrhea_6site} = $hash->{diarrhea};
         $hash->{diarrhea} = undef;
@@ -327,7 +327,7 @@ sub cleanAndAddDerivedData {
 
 
     }elsif($file eq "gems1a_huas_lite_data_kenya.csv"){
-	$hash->{study_arm}="HUAS Lite - Kenya";
+	$hash->{study_type}="HUAS Lite - Kenya";
 
 
 	$hash->{kenya_consent} = $hash->{consent};

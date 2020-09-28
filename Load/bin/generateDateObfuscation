@@ -10,13 +10,25 @@ use Getopt::Long;
 
 my ($type, $file, $primary, $parent, $deltaFile, $delim);
 
+unless(@ARGV){
+  printf("args:\n\t%s\n",join("\n\t",
+  't|type=s' ,
+  'f|file=s' ,
+  'k|primary=s' ,
+  'p|parent=s' ,
+  'd|dateObfuscationFile=s' ,
+  'c|delimiter=s' ,
+  ));
+  exit;
+}
+
 GetOptions(
   't|type=s' => \$type,
   'f|file=s' => \$file,
   'k|primary=s' => \$primary,
   'p|parent=s' => \$parent,
   'd|dateObfuscationFile=s' => \$deltaFile,
-  'c|delimeter=s' => \$delim
+  'c|delimiter=s' => \$delim
 );
 
 $delim ||= "\t";

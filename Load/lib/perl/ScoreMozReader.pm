@@ -161,6 +161,7 @@ sub getPrimaryKeyPrefix {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   return if(defined($hash->{primary_key})); 
+  $hash->{study_timepoint} = $hash->{study_year};
   $self->SUPER::cleanAndAddDerivedData($hash);
 }
 1;

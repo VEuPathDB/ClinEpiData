@@ -31,6 +31,10 @@ sub getPrimaryKeyPrefix {
   return "";
 }
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $hash->{country} ||= "Uganda";
+}
 
 1;
 

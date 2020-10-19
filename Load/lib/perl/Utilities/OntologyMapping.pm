@@ -5,10 +5,23 @@ use warnings;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
+use open ':std', ':encoding(UTF-8)';
 use ApiCommonData::Load::OwlReader;
+use ClinEpiData::Load::MetadataReader;
 use File::Basename qw/basename dirname/;
 use Env qw/PROJECT_HOME/;
 use XML::Simple;
+use Data::Dumper;
+
+sub setTerms { $_[0]->{_terms} = $_[1] }
+sub getTerms { return $_[0]->{_terms} }
+
+sub new {
+  my ($class) = @_;
+  my $self = {};
+  bless ($self, $class);
+  return $self;
+}
 
 sub run {
   my ($self,$owlFile,$functionsFile,$sortByIRI) = @_;
@@ -40,11 +53,13 @@ sub run {
   push(@terms, $_) for @$materials;
   push(@terms, $_) for @$protocols;
   push(@terms, $_) for @$vars;
-  $self->printXml(\@terms);
+  $self->setTerms(\@terms);
+  $self->printXml();
 }
 
 sub printXml {
-  my ($self,$terms,$outFile) = @_;
+  my ($self,$outFile) = @_;
+  my $terms = $self->getTerms;
   my $data = {
     ontologymappings => [
       {
@@ -63,6 +78,23 @@ sub printXml {
   
 sub getOwl {
   return ApiCommonData::Load::OwlReader->new($_[1]);
+}
+
+sub getTermsFromSourceFile {
+  my ($self,$file) = @_;
+  my $reader = ClinEpiData::Load::MetadataReader->new($file);
+  my $entity = $reader->getMetadataFileLCB();
+  my $fh = $reader->getFH();
+  my $headers = $reader->readHeaders();
+  my %terms;
+  foreach my $col (@$headers){
+    $terms{$col} = { 'source_id' => $col, 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
+  }
+  my @sorted;
+  @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
+  unshift(@sorted,{ source_id => $entity, type => 'materialType', name => [ $entity ] });
+  unshift(@sorted,{ source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] });
+  return \@sorted;
 }
 
 sub getTermsFromOwl{

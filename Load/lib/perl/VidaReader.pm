@@ -39,6 +39,45 @@ sub getPrimaryKeyPrefix {
 package ClinEpiData::Load::VidaReader::ParticipantReader;
 use base qw(ClinEpiData::Load::VidaReader);
 
+use strict;
+use warnings;
+
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  foreach my $col (keys %$hash){
+    if($hash->{$col} eq "."){
+      delete($hash->{$col});
+    }
+  }
+ #if($hash->{dob} && $hash->{f5_dob}){
+ #  my $delta = $self->dateDiff($hash->{dob} && $hash->{f5_dob});
+ #  if($delta < 0 ){ # f5_dob earlier
+ #    delete $hash->{dob};
+ #  }
+ #  elsif($delta > 0){
+ #    delete $hash->{f5_dob};
+ #  }
+ #}
+  if(!$hash->{dob} && $hash->{f5_dob}){
+    $hash->{dob} = $hash->{f5_dob};
+  printf STDERR ("Cleaning $hash->{childid} [$hash->{dob}] [$hash->{f5_dob}]\n");
+  }
+  delete $hash->{f5_dob};
+}
+sub dateDiff {
+  my($self, $var1, $var2) = @_;
+  if($var1 && $var2){
+    my $screen = '/^1900-01-01$|^na$|^nd$|^u$|^00|\/000\/|^\*$/';
+    if($var1 =~ $screen || $var2 =~ $screen){ return undef;}
+    my $start = ParseDate($var1);
+    my $end = ParseDate($var2);
+    my @delta = split(/:/, DateCalc($start,$end));
+    printf STDERR ("DATE diff $start $end $delta[4]\n");
+    return $delta[4];
+  }
+  return undef;
+}
+
 sub makeParent {
   my ($self, $hash) = @_;
   if($hash->{parent}) {

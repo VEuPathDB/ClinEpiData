@@ -26,6 +26,7 @@ use Switch;
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
+  $hash->{country} = "India";
 	if(defined($hash->{redcap_event_name})){
 		if($hash->{redcap_event_name} !~ /^house/i){
 			delete $hash->{$_} for keys %$hash;

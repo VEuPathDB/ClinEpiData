@@ -6,7 +6,7 @@ use lib $ENV{GUS_HOME} . "/lib/perl";
 use ClinEpiData::Load::Utilities::OntologyMapping;
 use Getopt::Long;
 
-my ($owlFile,$functionsFile,%funcToAdd,$sortByIRI,$hhobs);
+my ($inputFile,$owlFile,$functionsFile,%funcToAdd,$sortByIRI,$hhobs);
 unless(0 < @ARGV){
 	my $scr = basename($0);
 	print join(" ", $scr, 
@@ -16,12 +16,21 @@ unless(0 < @ARGV){
 }
 
 GetOptions(
+  'i|inputFile=s' => \$inputFile,
   'o|owlFile=s' => \$owlFile,
   'f|functionsFile=s' => \$functionsFile,
   's|sortByIRI!' => \$sortByIRI,
   'h|householdObservationProtocol!' => \$hhobs
 );
 
-ClinEpiData::Load::Utilities::OntologyMapping->run($owlFile,$functionsFile,$sortByIRI);
+my $om = ClinEpiData::Load::Utilities::OntologyMapping->new();
+
+if($owlFile) {
+  $om->run($owlFile,$functionsFile,$sortByIRI);
+}
+elsif($inputFile) {
+  $om->setTerms($om->getTermsFromSourceFile($inputFile,$functionsFile));
+  $om->printXml();
+}
 
 

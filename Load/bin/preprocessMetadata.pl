@@ -13,7 +13,7 @@ use CBIL::Util::PropertySet;
 use Data::Dumper;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig, $diyMode);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $INVESTIGATION_FILE = "investigationFile";
@@ -34,6 +34,7 @@ my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 my $IS_MERGED =  "isMerged";
 my $READER_CONFIG =  "readerConfig";
+my $DIY_MODE = "diyMode";
 
 &GetOptions(
 	'help|h' => \$help,
@@ -56,12 +57,22 @@ my $READER_CONFIG =  "readerConfig";
   "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
 	"m|$IS_MERGED" => \$isMerged,
   "$READER_CONFIG=s" => \$readerConfig,
+  "$DIY_MODE!" => \$diyMode,
 );
 
-
-
 my @filesInDirs;
-if(-e $propFile) {
+if(defined($readerConfig)){
+  if(-e $readerConfig){
+    open(FH, "<$readerConfig") or die "$!Cannot read $readerConfig:$!\n";
+    my @lines = <FH>;
+    $readerConfig = eval (join("", @lines));
+  }
+  else {
+    $readerConfig = eval($readerConfig) if defined($readerConfig);
+  }
+  die "invalid $READER_CONFIG - check syntax" unless $readerConfig;
+}
+if(defined($propFile) && -e $propFile) {
   my @properties;
   my $properties = CBIL::Util::PropertySet->new($propFile, \@properties, 1);
 
@@ -95,16 +106,19 @@ if(-e $propFile) {
     else {
       $readerConfig = eval($readerConfig) if defined($readerConfig);
     }
+    die "invalid $READER_CONFIG - check syntax" unless $readerConfig;
   }
 
   unless(scalar @metadataFiles > 0) {
     my $metadataFileString = $properties->{props}->{$METADATA_FILE};
     @metadataFiles = split(/\s*,\s*/, $metadataFileString);
   }
-  foreach my $mdfile (@metadataFiles){
+  #foreach my $mdfile (@metadataFiles){
+  while(my $mdfile = shift @metadataFiles){
     if( -d $mdfile ){
       opendir(DH, $mdfile) or die "Cannot read directory $mdfile: $!";
-      my @files = map { join("/", $mdfile, $_) } grep { ! /^\./ } readdir(DH);
+      my @files = map { "$mdfile/$_" } grep { -f "$mdfile/$_" } readdir(DH);
+      print STDERR ("metadataFiles = " . join(",",@files) . "\n" );
       closedir(DH);
       push(@filesInDirs, @files);
     }
@@ -118,7 +132,9 @@ if(-e $propFile) {
 
 &usage() if($help);
 
-@metadataFiles = @filesInDirs;
+unless(0 < scalar @metadataFiles){
+  @metadataFiles = @filesInDirs;
+}
 
 unless(scalar @metadataFiles > 0) {
   &usage("Must Provide at least one meta data file");
@@ -216,10 +232,10 @@ preprocessMetadata.pl --metadataFile fileA.csv --metadataFile fileB.csv --type D
 
 sub updateValueMappingFile {
   my ($valueMappingFile, $valuesOwlFile) = @_;
-  $valuesOwlFile ||= 'clinEpi_values';
-  unless(-e $valuesOwlFile){
-    $valuesOwlFile = sprintf("%s/ApiCommonData/Load/ontology/harmonization/%s.owl", $ENV{PROJECT_HOME}, $valuesOwlFile);
-  }
+ #$valuesOwlFile ||= 'clinEpi_values';
+ #unless(-e $valuesOwlFile){
+ #  $valuesOwlFile = sprintf("%s/ApiCommonData/Load/ontology/harmonization/%s.owl", $ENV{PROJECT_HOME}, $valuesOwlFile);
+ #}
   printf STDERR ("Updating %s using %s\n", $valueMappingFile, $valuesOwlFile);
   my $owl = ApiCommonData::Load::OwlReader->new($valuesOwlFile);
   my $terms = $owl->getTerms();

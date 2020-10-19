@@ -39,9 +39,9 @@ use base qw(ClinEpiData::Load::IcemrIndiaFeverReader);
 # }
 
 sub makeParent {
-#  my ($self, $hash) = @_;
-# return $hash->{parent} if defined $hash->{parent};
-#  return $self->getId($hash);
+  my ($self, $hash) = @_;
+  return $hash->{parent} if defined $hash->{parent};
+  return "h_" . $self->getId($hash);
 }
 # sub getParentPrefix {
 #   my ($self, $hash) = @_;
@@ -61,8 +61,9 @@ sub makePrimaryKey {
 
 1;
 
-#package ClinEpiData::Load::IcemrIndiaFeverReader::HouseholdReader;
-#use base qw(ClinEpiData::Load::IcemrIndiaFeverReader::ParticipantReader);
+package ClinEpiData::Load::IcemrIndiaFeverReader::HouseholdReader;
+use ClinEpiData::Load::GenericReader;
+use base qw(ClinEpiData::Load::GenericReader::OutputReader);
 #sub makeParent {
 # return undef;
 #}
@@ -77,7 +78,7 @@ sub makePrimaryKey {
 # return "HH";
 #}
 #
-#1;
+1;
 
 package ClinEpiData::Load::IcemrIndiaFeverReader::ObservationReader;
 use base qw(ClinEpiData::Load::IcemrIndiaFeverReader);

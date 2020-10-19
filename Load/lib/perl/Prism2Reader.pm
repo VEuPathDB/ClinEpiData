@@ -44,6 +44,10 @@ sub makePrimaryKey {
   return $hash->{hhid};
 }
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $hash->{country} ||= "Uganda";
+}
 
 1;
 

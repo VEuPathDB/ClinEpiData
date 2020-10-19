@@ -36,6 +36,7 @@ $primary ||= 'PRIMARY_KEY';
 $parent ||= 'PARENT';
 
 my %type2iri = (
+community => 'EUPATH_0035127',
 household => 'PCO_0000024',
 entomology => 'EUPATH_0000327',
 participant => 'EUPATH_0000096',

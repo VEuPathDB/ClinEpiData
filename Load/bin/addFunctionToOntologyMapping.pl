@@ -19,17 +19,19 @@ unless(0 < @ARGV){
   'o|ontologyXmlFile',
   's|sourceIdFile',
   'f|functionName',
-	'd|dump (print sorted xml)') . "\n";
+	'd|dump (print sorted xml)') . "\n",
+  'S|dumpWithSourceId';
 	exit;
 }
 
 
-my ($xmlFile,$sourceIdFile,$functionName,$dump);
+my ($xmlFile,$sourceIdFile,$functionName,$dump,$dumpWithSourceId);
 GetOptions(
   'o|ontologyXmlFile=s' => \$xmlFile,
   's|sourceIdFile=s' => \$sourceIdFile,
   'f|functionName=s' => \$functionName,
-	'd|dump' => \$dump
+	'd|dump!' => \$dump,
+	'S|dumpWithSourceId!' => \$dumpWithSourceId
 );
 
 $xmlFile ||= '-';
@@ -39,7 +41,20 @@ my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 if($dump){ ## print functions and exit
 	foreach my $root ( @{$xml->{ontologymappings}} ) {
 	  foreach my $term ( @{$root->{ontologyTerm}} ) {
-			printf("%s\t%s\n", $term->{name}->[0], join("\t", @{$term->{function} || [] })) if $term->{function};
+      next unless $term->{function};
+      my $name = $term->{name}->[0];
+      if($dumpWithSourceId){ $name = $term->{source_id} }
+      my @functions;
+      if(ref($term->{function}) eq 'ARRAY'){ @functions = @{$term->{function}} }
+      else { @functions = ($term->{function}) }
+      foreach my $func (@functions){
+        printf("%s\t%s\n", $name, $func);
+      }
+		##  printf("%s\t%s\n", $term->{source_id}, join("\t", @{$term->{function} || [] })) if $term->{function};
+    ##}
+    ##else {
+		##  printf("%s\t%s\n", $term->{name}->[0], join("\t", @{$term->{function} || [] })) if $term->{function};
+    ##}
 		}
 	}
 	exit;

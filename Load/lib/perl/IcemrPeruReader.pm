@@ -22,6 +22,7 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	delete $hash->{fumi} if $hash->{fumi} eq 'na';
+  $hash->{country} = "Peru";
 }
 
 1;
@@ -80,7 +81,7 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
 	if(defined($hash->{aa})){ ## Peru_F2
-		$hash->{dateofobservation} = sprintf("%02d-%02d-%02d", $hash->{aa}, $hash->{mm}, $hash->{dd});
+		$hash->{dateofobservation} = sprintf("%d-%02d-%02d", $hash->{aa}, $hash->{mm}, $hash->{dd});
 		## aa, mm, dd in exclude_cols.txt
 	}
 	elsif(defined($hash->{fec_enrol})){ ## Peru_individual

@@ -1,334 +1,119 @@
 package ClinEpiData::Load::CromptonReader;
-use base qw(ClinEpiData::Load::MetadataReader);
+use base qw(ClinEpiData::Load::GenericReader);
+1;
 
+package ClinEpiData::Load::CromptonReader::ObservationReader;
+use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
 use strict;
 use warnings;
+use Date::Manip qw/ParseDate DateCalc/;
 use Data::Dumper;
-
-sub getId {
-  my ($self, $hash) = @_;
-  #printf STDERR ("%s\tsubj_id empty\n", $self->getMetadataFile()) unless $hash->{subj_id};
-  my ($idcol) = grep { /subj_id/i } keys %$hash;
-  unless(defined($idcol)){
-    printf STDERR ("No id column in %s\n", $self->getMetadataFileLCB());
-    return;
-  }
-  $hash->{subj_id} = $hash->{$idcol};
-  if(!defined($hash->{subj_id}) || $hash->{subj_id} eq ""){ return }
-  return sprintf("%03d",$hash->{subj_id});
-}
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   return if defined $hash->{primary_key};
-  ## simplfy id column headers for this Reader code
-  foreach my $idcol (qw/subj_id visitdate visnum dfseq/){
-    my ($realCol) = grep { /$idcol/ } keys %$hash;
-    next unless defined($realCol);
-    $hash->{$idcol} = $hash->{$realCol};
-  }
-  unless(defined($hash->{subj_id})){ $self->skipRow($hash); return; }
-  # if($hash->{dob} && $hash->{dob} eq '.u'){ printf STDERR ("%s has garbage dob\n", $self->getMetadataFile()) }
   foreach my $k (keys %$hash){
-    next unless defined($hash->{$k});
-    $hash->{$k} =~ s/^(\s+|nd|u|\.u|\.nd|\.f|\*|\r)$//;
+    next unless(defined($hash->{$k}));
+    $hash->{$k} =~ s/^\s*|\s*$//g;
   }
-  $self->applyMappedValues($hash);
-  foreach my $col ( grep { /visitdate|dateenrol|_dt$|_dt\.1$/ } keys %$hash ){
-    next unless $hash->{$col};
-    my ($day,$mon,$year) = split(/\//, $hash->{$col});
-    if(!defined($year) || ($year =~ /^0+$/)){ delete($hash->{$col}); next }
-    if(!defined($day) || ($day  =~ /^0+$/)){ $day = 15 }
-    if(!defined($mon) || ($mon =~ /^0+$/)){ $mon = 'jul' }
-    if($year && $mon && $day){
-      $hash->{$col} = $self->formatDate(sprintf("%04d-%s-%02d", $year, $mon, $day));
+  my $noDuration = 0;
+  my $mdfile = $self->getMetadataFileLCB();
+  if($mdfile eq '126plate100' || $mdfile eq '226plate400' || $mdfile eq '226plate300' || $mdfile eq '227plate300'){
+    foreach my $k ( qw/conmedstdt cmstdat aestdt aestdat/){
+      if(defined($hash->{$k}) && $hash->{$k} =~ /^na$/i){
+        $hash->{$k} = '1900-01-01';
+        $noDuration = 1;
+      }
     }
-    else { printf STDERR ("Bad date: $hash->{$col}"); delete $hash->{$col} }
   }
-}
-
-sub readAncillaryInputFile {
-# use for 1. value mapping, and 2. IRI mapping
-  my ($self, $ancFile) = @_;
-  open(FH, "<$ancFile") or die "Cannot read $ancFile:$!\n";
-  my $anc = {};
-  while(my $row = <FH>){
-    chomp $row;
-    $row =~ s/(\r|\l)$//g;
-    my($col, $iri, $val, $mapVal) = split(/\t/,$row);
-    if(defined($val) && defined($mapVal)){
-      $anc->{var}->{lc($col)}->{lc($val)} =$mapVal;
-    }
-    $anc->{iri}->{lc($col)}= lc($iri);
-  }
-  close(FH);
-  return $anc;
-}
-
-sub applyMappedValues {
-  my ($self,$hash) = @_;
-  my $anc = $self->getAncillaryData();
-  while(my ($k, $v) = each %$hash){
-    $k = lc($k);
-    next unless(defined($v));
-    $v = lc($v);
-    if(
-      defined($anc->{var}->{$k}) &&
-      defined($anc->{var}->{$k}->{$v})){
-      if($anc->{var}->{$k}->{$v} eq ':::UNDEF:::'){
-        delete($hash->{$k});
+### 2020-07-06 add Unknown derived vars
+  my @unknownvars = qw/cardio_end_dt gastrohep_end_dt gastrohep_st_dt genitorenal_st_dt heent_end_dt heent_st_dt hemlymph_st_dt musc_st_dt neuro_st_dt otherhx_st_dt.1 otherhx_st_dt psych_st_dt pulresp_end_dt pulresp_st_dt skinderm_st_dt/;
+  foreach my $var ( @unknownvars ){
+    if(defined($hash->{$var})){
+      if($hash->{$var} =~ /^(r|u|nd|00)/){
+        $hash->{ "${var}_unknown" } = "Yes";
       }
       else {
-        $hash->{$k} = $anc->{var}->{$k}->{$v};
+        $hash->{ "${var}_unknown" } = "No";
       }
     }
-    if(defined($hash->{$k}) && $hash->{$k} =~ /undef/i){ die Dumper $hash }
   }
-}
+###
 
-sub applyMappedIRI {
-  my ($self,$hash) = @_;
   my $anc = $self->getAncillaryData();
-  while(my ($col, $val) = each %$hash){
-    my $iri = $anc->{iri}->{$col};
-    if($iri){
-      $hash->{$iri} = $hash->{$col};
-      delete($hash->{$col});
+  my ($cmstartvar) = grep { /conmedstdt$|cmstdat$/ } keys %$hash;
+  my ($cmendvar) = grep { /conmedenddt$|cmendat$/ } keys %$hash;
+  my ($aestartvar) = grep { /aestdt$|aestdat$/ } keys %$hash;
+  my ($aeendvar) = grep { /aeenddt$|aeendat$/ } keys %$hash;
+  #my @datevars = grep { /^${mdfile}::(aestdat|aestdt|cmstdat|conmedstdt|misseddat|otherhx_end_dt|otherhx_end_dt.1|otherhx_st_dt|otherhx_st_dt.1|visitdat|visitdate|lbdat|.*_st_dt|.*dt\.1|.*end_dt)/ } keys %{$anc->{iri}};
+  my @datevars = grep { /^(aestdat|aestdt|cmstdat|conmedstdt|misseddat|otherhx_end_dt|otherhx_end_dt.1|otherhx_st_dt|otherhx_st_dt.1|visitdat|visitdate|lbdat|.*_st_dt|.*dt\.1|.*end_dt)$/ } keys %{$hash};
+  #printf STDERR ("DEBUG: datevars %s\n", join(",", @datevars));
+  if($cmstartvar){ push(@datevars, $cmstartvar) }
+  if($cmendvar){ push(@datevars, $cmendvar) }
+  my $conmedduration = "";
+  if($aestartvar){ push(@datevars, $aestartvar) }
+  if($aeendvar){ push(@datevars, $aeendvar) }
+  my $aeduration = "";
+  foreach my $var (@datevars){ 
+    # $var =~ s/^${mdfile}:://;
+    $var =~ s/\/fev\//\/feb\//;
+    if(defined($hash->{$var}) && length($hash->{$var})){
+      my $date = $hash->{$var};
+      if($date =~ /^na$|^nd$|^u$|^\*$|^\.nd$|0000$/i){ delete($hash->{$var}); next }
+      $date =~ s/^00\/000\//15\/jun\//;
+      $date =~ s/^00\//15\//;
+      $hash->{$var} = $self->formatDate($date);
+print STDERR "DEBUG: $var = $hash->{$var} = $date\n" if $hash->{$var} =~ /\//;
+      #printf STDERR ("DEBUG: %s\t%s\n", $date, $hash->{$var}) if ($date ne $hash->{$var});
     }
   }
+  if($cmstartvar && $cmendvar && length($hash->{$cmstartvar}) && length($hash->{$cmendvar})){
+    unless($noDuration){
+      $conmedduration = $self->dateDiff($hash->{$cmstartvar},$hash->{$cmendvar});
+    }
+  }
+  if($aestartvar && $aeendvar && length($hash->{$aestartvar}) && length($hash->{$aeendvar})){
+    unless($noDuration){
+      $aeduration = $self->dateDiff($hash->{$aestartvar},$hash->{$aeendvar});
+    }
+  }
+  $self->SUPER::cleanAndAddDerivedData($hash);
+  foreach my $var ( @unknownvars ){
+    $var .= "_unknown";
+    next unless defined $hash->{ "${mdfile}::$var" };
+    $hash->{ $var } = $hash->{ "${mdfile}::$var" };
+    delete $hash->{ "${mdfile}::$var" };
+  }
+  $hash->{conmedduration} = $conmedduration;
+  $hash->{aeduration} = $aeduration;
+  foreach my $v (grep { /_dt$/ } keys %$hash){
+    $hash->{$v} =~ s/^\s*(u|nd|\*)\s*$|\s*.*0000\s*$// if defined($hash->{$v});
+  }
 }
 
-sub makeObservationKey {
-  my ($self, $hash) = @_;
-  my $visit = sprintf("%04d", $hash->{visnum} || $hash->{dfseq} || "0");
-  $hash->{visitdate} =~ s/^(\s+|nd|\*)$// if $hash->{visitdate};
-  my $date = "na";
-  $date = $self->formatDate($hash->{visitdate}) if $hash->{visitdate};
-  my $id = $self->getId($hash);
-  if($id){
-    return sprintf("%s_%s_%s", $self->getId($hash), $date, $visit);
+sub dateDiff {
+  my($self, $var1, $var2) = @_;
+  if($var1 && $var2){
+    my $screen = '/^1900-01-01$|^na$|^nd$|^u$|^00|\/000\/|^\*$/';
+    if($var1 =~ $screen || $var2 =~ $screen){ return undef;}
+    my $start = ParseDate($var1);
+    my $end = ParseDate($var2);
+    my @delta = split(/:/, DateCalc($start,$end));
+    return $delta[4] / 24.0;
   }
   return undef;
 }
 
-1;
-
-package ClinEpiData::Load::CromptonReader::HouseholdReader;
-use base qw(ClinEpiData::Load::CromptonReader);
-use Data::Dumper;
-
-sub makeParent {
-  return undef; 
-}
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  return $self->getId($hash);
-}
-
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "h";
-}
-
-#sub cleanAndAddDerivedData {
-#  my ($self, $hash) = @_;
-#  if(defined($hash->{primary_key})){ return }
-#  $self->SUPER::cleanAndAddDerivedData($hash);
-#  $hash->{country} = 'Mali';
-#}
-
-1;
-
-package ClinEpiData::Load::CromptonReader::ParticipantReader;
-use base qw(ClinEpiData::Load::CromptonReader);
-use strict;
-use warnings;
-use Data::Dumper;
-
-# sub updateConfig {
-#   my ($self, $hash) = @_;
-#   $self->setConfig('useFilePrefix',0);
-# }
-
-sub makeParent {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $self->getId($hash);
-}
-
-sub getParentPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return undef;
-  }
-	return "h";
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-
-  return $self->getId($hash);
-}
-
-1;
-
-package ClinEpiData::Load::CromptonReader::HouseholdObservationReader;
-use base qw(ClinEpiData::Load::CromptonReader::ParticipantReader);
-use strict;
-use warnings;
-use Data::Dumper;
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  my $visit = $hash->{visnum} || $hash->{dfseq} || "0";
-  my $id = $self->getId($hash);
-  return unless defined($id);
-  #die "No ID " . Dumper $hash unless defined $id; 
-  return sprintf("%s_%04d", $self->getId($hash), $visit);
-}
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "h";
-}
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  if(defined($hash->{primary_key})){ return }
-  $self->SUPER::cleanAndAddDerivedData($hash);
-  $hash->{country} = 'Mali';
-  if(defined($hash->{subj_id})){
-    $self->applyMappedIRI($hash);
-  }
-}
-
-1;
-
-
-package ClinEpiData::Load::CromptonReader::ObservationReader;
-use base qw(ClinEpiData::Load::CromptonReader);
-use strict;
-use warnings;
-use Data::Dumper;
-
-sub makeParent {
-  my ($self, $hash) = @_;
-
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  my $pid = $self->getId($hash);
-}
-
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
-
-  if(defined($hash->{primary_key})) {
-    return $hash->{primary_key};
-  }
-  my $id = $self->getId($hash);
-  return unless defined($id);
-  my @idcols = ('visitdate', 'visnum', 'dfseq');
-  unless(
-    defined($hash->{visitdate}) || defined($hash->{visnum})|| defined($hash->{dfseq})){
-    my @vals = map { $hash->{$_} || '-' } @idcols;
-    printf STDERR ("cannot make key:%s:%s\n",join(",",@idcols), join(",", @vals));
-  }
-  my $visit = sprintf("%04d", $hash->{visnum} || $hash->{dfseq} || "0");
-  $hash->{visitdate} =~ s/^(\s+|nd|\*)$// if $hash->{visitdate};
-  my $date = "na";
-  $date = $self->formatDate($hash->{visitdate}) if $hash->{visitdate};
-  my $oid = sprintf("%s_%s_%s", $id, $date, $visit);
-  return $oid;
-}
-
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "o";
-}
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  if(defined($hash->{primary_key})){ printf STDERR ("No CLEANING will be done"); return; }
-  $self->SUPER::cleanAndAddDerivedData($hash);
-  if(defined($hash->{subj_id})){
-    $self->applyMappedIRI($hash);
-  }
-}
-
+ 
 1;
 
 package ClinEpiData::Load::CromptonReader::SampleReader;
-use base qw(ClinEpiData::Load::CromptonReader);
+use base qw(ClinEpiData::Load::GenericReader::ObservationReader);
 
-sub makeParent {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return $hash->{parent};
-  }
-  return $self->makeObservationKey($hash);
-}
-sub getParentPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{parent}) {
-    return undef;
-  }
-	return "o";
-}
+sub cleanAndAddDerivedData { return $_[0]->SUPER::cleanAndAddDerivedData($_[1]) }
 
-sub makePrimaryKey {
-  my ($self, $hash) = @_;
+1;
 
-  if($hash->{primary_key}) {
-    return $hash->{primary_key};
-  }
-  return $self->makeObservationKey($hash);
-}
-
-sub getPrimaryKeyPrefix {
-  my ($self, $hash) = @_;
-  if($hash->{primary_key}) {
-    return undef;
-  }
-	return "s";
-}
-
-sub cleanAndAddDerivedData {
-  my ($self, $hash) = @_;
-  $self->SUPER::cleanAndAddDerivedData($hash);
-  $self->applyMappedIRI($hash);
-}
-
-sub readAncillaryInputFile {
-  my ($self, $ancFile) = @_;
-  my $anc = $self->SUPER::readAncillaryInputFile($ancFile);
-  while( my ($col, $iri) = %{ $anc->{iri} } ){
-    if($iri =~ /eupath_0033265|eupath_0041075|eupath_0000047/){
-      delete($anc->{iri}->{$col});
-    }
-  }
-  return $anc;
-}
-
-
+package ClinEpiData::Load::CromptonReader::OutputReader;
+use base qw(ClinEpiData::Load::GenericReader::OutputReader);
 1;

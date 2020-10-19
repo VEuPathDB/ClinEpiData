@@ -6,7 +6,7 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV_XS;
 use Data::Dumper;
-use open ':std', ':encoding(UTF-8)';
+#use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
@@ -81,17 +81,50 @@ sub skipIfNoParent { return 0; }
 
 sub getDelimiter { 
   my ($self, $header, $guessDelimter) = @_;
+  return ($self->{_delimiter}) if defined($self->{_delimiter});
   my $csv = $self->getLineParser();
+  my $delim;
   if($header) {
     if($header =~ /\t/) {
-      return "\t";
+      $csv->sep_char("\t");
+      $delim = "\t";
     }
     else {
       $csv->sep_char(",");
-      return ",";
+      $delim =  ",";
     }
   }
-  die "Must provide header row to determine the delimiter OR override this function";
+  my $file = $self->getMetadataFile();
+  die "ERROR reading $file: Must provide header row to determine the delimiter OR override this function" unless defined($delim);
+  $self->{_delimiter} = $delim;
+  return $delim;
+}
+
+sub close{
+  my ($self) = @_;
+  close($self->getFH());
+  delete ($self->{_fileHandle});
+}
+
+sub getFH {
+  my ($self) = @_;
+  return $self->{_fileHandle} if(defined($self->{_fileHandle}) && ref($self->{_fileHandle} eq 'GLOB'));
+  my $file = $self->getMetadataFile();
+  open($self->{_fileHandle}, "<$file") or die "Cannot open $file for reading: $!";
+  return $self->{_fileHandle};
+}
+sub readHeaders {
+  my ($self,$fh) = @_;
+  $fh //= $self->getFH(); 
+  my $header = <$fh>;
+  $header =~ s/\n|\r//g;
+  $header =~ s/^\x{FEFF}//;
+  $header =~ s/^\N{U+FEFF}//;
+  $header =~ s/^\N{ZERO WIDTH NO-BREAK SPACE}//;
+  $header =~ s/^\N{BOM}//;
+  my $delimiter = $self->getDelimiter($header);
+  my @headers = $self->splitLine($delimiter, $header);
+  return \@headers;
 }
 
 
@@ -151,19 +184,22 @@ sub read {
   my $rowExcludes = $self->getRowExcludes();
   my $forceFilePrefix = $self->getConfig('forceFilePrefix');
   my $cleanFirst = $self->getConfig('cleanFirst');
-  open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
-  my $header = <FILE>;
-  $header =~ s/\n|\r//g;
-  $header =~ s/^\x{FEFF}//;
-  $header =~ s/^\N{U+FEFF}//;
-  $header =~ s/^\N{ZERO WIDTH NO-BREAK SPACE}//;
-  $header =~ s/^\N{BOM}//;
-  my $delimiter = $self->getDelimiter($header);
-  my @headers = $self->splitLine($delimiter, $header);
+# open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
+# my $header = <FILE>;
+# $header =~ s/\n|\r//g;
+# $header =~ s/^\x{FEFF}//;
+# $header =~ s/^\N{U+FEFF}//;
+# $header =~ s/^\N{ZERO WIDTH NO-BREAK SPACE}//;
+# $header =~ s/^\N{BOM}//;
+# my $delimiter = $self->getDelimiter($header);
+# my @headers = $self->splitLine($delimiter, $header);
+  my $fh = $self->getFH();
+  my @headers = @{ $self->readHeaders() };
+  my $delimiter = $self->getDelimiter();
   my $headersAr = $self->adjustHeaderArray(\@headers);
   $headersAr = $self->clean($headersAr);
   my $parsedOutput = {};
-  while(my $row = <FILE>) {
+  while(my $row = <$fh>) {
     $row =~ s/\n|\r//g;
     my @values = $self->splitLine($delimiter, $row);
     my $valuesAr = $self->clean(\@values);
@@ -203,7 +239,7 @@ sub read {
        }
     }
   }
-  close FILE;
+  $self->close();
   my $rv = {};
 	my $skipped = 0;
 	my $skipEmpty = $self->skipIfEmpty();

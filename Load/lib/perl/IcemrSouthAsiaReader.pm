@@ -1,5 +1,5 @@
 package ClinEpiData::Load::IcemrSouthAsiaReader;
-use base qw(ClinEpiData::Load::MetadataReaderXT);
+use base qw(ClinEpiData::Load::MetadataReaderXT); # was MetadataReaderXT
 use Data::Dumper;
 
 sub cleanAndAddDerivedData {
@@ -43,11 +43,13 @@ sub makeParticipantDateKey {
 		# $date ||= $parent->{'x34._age_.at_enrollment.'};
 	}
 	unless($date){
-		printf STDERR ("No date available: %s: %s\n",
-			$self->getMetadataFile(), $hash->{participant_id});
-		print STDERR Dumper $hash; die;
+		#printf STDERR ("No date available: %s: %s\n",
+		#$self->getMetadataFile(), $hash->{participant_id});
+		#print STDERR Dumper $hash;# die;
+    return "na";
 	}
-  return join("_", $hash->{participant_id}, $date);
+  #return join("_", $hash->{participant_id}, $date);
+  return $date;
 }
 sub getPid {
   my ($self, $hash) = @_;
@@ -86,6 +88,12 @@ sub getPrimaryKeyPrefix {
   return "hh";
 }
 
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
+  $self->SUPER::cleanAndAddDerivedData($hash);
+  $hash->{country} = "India";
+}
+  
 1;
 
 package ClinEpiData::Load::IcemrSouthAsiaReader::ParticipantReader;
@@ -366,7 +374,7 @@ sub makeSampleParentKey{
   if($hash->{primary_key}) {
     return $hash->{primary_key};
   }
-  my $mdfile = lc(fileparse($self->getMetadataFile(),qr/\.[^.]+$/));
+  my $mdfile = $self->getMetadataFileLCB();
 ##if($mdfile =~ /inpatient_treatment_drug/){
 ##  my $rx_name = # $hash->{rx_name};
 ##    $hash->{'x51._rx_name'} ||
@@ -409,6 +417,7 @@ sub makeSampleParentKey{
  	  unless($date){
  	  	# printf STDERR ("No date available: %s: %s\n", $mdfile, $hash->{participant_id});
  	  	# print STDERR Dumper $parent; die;
+ 	  	$date = "na";
  	  }
  	  return join("_", $hash->{participant_id}, $date || 'na', '0000');
 	}
@@ -420,4 +429,8 @@ sub makeSampleParentKey{
  	 #  }
 }
 
+1;
+
+package ClinEpiData::Load::IcemrSouthAsiaReader::OutputReader;
+#use base qw(ClinEpiData::Load::GenericReader::OutputReader);
 1;

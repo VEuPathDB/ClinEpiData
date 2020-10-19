@@ -10,8 +10,9 @@ use GUS::ObjRelP::DbiDatabase;
 use Data::Dumper;
 use File::Basename;
 
+my $verbose;
+GetOptions ( 'v!' => \$verbose );
 my ($datasetName, $deltaFile) = @ARGV;
-
 
 my $gusConfigFile;
 my $gusconfig = GUS::Supported::GusConfig->new($gusConfigFile);
@@ -57,7 +58,7 @@ open(FH, "<$deltaFile") or die "$deltaFile: $!";
 while(my $row = <FH>){
   chomp $row;
   my($iri,$id,$delta) = split(/\t/, $row);
-  $deltas{$id} = $delta;
+  $deltas{$iri . ':' .  $id} = $delta;
 }
 close(FH);
 
@@ -79,7 +80,7 @@ foreach my $id (keys %$map ){
       $bad{$id} = 1;
       delete($good{$id});
     }
-    if($status){
+    if($status && $verbose){
       printf("%s\n", join("\t", $id, $deltas{$id} || "-", $pid, $deltas{$pid} || "-", $status || "NONE"));
     }
     $nextId = $pid;
@@ -110,14 +111,14 @@ sub getDSP {
 sub getParentHash {
   ## returns hash { ID } = PID
   my ($datasetId) = @_;
-  my $query = sprintf("SELECT parent.pan_name PID, child.pan_name ID
+  my $query = sprintf("SELECT parent.pan_type_source_id, parent.pan_name, child.pan_type_source_id,child.pan_name 
     FROM apidbtuning.%sPANIO io, apidbtuning.%spanrecord parent, APIDBTUNING.%sPANRECORD child
     WHERE io.input_pan_id=parent.pan_id AND io.output_pan_id=child.pan_id",
     $datasetId, $datasetId, $datasetId);
   my $res = runQuery($query);
   my $map = {};
   foreach my $row (@$res){
-    $map->{$row->[1]} = $row->[0];
+    $map->{$row->[2] . ':' . $row->[3]} = $row->[0] . ':' . $row->[1];
   }
   return $map;
 }

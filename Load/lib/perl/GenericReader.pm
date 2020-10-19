@@ -70,11 +70,13 @@ sub getId {
     $warnings->{$warn} = 1;
   }
   my @idValues;
-  my @qaCheck;
+  # my @qaCheck;
   foreach my $col (@idCols){
     my $origValue = $hash->{$col};
-    push(@qaCheck, "$col=$origValue");
-    $origValue =~ s/^\s*|\s*$//g;
+    if(defined($origValue)){
+      # push(@qaCheck, "$col=$origValue");
+      $origValue =~ s/^\s*|\s*$//g;
+    }
     my $val = "UnDeF";
     if($col =~ /^\{\{.*\}\}$/){ # the "column" is a literal string, ex. "id+{{time0}}" gets the value from column "id" and adds "time0", result 00129_time0 for id=00129
       ($val) = ($col =~ m/^\{\{(.*)\}\}$/);
@@ -128,9 +130,11 @@ sub cleanAndAddDerivedData {
     }
   }
   if($renameColumns){
+    # $self->log("applyMappedIRI ...");
     $self->applyMappedIRI($hash,1);
   }
   if($doValueMapping){
+    # $self->log("applyMappedValues ...");
     $self->applyMappedValues($hash,1);
   }
 }
@@ -204,7 +208,8 @@ package ClinEpiData::Load::GenericReader::SampleReader;
 use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
 1;
 package ClinEpiData::Load::GenericReader::OutputReader;
-use base qw(ClinEpiData::Load::MetadataReader);
+use base qw(ClinEpiData::Load::GenericReader::CategoryReader);
+#use base qw(ClinEpiData::Load::MetadataReader);
 
 sub makeParent {
   my ($self, $hash) = @_;

@@ -3,8 +3,6 @@ package ClinEpiData::Load::Utilities::OntologyMapping;
 use strict;
 use warnings;
 
-use lib $ENV{GUS_HOME} . "/lib/perl";
-
 use open ':std', ':encoding(UTF-8)';
 use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::MetadataReader;
@@ -57,8 +55,8 @@ sub run {
   $self->printXml();
 }
 
-sub printXml {
-  my ($self,$outFile) = @_;
+sub getOntologyHash {
+  my ($self) = @_;
   my $terms = $self->getTerms;
   my $data = {
     ontologymappings => [
@@ -67,7 +65,32 @@ sub printXml {
       }
     ]
   };
-  my $xml = XMLout($data, KeepRoot => 1, AttrIndent => 0);
+  return $data;
+}
+
+sub getOntologyXml {
+  my ($self) = @_;
+  my $data = $self->getOntologyHash();
+  return XMLout($data, KeepRoot => 1, AttrIndent => 0);
+}
+
+sub getOntologyXmlFromFiles {
+  my ($self, $files, $protocols) = @_;
+  my @allterms;
+  foreach my $file (@$files){
+    my $terms = $self->getTermsFromSourceFile($file);
+    push(@allterms, @$terms);
+  }
+  foreach my $protocol (@$protocols){
+    push(@allterms, { source_id => "TEMP_" . $protocol, type => 'protocol', name => [ $protocol ] }); 
+  }
+  $self->setTerms(\@allterms);
+  return $self->getOntologyXml();
+}
+
+sub printXml {
+  my ($self,$outFile) = @_;
+  my $xml = $self->getOntologyXml();
   if(defined($outFile)){
     open(FH, ">$outFile") or die "Cannot write $outFile:$!";
     print FH $xml;
@@ -81,18 +104,18 @@ sub getOwl {
 }
 
 sub getTermsFromSourceFile {
-  my ($self,$file) = @_;
+  my ($self,$file,$noFilePrefix) = @_;
   my $reader = ClinEpiData::Load::MetadataReader->new($file);
   my $entity = $reader->getMetadataFileLCB();
   my $fh = $reader->getFH();
   my $headers = $reader->readHeaders();
   my %terms;
   foreach my $col (@$headers){
-    $terms{$col} = { 'source_id' => $col, 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
+    $terms{$col} = { 'source_id' => "TEMP_$col", 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
   }
   my @sorted;
   @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
-  unshift(@sorted,{ source_id => $entity, type => 'materialType', name => [ $entity ] });
+  unshift(@sorted,{ source_id => "TEMP_$entity", type => 'materialType', name => [ $entity ] });
   unshift(@sorted,{ source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] });
   return \@sorted;
 }

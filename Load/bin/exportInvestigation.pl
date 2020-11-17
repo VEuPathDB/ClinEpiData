@@ -5,43 +5,89 @@ use warnings;
 use lib "$ENV{GUS_HOME}/lib/perl";
 
 use CBIL::ISA::InvestigationSimple;
+use ClinEpiData::Load::Utilities::Investigation;
+use ClinEpiData::Load::Utilities::File qw/csv2tab/;
+use ClinEpiData::Load::Utilities::OntologyMapping;
 # use Data::Dumper;
 use File::Basename;
+use File::Temp qw/tempfile tempdir/;
+use Cwd qw/abs_path/;
 use Getopt::Long;
 use JSON;
 use Data::Dumper;
 
 
-my ($invFile, $ontologyMappingFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun);
+my ($invFile, $ontologyMappingFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @mdFiles, @protocols, @idCols, $cleanUp);
 my %optStruct = (
-  'i|investigationFile=s' => \$invFile,
-  'o|ontologyMappingFile=s' => \$ontologyMappingFile,
-  'd|dateObfuscationFile=s' => \$dateObfuscationFile,
-  'v|valueMapFile=s' => \$valueMapFile,
-  'j|noSqlFile=s' => \$noSqlFile,
-  't|test!' => \$testRun
-);
+    'i|investigationFile=s' => \$invFile,
+    'o|ontologyMappingFile=s' => \$ontologyMappingFile,
+    'd|dateObfuscationFile=s' => \$dateObfuscationFile,
+    'v|valueMapFile=s' => \$valueMapFile,
+    'j|noSqlFile=s' => \$noSqlFile,
+    't|test!' => \$testRun,
+    'a|auto!' => \$autoMode,
+    'm|metadataFile=s' => \@mdFiles,
+    'p|protocol=s' => \@protocols,
+    'k|idColumn=s' => \@idCols,
+    'c|cleanUp!' => \$cleanUp,
+    );
 
 GetOptions(
-  %optStruct
-);
+    %optStruct
+    );
 
-unless ( -e $invFile && -e $ontologyMappingFile){
+unless ( $autoMode || (-e $invFile && -e $ontologyMappingFile)){
   my $name = basename($0);
   print join("\n", (
-    "To supplement the date obfuscation file with entries for all nodes with idObfuscationFunction=[function name] in investigation.xml:\n",
-    "\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt\n",
-    "To write idmap.txt mapping obfuscated IDs to original IDs:\n",
-    "\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt -t\n\n"
-  ));
+        "To supplement the date obfuscation file with entries for all nodes with idObfuscationFunction=[function name] in investigation.xml:\n",
+        "\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt\n",
+        "To write idmap.txt mapping obfuscated IDs to original IDs:\n",
+        "\t$name -i investigation.xml -o ontologyMapping.xml -d dateObfuscation.txt -t\n\n"
+        ));
   exit;
 }
-$dateObfuscationFile ||= 'dateObfuscation-NEW.txt';
+$dateObfuscationFile ||= 'dateObfuscation-tmp.txt';
 
-unless(-e $dateObfuscationFile){
+unless($autoMode || -e $dateObfuscationFile){
   print "Creating new file $dateObfuscationFile\n";
   open(FH, ">$dateObfuscationFile") or die "$!\n";
   close(FH);
+}
+
+if($autoMode){
+  my $dir = tempdir("auto_XXXX", CLEANUP => $cleanUp);
+  $dateObfuscationFile = "$dir/dateObfuscation.txt";
+  open(FH, ">$dateObfuscationFile") or die "$!\n";
+  close(FH);
+## TODO merge multiple files
+  foreach my $file (@mdFiles){
+    my $dest = join("/", $dir, basename($file));
+    csv2tab($file, $dest);
+  }
+  my $inv = ClinEpiData::Load::Utilities::Investigation->new($dir);
+  my @entities = map { lc(fileparse($_, qr/\.[^.]+$/)) } @mdFiles;
+## first mdfile assumed to be top
+  $inv->addStudy(basename($mdFiles[0]),$entities[0],$idCols[0]);
+## each addditional file assumed to be child nodes
+  if(1 < @mdFiles){
+    foreach my $i (1 .. $#mdFiles){
+      $inv->addStudy(basename($mdFiles[$i]),$entities[$i],$idCols[$i],
+          $protocols[$i-1],
+          $entities[$i-1],$idCols[$i-1]
+          );
+    }
+  }
+  my $ont = ClinEpiData::Load::Utilities::OntologyMapping->new();
+  $ont->getOntologyXmlFromFiles(\@mdFiles,\@protocols);
+
+  $invFile = join("/", $dir, "investigation.xml");
+  $ontologyMappingFile = join("/", $dir, "ontologyMapping.xml");
+  open(IF, ">$invFile") or die "Cannot write $invFile: $!";
+  print IF $inv->getXml;
+  close(IF);
+  open(OF, ">$ontologyMappingFile") or die "Cannot write $ontologyMappingFile: $!";
+  print OF $ont->getOntologyXml;
+  close(OF);
 }
 
 my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef, $valueMapFile, 0, 0, $dateObfuscationFile);
@@ -87,7 +133,7 @@ my $tree = {
   _id => $invId,
   $invId => { # MALED0001
     _root => $root, # household
-    $root => {}
+      $root => {}
   }
 };
 foreach my $child ( @{$hasA->{$root}}){
@@ -105,7 +151,7 @@ my $studies = $inv->getStudies();
 #   printf STDERR "set has more data $file\n";
 # }
 foreach my $study (@$studies){ ## studies are in order: household, participant, observation, sample
-  #my $edges = $study->getEdges();
+#my $edges = $study->getEdges();
   while($study->hasMoreData()) {
     $inv->parseStudy($study);
     my $file = $study->getFileName();
@@ -124,118 +170,63 @@ foreach my $study (@$studies){ ## studies are in order: household, participant, 
     }
     printf STDERR ("Parsing %d nodes in %s\n", scalar @$nodes, $file);
     foreach my $node (@$nodes){
-      
+
       my $mat = $node->getMaterialType();
       my $type = $mat->getTerm();
       die("No type for node " . Dumper $node) unless $type;
-      # next if($edges && $hasA->{$type});
+# next if($edges && $hasA->{$type});
       my $sourceId = $mat->getTermAccessionNumber();
       my $id = lc($node->getValue());
       if(defined($typeOf{$id})){ die "Redundant ID: $typeOf{$id} $id\n" . Dumper $node; }
       $typeOf{$id} = $type;
-  ## TODO apply obfuscation function to IDs
+## TODO apply obfuscation function to IDs
       my $delta = $obf->{$type}->{$id};
       $deltas{$id} = $delta if $delta;
       my $pan = { _id => $id }; #, type=> $type, name=> $id;
       my $charsList = $node->getCharacteristics();
       my $chars = {};
       foreach my $ch (@$charsList){
-        # my $var = $ch->getQualifier;
+# my $var = $ch->getQualifier;
         my $var = $ch->getAlternativeQualifier;
         $chars->{$var} ||= [];
         push(@{$chars->{$var}}, $ch->getValue );
       }
       $pan->{characteristics} = $chars;
-      ## backtrack 
+## backtrack 
       my @pids;
       my $pid = $id;
       if($parentOf{$pid}){
         while(my $nextPid = $parentOf{$pid}){ # nextPid: literal parent ID
           unless($typeOf{$nextPid}){ die "Type of $nextPid not found\n" . Dumper \%typeOf; }
           unshift(@pids, [$typeOf{$nextPid}, $nextPid]); # [ parent type, pid ]
-          $pid = $nextPid;
+            $pid = $nextPid;
         }
       }
       elsif( $typeOf{$id} ne $root ){
-        #die "Orphan: $id\n type $typeOf{$id} ne $root" . Dumper({ PIDS => \@pids});#, TREE => $tree});
-      }
-      else {
-        push(@pids, [ $type, $id]);
-      }
-      ## if( $pids[0][0] ne $root){ die "Orphan: $id\n" . Dumper \@pids; }
-      ## insert node
-      my $treeNode = $tree->{$invId};
-      foreach my $pid (@pids){
-        my ($nodeType, $nextId) = @$pid;
-        die "treeNode $nodeType:$nextId does not exist" . Dumper($tree) unless $treeNode->{$nodeType};
-        # die "treeNode $type:$nextId does not exist" unless $treeNode->{$type}->{$nextId};
-        my $nextNode = $treeNode->{$nodeType}->{$nextId};
-        $treeNode = $nextNode if($nextNode);
-      }
-      # $treeNode->{$type} ||= {};
-      $treeNode->{$type}->{$id} ||= $pan;
+#die "Orphan: $id\n type $typeOf{$id} ne $root" . Dumper({ PIDS => \@pids});#, TREE => $tree});
     }
+    else {
+      push(@pids, [ $type, $id]);
+    }
+## if( $pids[0][0] ne $root){ die "Orphan: $id\n" . Dumper \@pids; }
+## insert node
+    my $treeNode = $tree->{$invId};
+    foreach my $pid (@pids){
+      my ($nodeType, $nextId) = @$pid;
+      die "treeNode $nodeType:$nextId does not exist" . Dumper($tree) unless $treeNode->{$nodeType};
+# die "treeNode $type:$nextId does not exist" unless $treeNode->{$type}->{$nextId};
+      my $nextNode = $treeNode->{$nodeType}->{$nextId};
+      $treeNode = $nextNode if($nextNode);
+    }
+# $treeNode->{$type} ||= {};
+    $treeNode->{$type}->{$id} ||= $pan;
   }
+}
 }
 
 if($noSqlFile){
-   open(FH, ">$noSqlFile") or die "Cannot write $noSqlFile: $!\n";
-   print FH to_json($tree,{convert_blessed=>1,utf8=>1, pretty=>1, canonical=>[0]});
-   close(FH);
-}
-exit;
-
-
-sub getTuningTablePrefix {
-  my ($datasetName) = @_;
-  return "D" . substr(sha1_hex($datasetName), 0, 10);
+  open(FH, ">$noSqlFile") or die "Cannot write $noSqlFile: $!\n";
+  print FH to_json($tree,{convert_blessed=>1,utf8=>1, pretty=>1, canonical=>[0]});
+  close(FH);
 }
 
-sub writeConfigFile {
-  my ($self, $configFile, $dataFile, $table, $fieldsArr) = @_;
-
-  my ($sec,$min,$hour,$mday,$mon,$year) = localtime();
-  my @abbr = qw(JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC);
-  my $modDate = sprintf('%2d-%s-%02d', $mday, $abbr[$mon], ($year+1900) % 100);
-  my $fields = join(",\n", @$fieldsArr);
-  my $database = $self->getDb();
-  my $projectId = $database->getDefaultProjectId();
-  my $userId = $database->getDefaultUserId();
-  my $groupId = $database->getDefaultGroupId();
-  my $algInvocationId = $database->getDefaultAlgoInvoId();
-  my $userRead = $database->getDefaultUserRead();
-  my $userWrite = $database->getDefaultUserWrite();
-  my $groupRead = $database->getDefaultGroupRead();
-  my $groupWrite = $database->getDefaultGroupWrite();
-  my $otherRead = $database->getDefaultOtherRead();
-  my $otherWrite = $database->getDefaultOtherWrite();
-
-  open(CONFIG, "> $configFile") or die "Cannot open file $configFile For writing:$!";
-
-  print CONFIG "LOAD DATA
-INFILE '$dataFile'
-APPEND
-INTO TABLE $table 
-REENABLE DISABLED_CONSTRAINTS
-FIELDS TERMINATED BY '\\t'
-TRAILING NULLCOLS
-($fields,
-modification_date constant \"$modDate\",
-user_read constant $userRead,
-user_write constant $userWrite,
-group_read constant $groupRead,
-group_write constant $groupWrite,
-other_read constant $otherRead,
-other_write constant $otherWrite,
-row_user_id constant $userId,
-row_group_id constant $groupId,
-row_project_id constant $projectId,
-row_alg_invocation_id constant $algInvocationId,
-)\n";
-  close CONFIG;
-}
-
-
-
-
-1;

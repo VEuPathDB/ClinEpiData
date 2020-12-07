@@ -6,7 +6,7 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV_XS;
 use Data::Dumper;
-#use open ':std', ':encoding(UTF-8)';
+use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
@@ -117,11 +117,11 @@ sub readHeaders {
   my ($self,$fh) = @_;
   $fh //= $self->getFH(); 
   my $header = <$fh>;
-  $header =~ s/\n|\r//g;
-  $header =~ s/^\x{FEFF}//;
-  $header =~ s/^\N{U+FEFF}//;
-  $header =~ s/^\N{ZERO WIDTH NO-BREAK SPACE}//;
-  $header =~ s/^\N{BOM}//;
+  $header =~ s/[\n\r\l]//g;
+  $header =~ s/\x{FEFF}//;
+  $header =~ s/\N{U+FEFF}//;
+  $header =~ s/\N{ZERO WIDTH NO-BREAK SPACE}//;
+  $header =~ s/\N{BOM}//;
   my $delimiter = $self->getDelimiter($header);
   my @headers = $self->splitLine($delimiter, $header);
   return \@headers;
@@ -327,12 +327,12 @@ sub countValues {
 sub formatDate {
   my ($self, $date, $format) = @_;
 	return unless $date;
-  unless($format){
-    if($date =~ /^\d{1,2}\/\d{1,2}\/\d{2,4}$/){ $format = "US" }
-  }
-	else{ $format ||= "non-US" }
-  Date_Init("DateFormat=$format"); 
-  my $formattedDate = UnixDate(ParseDate($date), "%Y-%m-%d");
+ #unless($format){
+ #  if($date =~ /^\d{1,2}\/\d{1,2}\/\d{2,4}$/){ $format = "US" }
+ #}
+ #else{ $format ||= "non-US" }
+ #Date_Init("DateFormat=$format"); 
+  my $formattedDate = UnixDate($date, "%Y-%m-%d");
 
   unless($formattedDate) {
     warn "Date Format not supported for [$date]\n";

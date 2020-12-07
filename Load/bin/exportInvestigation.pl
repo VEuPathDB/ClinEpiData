@@ -320,7 +320,7 @@ sub getLabelsFromOwl {
   	$owlFile = $ont;
   }
   else {
-    my $ontdir = $ENV{PROJECT_HOME} . "/ApiCommonData/Load/ontology/release/production";
+    my $ontdir = $ENV{GUS_HOME} . "/ontology/release/production";
   	$owlFile = sprintf("%s/%s.owl", $ontdir, $ont);
   }
   my $owl = ApiCommonData::Load::OwlReader->new($owlFile);

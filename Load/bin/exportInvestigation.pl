@@ -252,7 +252,7 @@ if($noSqlFile){
   close(FH);
 }
 
-if($downloadFile[0] eq 'ALL'){ @downloadFile = keys %charsByType }
+if( @downloadFile && $downloadFile[0] eq 'ALL' ){ @downloadFile = keys %charsByType }
 foreach my $type( @downloadFile ){
   my $outputFile = sprintf("%s_%ss.txt", $datasetName, $type);
   $outputFile =~ s/ys.txt$/ies.txt/;

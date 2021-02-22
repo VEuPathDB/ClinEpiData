@@ -16,11 +16,17 @@ sub readAncillaryInputFile {
     $row =~ s/(\r|\l)$//g;
     my($col, $iri, $val, $mapVal) = split(/\t/,$row);
     if(defined($val) && defined($mapVal)){
-      $anc->{var}->{lc($col)}->{lc($val)} =$mapVal;
-      $anc->{var2}->{lc($iri)}->{lc($val)} = $mapVal;
       if($val eq ':::append:::'){ # add a static value to every row in a metadatafile
         # where $col is the metadatafile, $iri is the variable
-        $anc->{append}->{$col}->{$iri}=$mapVal;
+        $anc->{$val}->{$col}->{$iri}=$mapVal;
+      }
+      elsif($val =~ /^:::/){
+        $anc->{$val}->{$col} ||= [];
+        push(@{$anc->{$val}->{$col}},$mapVal);
+      }
+      else {
+        $anc->{var}->{lc($col)}->{lc($val)} =$mapVal;
+        $anc->{var2}->{lc($iri)}->{lc($val)} = $mapVal;
       }
     }
     $anc->{iri}->{lc($col)}=lc($iri);
@@ -36,44 +42,57 @@ sub applyMappedValues {
   if($self->getConfig('applyMappedIRI')){
     $type = 'var2';
   }
-  while(my ($k, $v) = each %$hash){
-    $k = lc($k);
-    #next unless(defined($v));
-    $v = lc($v);
-    $v =~ s/^\s*|\s*$//g;
-    if(defined($anc->{$type}->{$k})) {
-      if(defined($anc->{$type}->{$k}->{$v})){
-        if(uc($anc->{$type}->{$k}->{$v}) eq ':::UNDEF:::'){
-          delete($hash->{$k});
+  while(my ($col, $v0) = each %$hash){
+    my $origKey = $col;
+    $col = lc($col);
+    if($col !~ /^$origKey$/){ $hash->{$col} = $v0; $hash->{$origKey} = undef }
+    #next unless(defined($v0));
+    $v0 = lc($v0);
+    $v0 =~ s/^\s*|\s*$//g;
+    ## do basic value mapping
+    if(defined($anc->{$type}->{$col})) {
+      if(defined($anc->{$type}->{$col}->{$v0})){ # value match
+        if(uc($anc->{$type}->{$col}->{$v0}) eq ':::UNDEF:::'){
+          delete($hash->{$col});
+          $v0 = undef;
+          next;
         }
         else {
-          $hash->{$k} = $anc->{$type}->{$k}->{$v};
-          #printf STDERR ("newval %s => %s\n", $v, $hash->{$k});
+          $v0 = $hash->{$col} = $anc->{$type}->{$col}->{$v0};
+          # printf STDERR ("Matched [$col] = [$v0] ... %s => %s\n", $v0, $hash->{$col});
         }
-        last;
-      }
-      elsif(defined($anc->{$type}->{$k}->{':::regex:::'})){
-        my $oper = sprintf("\$v =~ %s", $anc->{$type}->{$k}->{':::regex:::'});
-        eval $oper;
-        # printf STDERR ("newval %s => %s\n", $v, $hash->{$k});
-        $hash->{$k} =$v;
-      }
-      elsif(defined($anc->{$type}->{$k}->{':::function:::'})){
-        my @functions = split(/,/,$anc->{$type}->{$k}->{':::function:::'});
-        foreach my $func (@functions){
-          my $newVal = $self->$func($v);
-          if(defined($newVal)){ $hash->{$k} = $newVal }
-          #printf STDERR ("%s: %s => %s\n", $func, $v, $hash->{$k});
-        }
-        # printf STDERR ("newval %s\n", $oper);
       }
     }
-    else {
+    if(defined($anc->{':::regex:::'}->{$col})){
+      foreach my $regex (@{$anc->{':::regex:::'}->{$col}}){
+        my $newVal = $v0;
+        my $oper = sprintf("\$newVal =~ %s", $regex);
+        eval $oper;
+        # printf STDERR ("REGEX %s => %s\n", $hash->{$col}, $v0) if($hash->{$col} =~ /:/);
+        $v0 = $hash->{$col} =$newVal;
+      }
+    }
+    if(defined($anc->{':::eval:::'}->{$col})){
+      foreach my $eval (@{$anc->{':::eval:::'}->{$col}}){
+        # printf STDERR ("EVAL: %s\n", $anc->{$type}->{$col}->{':::eval:::'});
+        eval $eval; 
+        if($@){ die "$@" }
+        $v0 = $hash->{$col};
+      }
+    }
+    if(defined($anc->{':::function:::'}->{$col})){
+      foreach my $func (@{$anc->{':::function:::'}->{$col}}){
+        my $newVal = $self->$func($v0);
+        if(defined($newVal)){
+          $v0 = $hash->{$col} = $newVal
+        }
+        # printf STDERR ("FUNCTION %s: %s => %s\n", $func, $v0, $newVal);
+      }
     }
   }
   my $mdfile = $self->getMetadataFileLCB();
-  if(defined($anc->{append}->{$mdfile})){
-    while(my ($k, $v) = each %{$anc->{append}->{$mdfile}}){
+  if(defined($anc->{':::append:::'}->{$mdfile})){
+    while(my ($k, $v) = each %{$anc->{':::append:::'}->{$mdfile}}){
       $hash->{$k} = $v;
     }
   }
@@ -84,10 +103,12 @@ sub applyMappedIRI {
   my $anc = $self->getAncillaryData();
   while(my ($col, $val) = each %$hash){
     my $iri = $anc->{iri}->{$col};
+    next unless($iri);
+    next if($iri eq $col);
     if($iri){
       $hash->{$iri} = $hash->{$col};
       delete($hash->{$col}) unless $keep;
-      #printf STDERR ("rename %s => %s\n", $col, $iri);
+      # printf STDERR ("rename %s => %s\n", $col, $iri);
     }
   }
 }
@@ -101,4 +122,17 @@ sub formatTimeHHMM {
   }
   return sprintf("%02d%02d", $hr, $min);
 }
+
+sub formatEuroDate {
+  my $v = $_[1];
+  if($v =~ /^\d{4}-\d{2}-\d{2}$/){
+    return $v;
+  }
+  if($v =~ /^\d{2}\W\d{2}\W\d{4}$/){
+    $v =~ s/^(\d{2})\W(\d{2})\W(\d{4})$/$3-$2-$1/;
+    return $v;
+  }
+  return $_[0]->formatDate($_[1],"non-US");
+}
+
 1;

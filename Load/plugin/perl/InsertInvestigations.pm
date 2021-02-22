@@ -332,12 +332,14 @@ sub loadEdges {
     my ($input) = @{$edge->getInputs()}; ## ClinEpiDB currently supports only one input per output
     my $inputName = $input->getValue();
     my $inputId = $panNameToIdMap->{ $inputName };
+    die("Type $protocolName id $inputName was not loaded, cannot continue loading edges\n") unless $inputId;
     my @outputs = @{$edge->getOutputs()};
     printf $protappsFh ("%s\t%s\n", $protappNext, $gusProtocolId);
     printf $inputsFh ("%s\t%s\t%s\n", $inputNext, $protappNext, $inputId);
     foreach my $output (@outputs){
       my $outputName = $output->getValue();
       my $outputId = $panNameToIdMap->{ $outputName };
+      die("Type $protocolName id $outputName was not loaded, cannot continue loading edges\n") unless $outputId;
       printf $outputsFh ("%s\t%s\t%s\n", $outputNext, $protappNext, $outputId);
       $outputNext++;
     }

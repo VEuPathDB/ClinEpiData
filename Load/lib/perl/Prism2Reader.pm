@@ -47,6 +47,7 @@ sub makePrimaryKey {
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $hash->{country} ||= "Uganda";
+  $hash->{household_llin} = $hash->{llin} ;
 }
 
 1;

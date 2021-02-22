@@ -18,12 +18,13 @@ use Getopt::Long;
 use JSON;
 use Data::Dumper;
 
-my ($invFile, $ontologyMappingFile, $ontologyOwlFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @studyParams, @mdFiles, @protocols, @idCols, $cleanUp, @downloadFile);
+my ($invFile, $ontologyMappingFile, $ontologyOwlFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @studyParams, @mdFiles, @protocols, @idCols, $cleanUp, @downloadFile, $isaSimpleDirectory);
 my %optStruct = (
     'i|investigationFile=s' => \$invFile,
     'o|ontologyMappingFile=s' => \$ontologyMappingFile,
     'w|ontologyOwlFile=s' => \$ontologyOwlFile,
     'd|dateObfuscationFile=s' => \$dateObfuscationFile,
+    'I|isaSimpleDirectory=s' => \$isaSimpleDirectory,
     'v|valueMapFile=s' => \$valueMapFile,
     'j|noSqlFile=s' => \$noSqlFile,
     't|test!' => \$testRun,
@@ -39,6 +40,14 @@ my %optStruct = (
 GetOptions(
     %optStruct
     );
+
+if(-d $isaSimpleDirectory){
+  my $isaDir = abs_path($isaSimpleDirectory);
+  $invFile ||= join("/", $isaDir, "investigation.xml");
+  $dateObfuscationFile ||= join("/", $isaDir, "dateObfuscation.txt");
+  $valueMapFile ||= join("/", $isaDir, "valueMap.txt");
+  $ontologyMappingFile ||= join("/", $isaDir, "ontologyMapping.xml");
+}
 
 unless ( $autoMode || (-e $invFile && -e $ontologyMappingFile)){
   my $name = basename($0);

@@ -19,7 +19,7 @@ if(isStata13 == 1){
 output=NULL;
 outputColumnNames = vector();
 for(i in 1:ncol(data)) {
-  output = cbind(output, as.vector(data[, i]));
+  output = cbind(output, as.character(data[, i]));
   outputColumnNames[length(outputColumnNames)+1] = colnames(data)[i];
 }
 write.table(output, outputFile, na="", row.names=FALSE, col.names=outputColumnNames, quote=FALSE, sep=del);

@@ -22,7 +22,7 @@ sub  rowMultiplier {
   # id+hospdate+ldate1+ltimehrs+ltimemin
     my %clone;
     map { $clone{$_} = $row->{$_} } grep { !/ldate|ltime/ } keys %$row;
-    foreach my $var (qw/ldate ltimehrs ltimemin/){
+    foreach my $var (qw/ldate ltimehrs ltimemin lampm/){
       my $varN = sprintf("%s%d", $var, $inc);
       $clone{$var} = $row->{$varN} || "na";
     }

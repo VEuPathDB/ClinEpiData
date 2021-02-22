@@ -26,11 +26,13 @@ sub addStudy{
   my @edges;
   push(@nodes, {isaObject=>"Source",name=>"ENTITY",type=>$materialType,idColumn => $idColumn });
   if($parentType && $parentIdColumn && $protocol){
-    push(@nodes, {isaObject=>"Source",name=>"PARENT",type=>$parentType,idColumn => $parentIdColumn });
+    push(@nodes, {isaObject=>"Source",name=>"PARENT",type=>$parentType,idColumn => $parentIdColumn, suffix => "", useExactSuffix => "true" });
     push(@edges, {input=>"PARENT",output=>"ENTITY", protocol=> [ $protocol ] });
   }
   $self->{xml}->{investigation}->{study} //= [];
-  push( @{$self->{xml}->{investigation}->{study}}, { fileName => $filename, node => \@nodes, edge => \@edges } );
+  $self->{xml}->{investigation}->{identifier} //= "IDENT001";
+  $self->{xml}->{investigation}->{identifierIsDirectoryName} //= "false";
+  push( @{$self->{xml}->{investigation}->{study}}, { fileName => $filename, identifierSuffix => "-1", node => \@nodes, edge => \@edges } );
 }
 1;
 

@@ -199,7 +199,10 @@ sub read {
   my $headersAr = $self->adjustHeaderArray(\@headers);
   $headersAr = $self->clean($headersAr);
   my $parsedOutput = {};
+  my $LINE = 0; # input file line number
+  #my %dupcheck;
   while(my $row = <$fh>) {
+    $LINE++;
     $row =~ s/\n|\r//g;
     my @values = $self->splitLine($delimiter, $row);
     my $valuesAr = $self->clean(\@values);
@@ -210,16 +213,20 @@ sub read {
       my $value = lc($valuesAr->[$i]);
       next if($value eq '[skipped]');
       $rowData{$key} = $value if(defined $value);
+      $rowData{$key} =~ s/^\s*|\s*$//g; # trim ALWAYS
     }
     my $rowMulti = $self->rowMultiplier(\%rowData);
     foreach my $hash ( @$rowMulti ) {
+       $hash->{'__line__'} = $LINE;
        $self->cleanAndAddDerivedData($hash) if $cleanFirst;
        my $primaryKey = $self->makePrimaryKey($hash);
+ # die "$primaryKey\n" . Dumper $hash if ($primaryKey =~ /:/ );
        my $parent = $self->makeParent($hash);
        next if($self->skipIfNoParent() && !$parent);
        my $parentPrefix = $self->getParentPrefix($hash);
        my $parentWithPrefix = $parentPrefix . $parent;
        $hash->{'__PARENT__'} = $parentWithPrefix unless($parentPrefix && $parentWithPrefix eq $parentPrefix);
+       delete $hash->{'__line__'};
        next unless($primaryKey); # skip rows that do not have a primary key
        if(defined($rowExcludes->{lc($primaryKey)}) && ($rowExcludes->{lc($primaryKey)} eq $fileBasename) || ($rowExcludes->{lc($primaryKey)} eq '__ALL__')){
          next;
@@ -234,6 +241,7 @@ sub read {
          next if(defined($colExcludes->{$fileBasename}) && $colExcludes->{$fileBasename}->{$key} || $colExcludes->{'__ALL__'}->{$key});
          next unless defined $hash->{$key}; # skip undef values
          next if($hash->{$key} eq '');
+         $hash->{$key} =~ s/^\s*|\s*$//g; # trim whitespace
          next if($self->seen($parsedOutput->{$primaryKey}->{$key}, $hash->{$key}));
          push @{$parsedOutput->{$primaryKey}->{$key}}, $hash->{$key};
        }
@@ -331,7 +339,7 @@ sub formatDate {
  #  if($date =~ /^\d{1,2}\/\d{1,2}\/\d{2,4}$/){ $format = "US" }
  #}
  #else{ $format ||= "non-US" }
- #Date_Init("DateFormat=$format"); 
+  Date_Init("DateFormat=$format") if $format; 
   my $formattedDate = UnixDate($date, "%Y-%m-%d");
 
   unless($formattedDate) {

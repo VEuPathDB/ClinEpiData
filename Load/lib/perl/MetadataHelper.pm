@@ -153,7 +153,10 @@ sub isValid {
     foreach my $qualifier (keys %$qualifiersHash) {
       if($ontologyMapping) {
         unless($ontologyMapping->{$qualifier}->{characteristicQualifier}->{source_id}) {
-          $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} = 1 unless($qualifier eq '__PARENT__');
+          unless($qualifier eq '__PARENT__'){
+            $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} ||= 0 ;
+            $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} += 1 ;
+          }
         }
       }
 
@@ -322,7 +325,7 @@ sub makeTreeObjFromOntology {
   $nodeLookup{$rootSourceId} = $root;
   $nodeLookup{$altRootSourceId} = $root;
 
-  foreach my $parentSourceId (sort { ($propertyOrder->{$a} <=> $propertyOrder->{$b})||($a cmp $b) } keys %$propertySubclasses) {
+  foreach my $parentSourceId (sort { ($propertyOrder->{$a} <=> $propertyOrder->{$b})||($propertyNames->{$a} cmp $propertyNames->{$b})||($a cmp $b) } keys %$propertySubclasses) {
 
     my $parentNode = $nodeLookup{$parentSourceId};
 
@@ -335,7 +338,7 @@ sub makeTreeObjFromOntology {
       }
     }
 
-    my @childrenSourceIds = sort {($propertyOrder->{$a} <=> $propertyOrder->{$b})||($a cmp $b) } @{$propertySubclasses->{$parentSourceId}};
+    my @childrenSourceIds = sort {($propertyOrder->{$a} <=> $propertyOrder->{$b})||($propertyNames->{$a} cmp $propertyNames->{$b})||($a cmp $b) } @{$propertySubclasses->{$parentSourceId}};
 
     foreach my $childSourceId (@childrenSourceIds) {
       my $childNode = $nodeLookup{$childSourceId};

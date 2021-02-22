@@ -4,7 +4,7 @@ use base qw(ClinEpiData::Load::MetadataReader);
 sub getId {
   my ($self, $hash) = @_;
   return undef unless defined($hash->{pid});
-  return $hash->{pid};
+  return sprintf("%07d",$hash->{pid});
 }
 
 1;
@@ -22,7 +22,6 @@ sub makePrimaryKey {
     return $hash->{primary_key};
   }
   my $id = sprintf("%s_%09d_%09d",substr($hash->{site},0,4),$hash->{parish},$hash->{village});
-#  print STDERR "$id\n";
   return $id;
 }
 

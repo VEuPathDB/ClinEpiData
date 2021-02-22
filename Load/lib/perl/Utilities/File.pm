@@ -1,14 +1,33 @@
 package ClinEpiData::Load::Utilities::File;
+use strict;
+use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter/;
+our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg/;
 use Text::CSV_XS;
+use Config::Std;
 use Scalar::Util qw/looks_like_number/;
 use open ':std', ':encoding(UTF-8)';
+use Data::Dumper;
 
 sub tabWriter{
   my $csv = Text::CSV_XS->new({binary => 1, sep_char => "\t", quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();
   return $csv;
+}
+
+sub nonumvalues {
+  my($rows,$col) = @_;
+  my %values;
+  foreach my $row(@$rows){
+    next unless($row->[$col] =~ /.+/);
+    next if(looks_like_number($row->[$col]));
+    next if($row->[$col] =~ /NA/i );
+    next if($row->[$col] =~ /^\s*$/ );
+    $values{$row->[$col]} = 1;
+  }
+  my @nonums = keys %values;
+  printf STDERR ("%s: %s\n", $col, join(",", @nonums));
+  return \@nonums;
 }
 
 sub csv2array {
@@ -18,7 +37,6 @@ sub csv2array {
   open(my $ifh, "<$file") or die "$@\n";
   my @rows;
   while (my $row = $csv->getline( $ifh )) {
-  	$lines++;
   	#die if grep { /\t/ } @$row;
   	my @data;
   	foreach my $val (@$row){
@@ -50,7 +68,6 @@ sub csv2tab {
  # 	printf $ofh ("%s\n", join("\t", @cols));
  #}
   while (my $row = $csv->getline( $ifh )) {
-  	$lines++;
   	#die if grep { /\t/ } @$row;
   	my @data;
   	foreach my $val (@$row){
@@ -164,6 +181,40 @@ sub readFileGetVarsAndDataHashes {
   close($fh);
   return (\%vars,\%data);
 }
+
+sub csv2cfg {
+  my ($infile,$outfile) = @_;
+  my ($vars,$data) = readFileGetVarsAndDataHashes($infile,",");
+  read_config($outfile,my %config);
+  while(my ($k,$v) = each %$data){
+    $config{$k} = $v;
+  }
+  write_config(%config);
+}
+
+sub forceArray {
+  my ($node) = @_;
+  unless(ref($node)){
+    # a scalar
+    return [$node];
+  }
+  # must be a ref
+  if(ref($node) eq 'HASH'){
+    while(my ($k,$v) = each %$node){
+      $node->{$k} = forceArray($v);
+    }
+    return $node;
+  }
+  elsif(ref($node) eq 'ARRAY') {
+    my @arr;
+    foreach my $v (@$node){
+      push(@arr, forceArray($v));
+    }
+    return \@arr;
+  }
+}
+
+
 
 sub msg { printf STDERR ("LOG: %s\n", $_) for @_ }
 

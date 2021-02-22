@@ -26,8 +26,8 @@ sub updateConfig {
           else { push(@idCols, join("::", $mdfile, $c)) }
         }
       }
-      $idMap->{$mdfile}->{$type} = \@idCols;
-      $idMap->{idHash}->{$mdfile}->{$type}->{$_} = 1 for @idCols;
+      $idMap->{$mdfile}->{lc($type)} = \@idCols;
+      $idMap->{idHash}->{$mdfile}->{lc($type)}->{$_} = 1 for @idCols;
     }
     close(FH);
     $self->setConfig('idMap', $idMap);
@@ -104,7 +104,7 @@ sub getId {
       $val = $placeholder;
     }
     unless(defined($val)){
-      die "ID Mapping invalid/missing for $type:\n\tFILE=$mdfile\n\t$col\nvalid columns:\n" . join("\n", keys %$hash);
+      die "ID Mapping invalid/missing for type/category [$type]:\n\tFILE=[$mdfile] COL=[$col]\nvalid columns:\n" . join("\n", map { "[$_]" } keys %$hash);
     }
     push(@idValues,$val);
   }
@@ -125,6 +125,7 @@ sub cleanAndAddDerivedData {
   my $noFilePrefix = $self->getConfig('noFilePrefix');
   unless($noFilePrefix){
     foreach my $var (keys %$hash){
+      next if ($var eq '__line__');
       $hash->{join("::",$mdfile,$var) } = $hash->{$var};
       delete($hash->{$var});
     }

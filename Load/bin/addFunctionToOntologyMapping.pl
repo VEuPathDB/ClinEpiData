@@ -20,19 +20,23 @@ unless(0 < @ARGV){
   's|sourceIdFile',
   'f|functionName',
 	'd|dump (print sorted xml)') . "\n",
-  'S|dumpWithSourceId';
+  'S|dumpWithSourceId',
+  'A|alternateEntity',
 	exit;
 }
 
 
-my ($xmlFile,$sourceIdFile,$functionName,$dump,$dumpWithSourceId);
+my ($xmlFile,$sourceIdFile,$functionName,$dump,$dumpWithSourceId,$Entity);
 GetOptions(
   'o|ontologyXmlFile=s' => \$xmlFile,
   's|sourceIdFile=s' => \$sourceIdFile,
   'f|functionName=s' => \$functionName,
 	'd|dump!' => \$dump,
-	'S|dumpWithSourceId!' => \$dumpWithSourceId
+	'S|dumpWithSourceId!' => \$dumpWithSourceId,
+  'E|Entity=s' => \$Entity,
 );
+
+$Entity //= 'function';
 
 $xmlFile ||= '-';
 
@@ -41,19 +45,19 @@ my $xml = XMLin($xmlFile, ForceArray => 1, KeepRoot => 1);
 if($dump){ ## print functions and exit
 	foreach my $root ( @{$xml->{ontologymappings}} ) {
 	  foreach my $term ( @{$root->{ontologyTerm}} ) {
-      next unless $term->{function};
+      next unless $term->{$Entity};
       my $name = $term->{name}->[0];
       if($dumpWithSourceId){ $name = $term->{source_id} }
       my @functions;
-      if(ref($term->{function}) eq 'ARRAY'){ @functions = @{$term->{function}} }
-      else { @functions = ($term->{function}) }
+      if(ref($term->{$Entity}) eq 'ARRAY'){ @functions = @{$term->{$Entity}} }
+      else { @functions = ($term->{$Entity}) }
       foreach my $func (@functions){
         printf("%s\t%s\n", $name, $func);
       }
-		##  printf("%s\t%s\n", $term->{source_id}, join("\t", @{$term->{function} || [] })) if $term->{function};
+		##  printf("%s\t%s\n", $term->{source_id}, join("\t", @{$term->{$Entity} || [] })) if $term->{$Entity};
     ##}
     ##else {
-		##  printf("%s\t%s\n", $term->{name}->[0], join("\t", @{$term->{function} || [] })) if $term->{function};
+		##  printf("%s\t%s\n", $term->{name}->[0], join("\t", @{$term->{$Entity} || [] })) if $term->{$Entity};
     ##}
 		}
 	}
@@ -95,7 +99,7 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
 
     my $names = $term->{name};
     my @names = sort map { lc } @$names;
-    unshift(@names, lc($sourceId)) if $type eq 'characteristicQualifier';
+    #unshift(@names, lc($sourceId)) if $type eq 'characteristicQualifier';
 		$term->{name} = \@names;
 
     my @ids = @names;
@@ -105,8 +109,9 @@ foreach my $root ( @{$xml->{ontologymappings}} ) {
       if($sourceIds{$id}){
         if($funcToAdd{$id}){
 					my @funcs = keys %{$funcToAdd{$id}};
-          my $list = uniq( $term->{function} || [], \@funcs );
-          $term->{function} = $list;
+          my $list = uniq( $term->{$Entity} || [], \@funcs );
+printf STDERR ("Adding to %s: %s\n", $id, join(",", @$list));
+          $term->{$Entity} = $list;
         }
         delete $missingIds{$term->{source_id}};
       }

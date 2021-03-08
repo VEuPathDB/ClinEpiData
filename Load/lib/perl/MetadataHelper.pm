@@ -391,7 +391,7 @@ sub writeInvestigationTree {
     close FILE;
   }
 
-  my $investigation = CBIL::ISA::InvestigationSimple->new($investigationFile, $ontologyMappingFile, undef, $valueMappingFile, undef, 0, $dateObfuscationFile);
+  my $investigation = CBIL::ISA::InvestigationSimple->new($investigationFile, $ontologyOwlFile, $ontologyMappingFile, $valueMappingFile, undef, 0, $dateObfuscationFile);
   eval {
     $investigation->parseInvestigation();
   };

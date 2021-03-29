@@ -31,6 +31,9 @@ sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
 sub getOntologyMapping { $_[0]->{_ontology_mapping} }
 sub setOntologyMapping { $_[0]->{_ontology_mapping} = $_[1] }
 
+sub getOwl { $_[0]->{_owl} }
+sub setOwl { $_[0]->{_owl} = $_[1] }
+
 sub new {
   my ($class, $type, $metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName, $readerConfig) = @_;
 
@@ -310,10 +313,11 @@ sub writeMergedFile {
 }
 
 sub makeTreeObjFromOntology {
-  my ($self, $owlFile, $filterParentSourceIds) = @_;
+  my ($self, $owlFile, $filterParentSourceIds, $filterOwlAttributes) = @_;
 
 	my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
-  my ($propertyNames, $propertySubclasses, $propertyOrder) = $owl->getLabelsAndParentsHashes($owlFile);
+  $self->setOwl($owl); # to use later
+  my ($propertyNames, $propertySubclasses, $propertyOrder, $otherAttrs) = $owl->getLabelsAndParentsHashes($owlFile);
 
   my %nodeLookup;
 
@@ -331,8 +335,14 @@ sub makeTreeObjFromOntology {
 
     unless($parentNode) {
       my $parentDisplayName = $propertyNames->{$parentSourceId};
-      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName, "order" => $propertyOrder->{$parentSourceId}}});
+      my $otherAttrStr = undef;
+      if(keys %{$otherAttrs->{$parentSourceId}}){
+        $otherAttrStr = join(",", map { "$_=$otherAttrs->{$parentSourceId}->{$_}" } keys %{$otherAttrs->{$parentSourceId}});
+      }
+      $parentNode = ClinEpiData::Load::OntologyDAGNode->new({name => $parentSourceId, attributes => {"displayName" => $parentDisplayName, "order" => $propertyOrder->{$parentSourceId}, "other" => $otherAttrStr}});
       $nodeLookup{$parentSourceId} = $parentNode;
+      
+      ## Filter by ancestor IRI; filter = 1 means KEEP
       if($filterParentSourceIds->{$parentSourceId}){
         $parentNode->{attributes}->{filter} = 1;
       }
@@ -345,10 +355,29 @@ sub makeTreeObjFromOntology {
 
       unless($childNode) {
         my $childDisplayName = $propertyNames->{$childSourceId};
-        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName, "order" => $propertyOrder->{$childSourceId}}}) ;
+        my $otherAttrStr = undef;
+        if(keys %{$otherAttrs->{$childSourceId}}){
+          $otherAttrStr = join(",", map { "$_=$otherAttrs->{$childSourceId}->{$_}" } keys %{$otherAttrs->{$childSourceId}});
+        }
+        $childNode = ClinEpiData::Load::OntologyDAGNode->new({name => $childSourceId, attributes => {"displayName" => $childDisplayName, "order" => $propertyOrder->{$childSourceId}, "other" => $otherAttrStr}}) ;
         $nodeLookup{$childSourceId} = $childNode;
         if($filterParentSourceIds->{$childSourceId}){
           $childNode->{attributes}->{filter} = 1;
+        }
+        ## Filter by other attributes, .e.g timeVarying
+        if($filterOwlAttributes && $otherAttrs->{$childSourceId}){
+          while(my ($attrName,$attrKeepValue) = each %$filterOwlAttributes){
+            if($otherAttrs->{$childSourceId}->{$attrName}){
+              if($otherAttrs->{$childSourceId}->{$attrName} =~ /$attrKeepValue/){
+                $childNode->{attributes}->{$attrName} = 1;
+                # printf STDERR ("FILTER: KEEP CHILD %s timeVarying = %s\n", $childSourceId, $otherAttrs->{$childSourceId}->{$attrName});
+              }
+             #else {
+             #  $childNode->{attributes}->{filter} = undef;
+             #  printf STDERR ("FILTER: REJECT CHILD %s timeVarying = %s\n", $childSourceId, $otherAttrs->{$childSourceId}->{$attrName});
+             #}
+            }
+          }
         }
       }
 
@@ -362,10 +391,10 @@ sub makeTreeObjFromOntology {
 
 
 sub writeInvestigationTree {
-  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $investigationFile) = @_;
+  my ($self, $ontologyMappingFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $mergedOutputFile,$filterParentSourceIds, $filterOwlAttributes, $investigationFile) = @_;
 
 	print STDERR "Making tree from $ontologyOwlFile\n";
-  my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds);
+  my ($treeObjRoot, $nodeLookup) = $self->makeTreeObjFromOntology($ontologyOwlFile, $filterParentSourceIds, $filterOwlAttributes);
 
   my $dirname = dirname($mergedOutputFile);
 
@@ -524,7 +553,13 @@ sub writeInvestigationTree {
 		printf STDERR ("Scanning for column headers to filter under %s\n", join(", ", sort keys %$filterParentSourceIds)) ;
   	my $filterColumns = $treeObjRoot->getNonFilteredAlternativeQualifiers();
 		if(0 < scalar @$filterColumns){
-    	printf STDERR ("Here are the column headers to be excluded\n%s\n", join("\n", sort @$filterColumns));
+    	printf STDERR ("Here are the column headers to be excluded by ancestor source ID\n%s\n", join("\n", sort @$filterColumns));
+		}
+		printf STDERR "\t...done\n";
+		printf STDERR ("Scanning for column headers to filter by attributes %s\n", join(", ", sort values %$filterOwlAttributes)) ;
+    my $filterByAttrs = $treeObjRoot->getNoMatchAttribAlternativeQualifiers($filterOwlAttributes);
+		if(0 < scalar @$filterByAttrs){
+    	printf STDERR ("Here are the column headers to be excluded by owl attribute\n%s\n", join("\n", sort @$filterByAttrs));
 		}
 		printf STDERR "\t...done\n";
   }

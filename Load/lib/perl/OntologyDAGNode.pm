@@ -1,5 +1,9 @@
 package ClinEpiData::Load::OntologyDAGNode;
+use strict;
+use warnings;
 use parent 'Tree::DAG_Node';
+
+use Data::Dumper;
 
 sub format_node {
   my ($self, $options, $node) = @_;
@@ -10,7 +14,7 @@ sub format_node {
 
   my $altQualifiers = $node->{attributes}->{alternativeQualifiers};
 
-  my $altQualifiersString = join(",", @$altQualifiers);
+  my $altQualifiersString = join(",", @$altQualifiers) if $altQualifiers;
 
   if($isLeaf) {
     return $displayName;
@@ -53,7 +57,7 @@ sub transformToHashRef {
 
   my $hashref = {id => $name, display => $displayName, order => $order};
 
-  foreach my $daughter (sort { ($a->{attributes}->{order} <=> $b->{attributes}->{order})||($a->{attributes}->{displayName} cmp $b->{attributes}->{displayName}) } $self->daughters()) {
+  foreach my $daughter (sort { (($a->{attributes}->{order}||99) <=> ($b->{attributes}->{order}||99))||($a->{attributes}->{displayName} cmp $b->{attributes}->{displayName}) } $self->daughters()) {
     my $child = $daughter->transformToHashRef($force);
     push @{$hashref->{children}}, $child if($child);
   }
@@ -64,8 +68,8 @@ sub transformToHashRef {
 sub getNonFilteredAlternativeQualifiers {
   my ($self, $print) = @_;
 
-  return undef if $self->{attributes}->{filter};
-  return undef if $self->{attributes}->{isLeaf};
+  return [] if $self->{attributes}->{filter};
+  return [] if $self->{attributes}->{isLeaf};
   my $altQualifiers = $self->{attributes}->{alternativeQualifiers};
   if($altQualifiers){
     if($print){
@@ -76,9 +80,38 @@ sub getNonFilteredAlternativeQualifiers {
 
   foreach my $daughter ($self->daughters()) {
     my $more = $daughter->getNonFilteredAlternativeQualifiers();
-    push(@$altQualifiers, @$more);
+    push(@$altQualifiers, @$more) if $more;
   }
 
+  return $altQualifiers;
+}
+
+sub getNoMatchAttribAlternativeQualifiers {
+  my ($self, $filterOwlAttributes, $print) = @_;
+
+  # now scan ONLY filtered (kept)
+  # return undef unless $self->{attributes}->{filter};
+  return [] if $self->{attributes}->{isLeaf};
+
+  my $keep = 0;
+  foreach my $attrName (keys %$filterOwlAttributes){
+    $keep++ if($self->{attributes}->{$attrName}); # was matched, keep
+  }
+  my $altQualifiers = [];
+  unless($keep){ # no attributes matched
+    $altQualifiers = $self->{attributes}->{alternativeQualifiers};
+    if($altQualifiers){
+      if($print){
+        my $altQualifiersString = join("\n", @$altQualifiers);
+        print STDERR "$altQualifiersString\n";
+      }
+    }
+  }
+
+  foreach my $daughter ($self->daughters()) {
+    my $more = $daughter->getNoMatchAttribAlternativeQualifiers($filterOwlAttributes);
+    push(@$altQualifiers, @$more) if $more;
+  }
   return $altQualifiers;
 }
 1;

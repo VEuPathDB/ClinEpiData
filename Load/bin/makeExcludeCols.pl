@@ -9,25 +9,40 @@ use Env qw/PROJECT_HOME SPARQLPATH/;
 use File::Basename;
 use Getopt::Long;
 use Data::Dumper;
-use CBIL::Util::PropertySet;
+use Config::Std; # read_config()
 
-my ($dataset, @filters, @files, $inverse, $propFile, $varDelim);
+my ($dataset, @filters, @files, $inverse, $propFile, $varDelim, $timeVarying, $noPrefix, @filterOwlAttributes);
 GetOptions(
   'o|owl=s' => \$dataset,
   'f|filter=s' => \@filters,
+  "a|otherAttr=s" => \@filterOwlAttributes,
   'i|input=s' => \@files,
   'v|inverse' => \$inverse,
   'p|propFile=s' => \$propFile,
-  'd|varDelim=s' => \$varDelim # a delimeter used in the owl file as in <column><Delim><file>
+  'd|varDelim=s' => \$varDelim, # a delimeter used in the owl file as in <column><Delim><file>
+  'n|noPrefix!' => \$noPrefix
 );
 # defaults
-#$varDelim = '::';
+unless($noPrefix){ $varDelim ||= '::' } # always use file prefix w/ '::', unless explicitly disabled
 if(defined($propFile) && -e $propFile) {
-  my @_p;
-  my $p = CBIL::Util::PropertySet->new($propFile, \@_p, 1);
-  push(@files, split(/,/,$p->{props}->{metadataFile}));
-  $dataset ||= $p->{props}->{ontologyOwlFile};
-  push(@filters, lc($p->{props}->{type})) unless @filters;
+  read_config($propFile, my %config);
+  my $p = $config{''};
+  push(@files, split(/,/,$p->{metadataFile}));
+  $dataset ||= $p->{ontologyOwlFile};
+  push(@filters, lc($p->{type})) unless @filters;
+  unless(@filterOwlAttributes){
+    if(ref($p->{filterOwlAttribute}) eq 'ARRAY'){
+      @filterOwlAttributes = @{$p->{filterOwlAttribute}};
+    }
+    else {
+      @filterOwlAttributes = ($p->{filterOwlAttribute});
+    }
+  }
+}
+my $filterOwlAttrHash = {};
+foreach my $attr (@filterOwlAttributes){
+  my($k,$v) = split(/\s*[=:]\s*/, $attr);
+  $filterOwlAttrHash->{$k} = $v;
 }
 
 unless($dataset){
@@ -108,6 +123,9 @@ unless(@filters){
   exit;
 } 
 
+## Use other .owl attributes as keep flags
+my ($propertyNames, $propertySubclasses, $propertyOrder, $otherAttrs) = $owl->getLabelsAndParentsHashes($owlFile);
+
 foreach my $filter (@filters){
   die "Entity not found for $filter\nAvailable:\n\t" . join("\n\t", keys %map) . "\n" unless defined $filterOptions{$filter};
   my $filterEntity = $filterOptions{$filter};
@@ -116,7 +134,20 @@ foreach my $filter (@filters){
   #my @keys = $itr->binding_names;
   #printf ("%s\n", join("\t", @keys)) if @keys;
   while (my $row = $itr->next) {
-    my $entity = lc(basename($row->{entity}->as_hash()->{iri}));
+    my $rawEntity = basename($row->{entity}->as_hash()->{iri});
+    my $entity = lc($rawEntity);
+    my $keep = 1;
+    while(my ($attrName,$keepMatch) = each %$filterOwlAttrHash){
+      next unless($otherAttrs->{$rawEntity}->{$attrName});
+      # the attribute is set, so we must check it
+      unless($otherAttrs->{$rawEntity}->{$attrName} =~ /$keepMatch/i){
+        # the attribute does not match, so exclude these columns
+        $keep = 0;
+      }
+    }
+    next unless $keep; # if $keep, it means we omit it from output (output is columns to exclude)
+      
+# Now each column mapped to this entity will be deleted from the list of things to exclude
     unless(defined($row->{col})){
       printf STDERR ("WARNING: no column defined for %s\n", $entity);
       next;
@@ -130,7 +161,7 @@ foreach my $filter (@filters){
     else {
       @cols = ($col);
     }
-    push(@cols, $entity);
+    #push(@cols, $entity);
     foreach $col (@cols){
       my $dataset = defined($row->{dataset}) ? pp($row->{dataset}->as_sparql) : [];
       if(ref($dataset) eq 'ARRAY'){

@@ -102,11 +102,13 @@ foreach my $propFile (@propFiles){
     $dateObfuscationFile ||= $properties->{$DATE_OBFUSCATION_FILE};
     $isMerged ||= $properties->{$IS_MERGED};
     $readerConfig ||= $properties->{$READER_CONFIG};
-    if(ref($properties->{$FILTER_OWL_ATTRIBUTES}) eq 'ARRAY'){
-      @filterOwlAttributes = @{$properties->{$FILTER_OWL_ATTRIBUTES}};
-    }
-    else {
-      @filterOwlAttributes = ($properties->{$FILTER_OWL_ATTRIBUTES});
+    unless(@filterOwlAttributes){
+      if(ref($properties->{$FILTER_OWL_ATTRIBUTES}) eq 'ARRAY'){
+        @filterOwlAttributes = @{$properties->{$FILTER_OWL_ATTRIBUTES}};
+      }
+      else {
+        @filterOwlAttributes = ($properties->{$FILTER_OWL_ATTRIBUTES});
+      }
     }
     
   
@@ -212,7 +214,7 @@ $metadataHelper->setMergedOutput({});
 
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
-  my($k,$v) = split(/=/, $attr);
+  my($k,$v) = split(/\s*[=:]\s*/, $attr);
   $filterOwlAttrHash->{$k} = $v;
 }
 

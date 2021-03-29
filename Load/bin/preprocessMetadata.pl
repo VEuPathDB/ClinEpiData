@@ -8,12 +8,12 @@ use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ClinEpiData::Load::MetadataHelper;
 use ApiCommonData::Load::OwlReader;
-use CBIL::Util::PropertySet;
+use Config::Std; # read_config()
 
 use Data::Dumper;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, $propFile, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig, $diyMode);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, @propFiles, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig, @filterOwlAttributes);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $INVESTIGATION_FILE = "investigationFile";
@@ -34,11 +34,13 @@ my $DATE_OBFUSCATION_FILE = "dateObfuscationFile";
 my $FILTER_PARENT_SOURCE_ID =  "filterParentSourceId";
 my $IS_MERGED =  "isMerged";
 my $READER_CONFIG =  "readerConfig";
-my $DIY_MODE = "diyMode";
+my $FILTER_OWL_ATTRIBUTES = "filterOwlAttribute";
+
+my @readerConfigProps = qw/category parentCategory type parentType idMappingFile cleanFirst noFilePrefix applyMappedIRI applyMappedValues placeholder ontologyOwlFile/;
 
 &GetOptions(
 	'help|h' => \$help,
-  'p|propFile=s' => \$propFile,
+  'p|propFile=s' => \@propFiles,
   "$TYPE=s" => \$type,
   "$PARENT_TYPE=s" => \$parentType,
   "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
@@ -57,7 +59,7 @@ my $DIY_MODE = "diyMode";
   "$FILTER_PARENT_SOURCE_ID=s" => \@filterParentSourceIds,
 	"m|$IS_MERGED" => \$isMerged,
   "$READER_CONFIG=s" => \$readerConfig,
-  "$DIY_MODE!" => \$diyMode,
+  "$FILTER_OWL_ATTRIBUTES=s" => \@filterOwlAttributes,
 );
 
 my @filesInDirs;
@@ -72,61 +74,80 @@ if(defined($readerConfig)){
   }
   die "invalid $READER_CONFIG - check syntax" unless $readerConfig;
 }
-if(defined($propFile) && -e $propFile) {
-  my @properties;
-  my $properties = CBIL::Util::PropertySet->new($propFile, \@properties, 1);
-
-  $type ||= $properties->{props}->{$TYPE};
-  $parentType ||= $properties->{props}->{$PARENT_TYPE};
-  $parentMergedFile ||= $properties->{props}->{$PARENT_MERGED_FILE};
-
-  $rowExcludeFile ||= $properties->{props}->{$ROW_EXCLUDE_FILE};
-  $colExcludeFile ||= $properties->{props}->{$COL_EXCLUDE_FILE};
-  $outputFile ||= $properties->{props}->{$OUTPUT_FILE};
-  $ancillaryInputFile ||= $properties->{props}->{$ANCILLARY_INPUT_FILE};
-  $packageName ||= $properties->{props}->{$PACKAGE_NAME};
-
-  $ontologyMappingXmlFile ||= $properties->{props}->{$ONTOLOGY_MAPPING_XML_FILE};
-
-  $ontologyOwlFile ||= $properties->{props}->{$ONTOLOGY_OWL_FILE};
-  unless(-e $ontologyOwlFile){
-    $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
-  }
-  $valuesOwlFile ||= $properties->{props}->{$VALUES_OWL_FILE};
-  $valueMappingFile ||= $properties->{props}->{$VALUE_MAPPING_FILE};
-  $dateObfuscationFile ||= $properties->{props}->{$DATE_OBFUSCATION_FILE};
-  $isMerged ||= $properties->{props}->{$IS_MERGED};
-  $readerConfig ||= $properties->{props}->{$READER_CONFIG};
-  if(defined($readerConfig)){
-    if(-e $readerConfig){
-      open(FH, "<$readerConfig") or die "$!Cannot read $readerConfig:$!\n";
-      my @lines = <FH>;
-      $readerConfig = eval (join("", @lines));
+  
+foreach my $propFile (@propFiles){
+  if(-e $propFile) {
+    # my $properties = CBIL::Util::PropertySet->new($propFile, \@properties, 1);
+    read_config($propFile, my %config);
+    my $properties = $config{''};
+  
+    $type ||= $properties->{$TYPE};
+    $parentType ||= $properties->{$PARENT_TYPE};
+    $parentMergedFile ||= $properties->{$PARENT_MERGED_FILE};
+  
+    $rowExcludeFile ||= $properties->{$ROW_EXCLUDE_FILE};
+    $colExcludeFile ||= $properties->{$COL_EXCLUDE_FILE};
+    $outputFile ||= $properties->{$OUTPUT_FILE};
+    $ancillaryInputFile ||= $properties->{$ANCILLARY_INPUT_FILE};
+    $packageName ||= $properties->{$PACKAGE_NAME};
+  
+    $ontologyMappingXmlFile ||= $properties->{$ONTOLOGY_MAPPING_XML_FILE};
+  
+    $ontologyOwlFile ||= $properties->{$ONTOLOGY_OWL_FILE};
+    unless(-e $ontologyOwlFile){
+      $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
+    }
+    $valuesOwlFile ||= $properties->{$VALUES_OWL_FILE};
+    $valueMappingFile ||= $properties->{$VALUE_MAPPING_FILE};
+    $dateObfuscationFile ||= $properties->{$DATE_OBFUSCATION_FILE};
+    $isMerged ||= $properties->{$IS_MERGED};
+    $readerConfig ||= $properties->{$READER_CONFIG};
+    if(ref($properties->{$FILTER_OWL_ATTRIBUTES}) eq 'ARRAY'){
+      @filterOwlAttributes = @{$properties->{$FILTER_OWL_ATTRIBUTES}};
     }
     else {
-      $readerConfig = eval($readerConfig) if defined($readerConfig);
+      @filterOwlAttributes = ($properties->{$FILTER_OWL_ATTRIBUTES});
     }
-    die "invalid $READER_CONFIG - check syntax" unless $readerConfig;
-  }
-
-  unless(scalar @metadataFiles > 0) {
-    my $metadataFileString = $properties->{props}->{$METADATA_FILE};
-    @metadataFiles = split(/\s*,\s*/, $metadataFileString);
-  }
-  #foreach my $mdfile (@metadataFiles){
-  while(my $mdfile = shift @metadataFiles){
-    if( -d $mdfile ){
-      opendir(DH, $mdfile) or die "Cannot read directory $mdfile: $!";
-      my @files = map { "$mdfile/$_" } grep { -f "$mdfile/$_" } readdir(DH);
-      print STDERR ("metadataFiles = " . join(",",@files) . "\n" );
-      closedir(DH);
-      push(@filesInDirs, @files);
+    
+  
+    if(defined($readerConfig)){
+    #  ... Then I added the capability to read it from a file:
+      if(-e $readerConfig){
+        open(FH, "<$readerConfig") or die "$!Cannot read $readerConfig:$!\n";
+        my @lines = <FH>;
+        $readerConfig = eval (join("", @lines));
+      }
+      else {
+        $readerConfig = eval($readerConfig) if defined($readerConfig);
+      }
+      die "invalid $READER_CONFIG - check syntax" unless $readerConfig;
     }
-    else{ push(@filesInDirs,$mdfile) };
-  }
-  unless(scalar @filterParentSourceIds > 0) {
-    my $filterParentSourceIdsString = $properties->{props}->{$FILTER_PARENT_SOURCE_ID};
-    @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString) if($filterParentSourceIdsString);
+    # Now I don't even want to split it into another block, so...
+    else{
+      foreach my $prop ( @readerConfigProps ){
+        $readerConfig->{$prop} = $properties->{$prop};
+      }
+    }
+  
+    unless(scalar @metadataFiles > 0) {
+      my $metadataFileString = $properties->{$METADATA_FILE};
+      @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+    }
+    #foreach my $mdfile (@metadataFiles){
+    while(my $mdfile = shift @metadataFiles){
+      if( -d $mdfile ){
+        opendir(DH, $mdfile) or die "Cannot read directory $mdfile: $!";
+        my @files = map { "$mdfile/$_" } grep { -f "$mdfile/$_" } readdir(DH);
+        print STDERR ("metadataFiles = " . join(",",@files) . "\n" );
+        closedir(DH);
+        push(@filesInDirs, @files);
+      }
+      else{ push(@filesInDirs,$mdfile) };
+    }
+    unless(scalar @filterParentSourceIds > 0) {
+      my $filterParentSourceIdsString = $properties->{$FILTER_PARENT_SOURCE_ID};
+      @filterParentSourceIds = split(/\s*,\s*/, $filterParentSourceIdsString) if($filterParentSourceIdsString);
+    }
   }
 }
 
@@ -189,9 +210,15 @@ unless($isMerged){
 ## Clean up memory before trying to run the next step
 $metadataHelper->setMergedOutput({});
 
+my $filterOwlAttrHash = {};
+foreach my $attr (@filterOwlAttributes){
+  my($k,$v) = split(/=/, $attr);
+  $filterOwlAttrHash->{$k} = $v;
+}
+
 if(-e $ontologyMappingXmlFile && -e $valueMappingFile && -e $ontologyOwlFile) {
   my %filterParents = map { $_ => 1 } @filterParentSourceIds;
-  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents, $investigationFile);
+  $metadataHelper->writeInvestigationTree($ontologyMappingXmlFile, $valueMappingFile, $dateObfuscationFile, $ontologyOwlFile, $outputFile, \%filterParents, $filterOwlAttrHash, $investigationFile);
 }
 
 else {

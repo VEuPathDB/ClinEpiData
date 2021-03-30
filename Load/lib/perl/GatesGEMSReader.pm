@@ -128,6 +128,23 @@ sub getParentPrefix {
   return "HH";
 }
 
+
+
+
+sub cleanAndAddDerivedData {
+    my ($self, $hash) = @_;
+
+    if ($hash->{f4b_child_eval_spec}) {
+	$hash->{f4b_child_eval_spec} = ucfirst($hash->{f4b_child_eval_spec});
+    }
+    if ($hash->{f4a_expen_spec}) {
+	$hash->{f4a_expen_spec} = ucfirst($hash->{f4a_expen_spec});
+    }
+
+}
+
+
+
 1;
 
 package ClinEpiData::Load::GatesGEMSReader::EnrollmentObservationReader;

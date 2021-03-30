@@ -9,7 +9,7 @@
 use strict;
 use warnings;
 use XML::Simple;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/;
 use Data::Dumper;
 use File::Basename;
 

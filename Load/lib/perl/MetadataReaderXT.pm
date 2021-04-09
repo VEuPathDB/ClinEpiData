@@ -8,30 +8,37 @@ use warnings;
 
 sub readAncillaryInputFile {
 # use for 1. value mapping, and 2. IRI mapping
-  my ($self, $ancFile) = @_;
-  open(FH, "<$ancFile") or die "Cannot read $ancFile:$!\n";
+  my ($self, $ancFiles) = @_;
   my $anc = {};
-  while(my $row = <FH>){
-    chomp $row;
-    $row =~ s/(\r|\l)$//g;
-    my($col, $iri, $val, $mapVal) = split(/\t/,$row);
-    if(defined($val) && defined($mapVal)){
-      if($val eq ':::append:::'){ # add a static value to every row in a metadatafile
-        # where $col is the metadatafile, $iri is the variable
-        $anc->{$val}->{$col}->{$iri}=$mapVal;
+  foreach my $ancFile (@$ancFiles){
+    next unless $ancFile;
+    open(FH, "<$ancFile") or die "Cannot read $ancFile:$!\n";
+    while(my $row = <FH>){
+      chomp $row;
+      $row =~ s/(\r|\l)$//g;
+      my($col, $iri, $val, $mapVal) = split(/\t/,$row);
+      if(defined($val) && defined($mapVal)){
+        if($val eq ':::append:::'){ # add a static value to every row in a metadatafile
+          # where $col is the metadatafile, $iri is the variable
+          $anc->{$val}->{$col}->{$iri}=$mapVal;
+        }
+        elsif($val =~ /^:::/){
+          $anc->{$val}->{$col} ||= [];
+          push(@{$anc->{$val}->{$col}},$mapVal);
+        }
+        else {
+          $anc->{var}->{lc($col)}->{lc($val)} =$mapVal;
+          $anc->{var2}->{lc($iri)}->{lc($val)} = $mapVal;
+        }
       }
-      elsif($val =~ /^:::/){
-        $anc->{$val}->{$col} ||= [];
-        push(@{$anc->{$val}->{$col}},$mapVal);
-      }
-      else {
-        $anc->{var}->{lc($col)}->{lc($val)} =$mapVal;
-        $anc->{var2}->{lc($iri)}->{lc($val)} = $mapVal;
+      ## For applyMappedIRI
+      unless(lc($col) eq lc($iri)){
+      # Only map if they are different (avoids overwriting from another line
+        $anc->{iri}->{lc($col)}=lc($iri);
       }
     }
-    $anc->{iri}->{lc($col)}=lc($iri);
+    close(FH);
   }
-  close(FH);
   return $anc;
 }
 

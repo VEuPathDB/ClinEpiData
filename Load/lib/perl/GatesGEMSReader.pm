@@ -87,12 +87,73 @@ sub getSuffix{
     return "household_followup";                                                                                                 
 }
 
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol} = '60 day follow-up';
+}
+
+
+1;
+
+ 
+package ClinEpiData::Load::GatesGEMSReader::HouseholdEnrollmentObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
+
+
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{childid};
+}
+
+sub getParentPrefix {                                                                                                           
+    my ($self, $hash) = @_;   
+    return "HH";                                                                                                                 
+}
+
+sub makePrimaryKey {                                                                                                             
+    my ($self, $hash) = @_;                                                                                                     
+    my $suffix = $self->getSuffix();                                                                                               
+    return $hash->{childid} .  "_" . $suffix;                                                                                    
+}    
+
+sub getSuffix{                                                                                                                     
+    return "household_enrollment";                                                                                                 
+}
 
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
-    $hash->{hhobservationprotocol}="60 day follow-up";
+    $hash->{hhobservationprotocol} = 'Enrollment';
+}
+
+1;
+
+package ClinEpiData::Load::GatesGEMSReader::HouseholdFollowupObservationReader;
+use base qw(ClinEpiData::Load::GatesGEMSReader);
 
 
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{childid};
+}
+
+sub getParentPrefix {                                                                                                           
+    my ($self, $hash) = @_;   
+    return "HH";                                                                                                                 
+}
+
+sub makePrimaryKey {                                                                                                             
+    my ($self, $hash) = @_;                                                                                                     
+    my $suffix = $self->getSuffix();                                                                                               
+    return $hash->{childid} .  "_" . $suffix;                                                                                    
+}    
+
+sub getSuffix{                                                                                                                     
+    return "household_followup";                                                                                                 
+}
+
+sub cleanAndAddDerivedData{
+    my ($self,$hash)=@_;
+    $hash->{hhobservationprotocol} = '60 day follow-up';
 }
 
 1;

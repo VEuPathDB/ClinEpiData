@@ -21,7 +21,6 @@ sub makePrimaryKey {
 
 
 
-
 sub cleanAndAddDerivedData{
     my ($self,$hash)=@_;
 
@@ -32,11 +31,19 @@ sub cleanAndAddDerivedData{
         $hash->{age_days}= $hash->{enrollment_age_days};
     }
 
-    
-
+    if ($hash->{observationprotocol}  eq 'enrollment, outcome if additional rehydration needed'){
+	$hash->{observationprotocol} = 'Enrollment, Outcome if additional rehydration needed';
+    }
+    if($hash->{observationprotocol}  eq 'enrollment, outcome 4 hours after rehydration'){
+	$hash->{observationprotocol} = 'Enrollment, Outcome 4 hours after rehydration';
+    }
+    if($hash->{observationprotocol} eq 'enrollment, last outcome'){
+	$hash->{observationprotocol} = 'Enrollment, Last Outcome';
+    }
+    if($hash->{observationprotocol} eq 'enrollment, outcome leaving hospital/health center'){
+	$hash->{observationprotocol} = 'Enrollment, Outcome leaving hospital/health center';
+    } 
 }
-
-
 
 
 

@@ -1,0 +1,103 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Cwd qw/abs_path/;
+use Getopt::Long;
+use File::Basename qw/dirname/;
+
+
+my ($studydir,$name,$owl);
+
+my %options = ( 'd|studyDir=s' => \$studydir, 'n|name=s' => \$name, 'o|owl=s' => \$owl);
+unless(@ARGV){ printf("\t%s\n", join("\n\t", keys %options)); exit }
+GetOptions(%options);
+
+# /eupath/data/EuPathDB/manualDelivery/ClinEpiDB/Gates/SCORE/five_country/2020-05-27
+
+while(! $name){
+  print "link name ? ";
+  $name = <>;
+  chomp $name;
+}
+
+$studydir = abs_path($studydir);
+my $dateobdir = join("/", dirname($studydir), "dateObfuscation");
+print "mkdir $dateobdir\n";
+
+die "$studydir/final does not exist" unless -d "$studydir/final";
+die "$studydir/workspace does not exist" unless -d "$studydir/workspace";
+die "$studydir/fromProvider does not exist" unless -d "$studydir/fromProvider";
+
+
+mkdir "$studydir/workspace/build" or die "Cannot make directory $studydir/workspace/build:$!";
+symlink "$studydir/workspace/build", $name;
+print "$name => $studydir/workspace/build\n";
+symlink "$studydir/final", "$name/final";
+symlink "$dateobdir/dateObfuscation.txt", "$name/final/dateObfuscation.txt";
+symlink "$studydir/workspace", "$name/workspace";
+symlink "$studydir/fromProvider", "$name/fromProvider";
+mkdir "$studydir/workspace/build/conf";
+mkdir "$studydir/workspace/build/conf/com";
+mkdir "$studydir/workspace/build/conf/house";
+mkdir "$studydir/workspace/build/conf/ento";
+mkdir "$studydir/workspace/build/conf/part";
+mkdir "$studydir/workspace/build/conf/obs";
+mkdir "$studydir/workspace/build/conf/sam";
+mkdir "$studydir/workspace/build/data";
+mkdir "$studydir/workspace/build/out";
+
+
+mkdir $dateobdir;
+open FH, ">$dateobdir/dateObfuscation.txt" or die "Cannot write to $dateobdir: $!\n";
+close FH;
+open FH, ">$studydir/workspace/build/conf/dateObfuscation.txt" or die "Cannot create the temp dateObfuscation.txt: $!\n";
+close FH;
+
+# outputfile, parentfile, dir, dir, type, parenttype
+my @com = qw/community UNDEF com com community UNDEF/;
+my @house = qw/households community house house household community/;
+my @ento = qw/entomology households ento ento entomology household/;
+my @part = qw/participants households part part participant household/;
+my @obs = qw/observations participants obs obs observation participant/;
+my @sam = qw/samples observations sam sam sample observation/;
+my %strings = (
+  com   => \@com,
+  house => \@house,
+  ento  => \@ento ,
+  part  => \@part ,
+  obs   => \@obs  ,
+  sam   => \@sam  ,
+);
+my $propFormat = <<'PROPFILE';
+ontologyOwlFile=%s
+outputFile=out/%s.txt
+type=Category
+parentMergedFile=out/%s.txt
+parentType=Output
+packageName=ClinEpiData::Load::GenericReader
+metadataFile=data
+ontologyMappingXmlFile=conf/ontologyMapping.xml
+valueMappingFile=conf/valueMap.txt
+colExcludeFile=conf/%s/colexclude.txt
+ancillaryInputFile=conf/%s/anc.txt
+dateObfuscationFile=conf/dateObfuscation.txt
+category = %s
+parentCategory = %s
+idMappingFile = conf/idMap.txt
+cleanFirst = 1
+noFilePrefix = 0
+applyMappedIRI = 0
+applyMappedValues = 0
+PROPFILE
+
+
+foreach my $type (keys %strings){
+  my $propfile = sprintf($propFormat, $owl, @{$strings{$type}});
+  $propfile =~ s/parentMergedFile=out\/UNDEF.txt|parentType => "UNDEF", //g;
+  open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
+  printf FH ($propfile);
+  close FH;
+}  
+

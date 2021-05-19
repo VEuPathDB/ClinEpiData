@@ -556,12 +556,14 @@ sub writeInvestigationTree {
     	printf STDERR ("Here are the column headers to be excluded by ancestor source ID\n%s\n", join("\n", sort @$filterColumns));
 		}
 		printf STDERR "\t...done\n";
-		printf STDERR ("Scanning for column headers to filter by attributes %s\n", join(", ", sort values %$filterOwlAttributes)) ;
-    my $filterByAttrs = $treeObjRoot->getNoMatchAttribAlternativeQualifiers($filterOwlAttributes);
-		if(0 < scalar @$filterByAttrs){
-    	printf STDERR ("Here are the column headers to be excluded by owl attribute\n%s\n", join("\n", sort @$filterByAttrs));
-		}
-		printf STDERR "\t...done\n";
+    if($filterOwlAttributes){
+		  printf STDERR ("Scanning for column headers to filter by attributes %s\n", join(", ", sort values %$filterOwlAttributes)) ;
+      my $filterByAttrs = $treeObjRoot->getNoMatchAttribAlternativeQualifiers($filterOwlAttributes);
+		  if($filterByAttrs && (0 < scalar @$filterByAttrs)){
+      	printf STDERR ("Here are the column headers to be excluded by owl attribute\n%s\n", join("\n", sort @$filterByAttrs));
+		  }
+		  printf STDERR "\t...done\n";
+    }
   }
 	else {
 		printf STDERR "\nNo filterParentSourceId, skipping scan for column headers to exclude\n\n";

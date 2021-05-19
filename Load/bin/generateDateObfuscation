@@ -63,7 +63,10 @@ my $ids = getColumnFromFile($file,$primary);
 my %parentOf;
 @parentOf{@$ids} = @$pids; 
 
+my $count = 0;
 foreach my $id (@$ids){
+  unless($id){ die sprintf("Invisible id preceded by %s, followed by %s\n", $ids->[$count-1], $ids->[$count+1]) }
+  $count++;
   my $pid = $parentOf{$id};
   if(defined($pid) && defined($deltas{$pid}) ){
     $deltas{$id} = $deltas{$pid};

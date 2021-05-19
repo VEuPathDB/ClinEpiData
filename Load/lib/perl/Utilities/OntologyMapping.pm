@@ -203,11 +203,13 @@ sub getMaterialTypesFromOwl {
 
 sub getProtocols {
   my %protocols = (
-    enrollment => 'OBI_0600004', 
-    observationprotocol => 'BFO_0000015', 
-    'specimen collection' => 'OBI_0000659', 
-    entomology => 'EUPATH_0000055', 
-    hhobservationprotocol => 'EUPATH_0015467',
+    communityObservation => 'EUPATH_0035127', # community-community observation
+    communityHousehold => 'OBI_0600004', # community-household
+    hhobservationprotocol => 'EUPATH_0015467', # household-household observation
+    entomology => 'EUPATH_0000055', # household-entomology
+    enrollment => 'OBI_0600004', # household-participant edge
+    observationprotocol => 'BFO_0000015', # participant-observation edge
+    'specimen collection' => 'OBI_0000659', # observation-sample edge
   );
   my @sorted;
   foreach my $prot ( sort keys %protocols ){

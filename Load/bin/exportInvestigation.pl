@@ -14,7 +14,7 @@ use ClinEpiData::Load::Utilities::OntologyMapping;
 use File::Basename;
 use File::Temp qw/tempfile tempdir/;
 use Cwd qw/abs_path/;
-use Getopt::Long;
+use Getopt::Long qw(:config no_ignore_case);
 use JSON;
 use Data::Dumper;
 

@@ -32,7 +32,7 @@ sub updateConfig {
     close(FH);
     $self->setConfig('idMap', $idMap);
   }
-  my $type = $self->getConfig('type');
+  my $type = $self->getConfig('category') || $self->getConfig('type');
   unless($type){
     ($type) = map { lc($_) } (ref($self) =~ m/::([^:]*)Reader$/);
     $self->setConfig('type', $type);
@@ -42,7 +42,7 @@ sub updateConfig {
 sub getId {
   my ($self, $hash, $type) = @_;
   unless($type){
-    $type = $self->getConfig('type');
+    $type = $self->getConfig('category') || $self->getConfig('type');
     $type = lc($type) if $type;
   }
   my $idMap = $self->getConfig('idMap');
@@ -101,7 +101,12 @@ sub getId {
       $val = $origValue;
     }
     if(!(defined($val) && length($val)) && defined($placeholder)){
-      $val = $placeholder;
+      if($placeholder =~ /__line__/){
+        $val = $hash->{__line__};
+      }
+      else {
+        $val = $placeholder;
+      }
     }
     unless(defined($val)){
       die "ID Mapping invalid/missing for type/category [$type]:\n\tFILE=[$mdfile] COL=[$col]\nvalid columns:\n" . join("\n", map { "[$_]" } keys %$hash);
@@ -152,7 +157,7 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  my $parentType = $self->getConfig('parentType');
+  my $parentType = $self->getConfig('parentCategory') || $self->getConfig('parentType');
   if(defined($parentType)){
     return $self->getId($hash,lc($parentType));
   }
@@ -164,7 +169,7 @@ sub getParentPrefix {
   if($hash->{parent}) {
     return undef;
   }
-  my $parentType = $self->getConfig('parentType');
+  my $parentType = $self->getConfig('parentCategory') || $self->getConfig('parentType');
   return unless defined $parentType;
 	return $self->getConfig('prefix/'. lc($parentType));
 }

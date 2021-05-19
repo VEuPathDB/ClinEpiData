@@ -275,8 +275,8 @@ sub updateValueMappingFile {
   printf STDERR ("Updating %s using %s\n", $valueMappingFile, $valuesOwlFile);
   my $owl = ApiCommonData::Load::OwlReader->new($valuesOwlFile);
   my $terms = $owl->getTerms();
-  my %values;
-  foreach my $term (@$terms){ $values{$term->{sid}} = $term->{name} }
+  my %iriToLiteralValue;
+  foreach my $term (@$terms){ $iriToLiteralValue{$term->{sid}} = $term->{name} }
   open(FH, "<$valueMappingFile") or die "Cannot read $valueMappingFile:$!\n";
   my @finalValues;
   my $wasUpdated = 0;
@@ -284,12 +284,17 @@ sub updateValueMappingFile {
     chomp $row;
     next unless $row;
     my(@data) = split(/\t/, $row);
+    #0=var, 1=[qualifier IRI|var], 2=value, 3=[newVal|term IRI], 4=displayOrder
+    if(5 > scalar @data){ # 5th missing (legacy), need to fill in for CBIL::ISA::InvestigationSimple / Functions
+      push(@data, "");
+    }
     unless($data[3]){ push(@finalValues,$row); next }
+    ## if mapped value matches {{ }} look up the IRI->value
     my ($sid) = ($data[3] =~ m/^\{\{(.*)\}\}$/);
     if(defined($sid)){
-      if(defined($values{$sid})){
-        $data[4] = $data[3];
-        $data[3] = $values{$sid};
+      if(defined($iriToLiteralValue{$sid})){
+        $data[5] = $data[3];
+        $data[3] = $iriToLiteralValue{$sid};
         $row = join("\t", @data);
         $wasUpdated = 1;
       }

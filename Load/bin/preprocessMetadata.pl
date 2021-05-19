@@ -13,7 +13,7 @@ use Config::Std; # read_config()
 use Data::Dumper;
 
 # TODO:  ontologyMappingFile is a validation step in the end
-my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, $ancillaryInputFile, $packageName, @propFiles, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig, @filterOwlAttributes);
+my ($help, $ontologyMappingXmlFile, $investigationFile, $type, @metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $outputFile, @ancillaryInputFiles, $packageName, @propFiles, $valueMappingFile, $ontologyOwlFile, $valuesOwlFile, $dateObfuscationFile, @filterParentSourceIds, $isMerged, $readerConfig, @filterOwlAttributes);
 
 my $ONTOLOGY_MAPPING_XML_FILE = "ontologyMappingXmlFile";
 my $INVESTIGATION_FILE = "investigationFile";
@@ -50,7 +50,7 @@ my @readerConfigProps = qw/category parentCategory type parentType idMappingFile
   "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
   "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
   "$OUTPUT_FILE=s" => \$outputFile,
-  "$ANCILLARY_INPUT_FILE=s" => \$ancillaryInputFile,
+  "$ANCILLARY_INPUT_FILE=s" => \@ancillaryInputFiles,
   "$PACKAGE_NAME=s" => \$packageName,
   "$VALUE_MAPPING_FILE=s" => \$valueMappingFile,
   "$ONTOLOGY_OWL_FILE=s" => \$ontologyOwlFile,
@@ -77,7 +77,6 @@ if(defined($readerConfig)){
   
 foreach my $propFile (@propFiles){
   if(-e $propFile) {
-    # my $properties = CBIL::Util::PropertySet->new($propFile, \@properties, 1);
     read_config($propFile, my %config);
     my $properties = $config{''};
   
@@ -88,7 +87,14 @@ foreach my $propFile (@propFiles){
     $rowExcludeFile ||= $properties->{$ROW_EXCLUDE_FILE};
     $colExcludeFile ||= $properties->{$COL_EXCLUDE_FILE};
     $outputFile ||= $properties->{$OUTPUT_FILE};
-    $ancillaryInputFile ||= $properties->{$ANCILLARY_INPUT_FILE};
+    unless(@ancillaryInputFiles){
+      if(ref($properties->{$ANCILLARY_INPUT_FILE}) eq 'ARRAY'){
+        @ancillaryInputFiles = @{$properties->{$ANCILLARY_INPUT_FILE}};
+      }
+      else {
+        @ancillaryInputFiles = ($properties->{$ANCILLARY_INPUT_FILE});
+      }
+    }
     $packageName ||= $properties->{$PACKAGE_NAME};
   
     $ontologyMappingXmlFile ||= $properties->{$ONTOLOGY_MAPPING_XML_FILE};
@@ -194,7 +200,7 @@ unless($packageName) {
   $packageName = "ClinEpiData::Load::MetadataReader";
 }
 
-my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, $ancillaryInputFile, $packageName, $readerConfig);
+my $metadataHelper = ClinEpiData::Load::MetadataHelper->new($type, \@metadataFiles, $rowExcludeFile, $colExcludeFile, $parentMergedFile, $parentType, $ontologyMappingXmlFile, \@ancillaryInputFiles, $packageName, $readerConfig);
 
 #my $validator = ClinEpiData::Load::MetadataValidator->new($parentMergedFile, $ontologyMappingXmlFile);
 
@@ -215,6 +221,7 @@ $metadataHelper->setMergedOutput({});
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
   my($k,$v) = split(/\s*[=:]\s*/, $attr);
+  next unless $k;
   $filterOwlAttrHash->{$k} = $v;
 }
 

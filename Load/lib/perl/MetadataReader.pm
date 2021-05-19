@@ -129,7 +129,7 @@ sub readHeaders {
 
 
 sub new {
-  my ($class, $metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFile, $config) = @_;
+  my ($class, $metadataFile, $rowExcludes, $colExcludes, $parentParsedOutput, $ancillaryInputFiles, $config) = @_;
 
   my $self = bless {}, $class;
 
@@ -138,12 +138,8 @@ sub new {
   $self->setColExcludes($colExcludes);
   $self->setParentParsedOutput($parentParsedOutput);
 
-  if(-e $ancillaryInputFile) {
-
-    my $ancillaryData = $self->readAncillaryInputFile($ancillaryInputFile);
-
-    $self->setAncillaryData($ancillaryData);
-  }
+  my $ancillaryData = $self->readAncillaryInputFile($ancillaryInputFiles);
+  $self->setAncillaryData($ancillaryData);
   $self->{_CONFIG} = $config;
 
   my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 

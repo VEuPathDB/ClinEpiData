@@ -19,27 +19,15 @@ my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
 
 my %outputHashes;
 
-##printf STDERR ("Getting attributes\n");
-my $it = $owl->execute('get_attributes');
-my %sourceId;
+my $it = $owl->execute('get_entity_attributes');
 while (my $row = $it->next) {
-  my $attribName = pp($row->{label}->as_sparql);
-  my $attribIri = pp($row->{IRI}->as_sparql);
-  $sourceId{$attribName} = $attribIri;
-  # printf STDERR ("\t$attribName = $attribIri\n");
-}
-
-## printf STDERR ("Getting attribute values\n");
-while(my ($attribName, $attribIri) = each %sourceId){
-  my $it2 = $owl->execute('get_entity_attributes',{ ATTRIB_NAME => $attribName, ATTRIB_IRI => $attribIri } );
-  while (my $row = $it2->next) {
-    my $attribValue = pp($row->{ $attribName }->as_sparql);
-    my $termId = pp(basename($row->{entity}->as_sparql));
-    ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
-    $outputHashes{$termId} ||= {};
-    $outputHashes{$termId}->{$attribName} ||= [];
-    push(@{$outputHashes{$termId}->{$attribName}},$attribValue);
-  }
+  my $termId = pp(basename($row->{entity}->as_sparql));
+  my $attribName = pp($row->{ label }->as_sparql);
+  my $attribValue = pp($row->{ value }->as_sparql);
+  ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
+  $outputHashes{$termId} ||= {};
+  $outputHashes{$termId}->{$attribName} ||= [];
+  push(@{$outputHashes{$termId}->{$attribName}},$attribValue);
 }
 
 my $max = 0;

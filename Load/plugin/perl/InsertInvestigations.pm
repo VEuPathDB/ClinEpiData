@@ -49,7 +49,9 @@ sub run {
 
       my $ontologyMappingFile = $self->getArg('ontologyMappingFile');
       my $ontologyMappingOverrideFileBaseName = $self->getArg('ontologyMappingOverrideFileBaseName');
-      my $overrideFile = $dirname . "/" . $ontologyMappingOverrideFileBaseName;
+      my $overrideFile = undef;
+      if( -e $ontologyMappingOverrideFileBaseName){ $overrideFile = $ontologyMappingOverrideFileBaseName }
+      elsif( -e "$dirname/$ontologyMappingOverrideFileBaseName") { $overrideFile = "$dirname/$ontologyMappingOverrideFileBaseName" }
 
       $investigation = CBIL::ISA::InvestigationSimple->new($investigationFile, $ontologyMappingFile, $overrideFile, $valueMappingFile, undef, $isReportMode, $dateObfuscationFile);
     }

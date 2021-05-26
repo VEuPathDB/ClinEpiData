@@ -29,7 +29,8 @@ if(defined($propFile) && -e $propFile) {
   my $p = $config{''};
   push(@files, split(/,/,$p->{metadataFile}));
   $dataset ||= $p->{ontologyOwlFile};
-  push(@filters, lc($p->{type})) unless @filters;
+  my $type  = $p->{category} || $p->{type};
+  push(@filters, lc($type)) unless @filters;
   unless(@filterOwlAttributes){
     if(ref($p->{filterOwlAttribute}) eq 'ARRAY'){
       @filterOwlAttributes = @{$p->{filterOwlAttribute}};

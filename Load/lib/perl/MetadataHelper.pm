@@ -398,6 +398,7 @@ sub writeInvestigationTree {
 
   my $dirname = dirname($mergedOutputFile);
 
+  my $summaryOutputFile = $mergedOutputFile . ".summary.txt";
   my $treeStringOutputFile = $mergedOutputFile . ".tree.txt";
   my $jsonStringOutputFile = $mergedOutputFile . ".tree.json";
 
@@ -434,6 +435,7 @@ sub writeInvestigationTree {
   my %data;
   my %qualifierToHeaderNames;
   my $totalRows = 0;
+  my %qualifierToLabel;
 
 
   foreach my $study (@$studies) {
@@ -468,11 +470,14 @@ sub writeInvestigationTree {
       }
     }
   }
+  
+  my %flatSummaries; # string, number, date
 
   foreach my $sourceId (keys %data) {
     my @altQualifiers = sort keys %{$qualifierToHeaderNames{$sourceId}};
 
     my $parentNode = $nodeLookup->{$sourceId};
+    my $label = $parentNode->attributes->{displayName};
 
     die "Source_id [$sourceId] is missing from the OWL file but used in data" unless($parentNode);
 
@@ -504,6 +509,9 @@ sub writeInvestigationTree {
     }
 		my $size = scalar keys %valueCount;
 
+    my @summary;
+    my $cols = join(",",@altQualifiers);
+
     if(defined($count{"date"}) && defined($count{"total"}) && $count{"date"} == $count{"total"}) {
       #sort and take first and last
       my @sorted = sort @values;
@@ -512,6 +520,7 @@ sub writeInvestigationTree {
       my $display = "$total values $size distinct DATE_RANGE=$mindate...$maxdate";
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => $display, "isLeaf" => 1, "keep" => 1 }})) ;
+      @summary = ('date', $label, $cols, $total, $size, $mindate, $maxdate);
     }
     elsif(defined($count{"number"}) && defined($count{"total"}) &&  ($count{"number"} == $count{"total"})) {
       # use stats package to get quantiles and mean
@@ -527,23 +536,29 @@ sub writeInvestigationTree {
       my $displayName = sprintf("%d values %d distinct MIN=%s MAX=%s MEDIAN=%0.1f MEAN=%0.1f LOWER_Q=%0.1f UPPER_Q=%0.1f",$total, $size, $min, $max, $median, $mean, $firstQuantile, $thirdQuantile);
 
       $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.stats", attributes => {"displayName" => $displayName, "isLeaf" => 1, "keep" => 1} })) ;
+      @summary = ('number', $label, $cols, $total, $size, $min, $max, $median);
 
 
 
     }
     else {
 			printf STDERR ("%d values %d distinct in %s %s\n", $total, $size, $sourceId, join(",", @altQualifiers) || "");
+      @summary = ('string', $label, $cols, $total, $size);
 			if($size == $totalRows){ # do not print values when they are 1:1 
         $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
 			}
 			else {
      	  my $ct = 1;
+        #my @sumValues;
      	  foreach my $value (keys %valueCount) {
      	    $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$value ($valueCount{$value})", "isLeaf" => 1, "keep" => 1} })) ;
+          #push(@sumValues, "$value ($valueCount{$value})");
      	    $ct++;
      	  }
 			}
     }
+    
+    $flatSummaries{ $summary[0] }->{$sourceId} = \@summary;
 
     &keepNode($parentNode);
 
@@ -569,6 +584,15 @@ sub writeInvestigationTree {
 		printf STDERR "\nNo filterParentSourceId, skipping scan for column headers to exclude\n\n";
   }
 
+	printf STDERR "printing summary file $summaryOutputFile\n";
+  open(SUMM, ">$summaryOutputFile") or die "Cannot open file $summaryOutputFile for writing:$!";
+  printf SUMM ("%s\n", join("\t", 'SOURCE_ID', qw/dataType label columns totalValues distinctValues min max median/));
+  while(my ($dataType,$varData) = each %flatSummaries){
+    while( my ($sourceId, $rowData) = each %$varData){
+      printf SUMM ("%s\n", join("\t", $sourceId, @$rowData));
+    }
+  }
+  close SUMM;
 	printf STDERR "printing tree files\n";
   open(TREE, ">$treeStringOutputFile") or die "Cannot open file $treeStringOutputFile for writing:$!";
   open(JSON, ">$jsonStringOutputFile") or die "Cannot open file $jsonStringOutputFile for writing:$!";

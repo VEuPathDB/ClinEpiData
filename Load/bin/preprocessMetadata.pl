@@ -293,6 +293,7 @@ sub updateValueMappingFile {
     my ($sid) = ($data[3] =~ m/^\{\{(.*)\}\}$/);
     if(defined($sid)){
       if(defined($iriToLiteralValue{$sid})){
+        $data[4] //= '';
         $data[5] = $data[3];
         $data[3] = $iriToLiteralValue{$sid};
         $row = join("\t", @data);

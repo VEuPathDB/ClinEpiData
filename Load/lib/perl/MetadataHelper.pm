@@ -146,7 +146,7 @@ sub isValid {
       die "No Parent Defined for $pk" unless(defined $parentId);
 
       unless(defined($parentOutput->{lc($parentId)})) {
-        print STDERR "PRIMARY_KEY=$pk, PARENT=$parentId\n";
+        print STDERR "PRIMARY_KEY=$pk, PARENT=$parentId\n" , Dumper $mergedOutput->{$pk};
 				my @pks = sort keys %$parentOutput;
         die "Parent $parentId not defined as primary key in parent file\nParent keys look like this:\n" . join("\n", @pks[0 .. 9]) . "\n";
       }
@@ -477,6 +477,7 @@ sub writeInvestigationTree {
     my @altQualifiers = sort keys %{$qualifierToHeaderNames{$sourceId}};
 
     my $parentNode = $nodeLookup->{$sourceId};
+    unless($parentNode){ printf STDERR ("%s has no parent\n", $sourceId) }
     my $label = $parentNode->attributes->{displayName};
 
     die "Source_id [$sourceId] is missing from the OWL file but used in data" unless($parentNode);

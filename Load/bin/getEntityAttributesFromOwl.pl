@@ -80,7 +80,7 @@ while (my $row = $it->next) {
 ## post-processing in this while loop
 while( my( $termId, $props ) = each %outputHashes ){
   my $hidden = defined($props->{hidden}->[0]) ? lc($props->{hidden}->[0]) : '';
-  my $termType = lc($props->{termType}->[0]);
+  my $termType = defined($props->{termType}->[0]) ? lc($props->{termType}->[0]) : '';
   delete($outputHashes{$termId}->{termType});
   delete($outputHashes{$termId}->{hidden});
   next unless $hidden || $termType;
@@ -106,7 +106,7 @@ while( my ($termId, $termHash) = each %outputHashes){
         switch ($test){
           case /^"(.+)"$/ { $score-- unless $value =~ /$1/ }
           case 'numeric' { $score-- unless looks_like_number($value) }
-          case 'nonzero' { $score-- unless looks_like_number($value) && $value != 0 }
+          case 'nonzero' { $score-- unless $value != '0' }
           case 'date' { $score-- unless $value =~ /^\d{4}-\d{2}-\d{2}$/ }
           case 'empty' { $score-- unless $value =~ /^$/ }
         }
@@ -125,6 +125,7 @@ my $max = 0;
 printf("SOURCE_ID\tannotation_properties\n");
 foreach my $termId (sort keys %outputHashes){
   my $json = to_json($outputHashes{$termId});
+  next if $json eq '{}';
   if(length($json) > $max){ $max = length($json) }
   printf("%s\t%s\n", $termId, $json);
 }

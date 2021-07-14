@@ -7,7 +7,7 @@ use lib $ENV{GUS_HOME} . "/lib/perl";
 use ApiCommonData::Load::OwlReader;
 use Env qw/PROJECT_HOME SPARQLPATH/;
 use File::Basename;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/ ;
 use Data::Dumper;
 use Config::Std; # read_config()
 
@@ -29,7 +29,8 @@ if(defined($propFile) && -e $propFile) {
   my $p = $config{''};
   push(@files, split(/,/,$p->{metadataFile}));
   $dataset ||= $p->{ontologyOwlFile};
-  push(@filters, lc($p->{type})) unless @filters;
+  my $type  = $p->{category} || $p->{type};
+  push(@filters, lc($type)) unless @filters;
   unless(@filterOwlAttributes){
     if(ref($p->{filterOwlAttribute}) eq 'ARRAY'){
       @filterOwlAttributes = @{$p->{filterOwlAttribute}};

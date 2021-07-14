@@ -39,11 +39,11 @@ sub cleanAndAddDerivedData {}
 sub updateConfig {}
 
 sub readAncillaryInputFile {
-  die "Ancillary File provided bun no method implemented to read it.";
+  die "Ancillary File provided but no method implemented to read it.";
 }
 
 sub applyAncillaryData {
-  die "Ancillary File provided bun no method implemented to use it.";
+  die "Ancillary File provided but no method implemented to use it.";
 }
 
 sub rowMultiplier { return [ $_[1] ]; }
@@ -138,8 +138,14 @@ sub new {
   $self->setColExcludes($colExcludes);
   $self->setParentParsedOutput($parentParsedOutput);
 
-  my $ancillaryData = $self->readAncillaryInputFile($ancillaryInputFiles);
-  $self->setAncillaryData($ancillaryData);
+  my @ancfiles;
+  foreach my $ancf (@$ancillaryInputFiles ){ 
+    if( $ancf && -e $ancf ){ push(@ancfiles, $ancf) }
+  }
+  if(0 < scalar @ancfiles){
+    my $ancillaryData = $self->readAncillaryInputFile(\@ancfiles);
+    $self->setAncillaryData($ancillaryData);
+  }
   $self->{_CONFIG} = $config;
 
   my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 

@@ -67,9 +67,9 @@ displayType => [qw/"hidden" "multifilter"/], ## derived from hidden and termType
 
 my $it = $owl->execute('get_entity_attributes');
 while (my $row = $it->next) {
-  my $termId = pp(basename($row->{entity}->as_sparql));
-  my $attribName = pp($row->{ label }->as_sparql);
-  my $attribValue = pp($row->{ value }->as_sparql);
+    my $termId = $row->{sid}->as_hash->{literal};
+    my $attribName = $row->{ label }->as_hash->{literal};
+    my $attribValue = $row->{ value }->as_hash->{literal};
   ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
   next unless $keep{$attribName};
   $outputHashes{$termId} ||= {};

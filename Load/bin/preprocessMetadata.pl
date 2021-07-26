@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
@@ -46,7 +46,7 @@ my @readerConfigProps = qw/category parentCategory type parentType idMappingFile
   "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
   "$ONTOLOGY_MAPPING_XML_FILE=s" => \$ontologyMappingXmlFile, 
   "i|$INVESTIGATION_FILE=s" => \$investigationFile, 
-  "$METADATA_FILE=s" => \@metadataFiles,
+  "f|$METADATA_FILE=s" => \@metadataFiles,
   "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
   "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
   "$OUTPUT_FILE=s" => \$outputFile,
@@ -138,8 +138,13 @@ foreach my $propFile (@propFiles){
     }
   
     unless(scalar @metadataFiles > 0) {
-      my $metadataFileString = $properties->{$METADATA_FILE};
-      @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+      if(ref($properties->{$METADATA_FILE}) eq 'ARRAY'){
+        @metadataFiles = @{$properties->{$METADATA_FILE}};
+      }
+      else {
+        my $metadataFileString = $properties->{$METADATA_FILE};
+        @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+      }
     }
     #foreach my $mdfile (@metadataFiles){
     while(my $mdfile = shift @metadataFiles){

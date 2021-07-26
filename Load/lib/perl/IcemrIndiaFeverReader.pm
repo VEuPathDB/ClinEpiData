@@ -231,7 +231,7 @@ sub makePrimaryKey {
   return join("_", $id, $src, $event);
 }
 sub getPrimaryKeyPrefix {
-  return "S";
+  return "s";
 }
 
 sub mergeSCD {

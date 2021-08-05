@@ -135,7 +135,7 @@ foreach my $filter (@filters){
   #my @keys = $itr->binding_names;
   #printf ("%s\n", join("\t", @keys)) if @keys;
   while (my $row = $itr->next) {
-    my $rawEntity = basename($row->{entity}->as_hash()->{iri});
+    my $rawEntity = $row->{iri}->as_hash()->{literal};
     my $entity = lc($rawEntity);
     my $keep = 1;
     while(my ($attrName,$keepMatch) = each %$filterOwlAttrHash){

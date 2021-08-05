@@ -140,7 +140,7 @@ sub isValid {
 
   foreach my $pk (keys %$mergedOutput) {
     if($parentOutput) {
-      my $parentId = $mergedOutput->{$pk}->{"__PARENT__"};
+      my $parentId = $mergedOutput->{$pk}->{"__PARENT__"} || $mergedOutput->{$pk}->{__parent__};
 
       $parentId = &getDistinctLowerCaseValues($parentId);
       die "No Parent Defined for $pk" unless(defined $parentId);
@@ -156,7 +156,7 @@ sub isValid {
     foreach my $qualifier (keys %$qualifiersHash) {
       if($ontologyMapping) {
         unless($ontologyMapping->{$qualifier}->{characteristicQualifier}->{source_id}) {
-          unless($qualifier eq '__PARENT__'){
+          unless(lc($qualifier) eq '__parent__'){
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} ||= 0 ;
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} += 1 ;
           }

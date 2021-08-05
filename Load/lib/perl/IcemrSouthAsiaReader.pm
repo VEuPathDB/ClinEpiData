@@ -168,7 +168,7 @@ sub cleanAndAddDerivedData {
 		die "$a conflicts with $b" if(defined($hash->{$b}) && $hash->{$a} ne $hash->{$b});
 		my $hash->{$b} = $hash->{$a};
 		delete $hash->{$a};
-		printf STDERR ("remapped $a to $b: $hash->{$b}\n");
+		# printf STDERR ("remapped $a to $b: $hash->{$b}\n");
 	}
 }
 
@@ -432,5 +432,16 @@ sub makeSampleParentKey{
 1;
 
 package ClinEpiData::Load::IcemrSouthAsiaReader::OutputReader;
-#use base qw(ClinEpiData::Load::GenericReader::OutputReader);
+use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{parent};
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  return $hash->{primary_key};
+}
+sub cleanAndAddDerivedData {
+}
 1;

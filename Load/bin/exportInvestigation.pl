@@ -222,6 +222,7 @@ foreach my $study (@$studies){ ## studies are in order: household, participant, 
          $chars->{$var} ||= [];
          push(@{$chars->{$var}}, $ch->getValue );
        }
+       if($chars == {}){ printf STDERR ("EMPTY NODE:%s:%s\n", $type, $id) }
        $pan->{characteristics} = $chars;
        $charsByType{$type}->{$id} = {is_sub => 0, characteristics => $chars};
  ## backtrack 

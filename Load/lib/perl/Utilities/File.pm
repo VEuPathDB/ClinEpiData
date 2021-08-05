@@ -3,7 +3,7 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg/;
+our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders/;
 use Text::CSV_XS;
 use Config::Std;
 use Scalar::Util qw/looks_like_number/;
@@ -28,6 +28,17 @@ sub nonumvalues {
   my @nonums = keys %values;
   printf STDERR ("%s: %s\n", $col, join(",", @nonums));
   return \@nonums;
+}
+
+
+sub getHeaders {
+  my ($file, $delim) = @_;
+  $delim ||= ",";
+  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  open(my $ifh, "<$file") or die "$@\n";
+  my $row = $csv->getline( $ifh );
+  close($ifh);
+  return $row; 
 }
 
 sub csv2array {

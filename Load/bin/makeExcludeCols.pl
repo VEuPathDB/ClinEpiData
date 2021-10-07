@@ -27,7 +27,12 @@ unless($noPrefix){ $varDelim ||= '::' } # always use file prefix w/ '::', unless
 if(defined($propFile) && -e $propFile) {
   read_config($propFile, my %config);
   my $p = $config{''};
-  push(@files, split(/,/,$p->{metadataFile}));
+  if(ref($p->{metadataFile}) eq 'ARRAY'){
+    push(@files, @{$p->{metadataFile}});
+  }
+  else {
+    push(@files, split(/,/,$p->{metadataFile}));
+  }
   $dataset ||= $p->{ontologyOwlFile};
   my $type  = $p->{category} || $p->{type};
   push(@filters, lc($type)) unless @filters;

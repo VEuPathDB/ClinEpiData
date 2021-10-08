@@ -194,7 +194,7 @@ sub getMaterialTypesFromOwl {
       { source_id => 'EUPATH_0000738', type => 'materialType', name => [ 'observation' ] },
       { source_id => 'EUPATH_0000609', type => 'materialType', name => ['sample'] },
       { source_id => 'EUPATH_0035127', type => 'materialType', name => ['community'] },
-      { source_id => 'TEMP_COMMOBS01', type => 'materialType', name => ['communityobs'] },
+      { source_id => 'EUPATH_0043226', type => 'materialType', name => ['communityobs'] },
   ); 
   return \@sorted;
 }

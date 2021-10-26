@@ -85,7 +85,7 @@ while( my( $termId, $props ) = each %outputHashes ){
   delete($outputHashes{$termId}->{hidden});
   next unless $hidden || $termType;
   # printf STDERR ("HIDDEN = $hidden, TERM_TYPE = $termType\n");
-  if( $hidden eq 'yes' ){
+  if( $hidden eq 'yes' || $hidden eq 'everywhere' ){
     $outputHashes{$termId}->{displayType} = ['hidden'];
   }
   elsif( $termType eq 'multifilter' ){

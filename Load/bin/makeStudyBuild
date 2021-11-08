@@ -25,10 +25,9 @@ while(! $name){
 $studydir = abs_path($studydir);
 my $dateobdir = join("/", dirname($studydir), "dateObfuscation");
 print "mkdir $dateobdir\n";
-
-die "$studydir/final does not exist" unless -d "$studydir/final";
-die "$studydir/workspace does not exist" unless -d "$studydir/workspace";
-die "$studydir/fromProvider does not exist" unless -d "$studydir/fromProvider";
+foreach my $subdir ( ( "$studydir", "$studydir/final", "$studydir/workspace", "$studydir/fromProvider" )){
+  unless (-d $subdir ){ mkdir($subdir) or die "Cannot create $subdir: $!\n" }
+}
 
 
 mkdir "$studydir/workspace/build" or die "Cannot make directory $studydir/workspace/build:$!";

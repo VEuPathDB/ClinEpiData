@@ -5,7 +5,7 @@ use warnings;
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ApiCommonData::Load::OwlReader;
-use Env qw/PROJECT_HOME SPARQLPATH/;
+use Env qw/PROJECT_HOME SPARQLPATH GUS_HOME/;
 use File::Basename;
 use Getopt::Long qw/:config no_ignore_case/ ;
 use Data::Dumper;
@@ -49,12 +49,13 @@ my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
   my($k,$v) = split(/\s*[=:]\s*/, $attr);
   $filterOwlAttrHash->{$k} = $v;
+        printf STDERR ("DEBUG: setting %s:%s\n", $k, $v); 
 }
 
 unless($dataset){
   printf(join("\n\n",
     "Usage:\n\t%s -o|owl [owl] -f|filter [[filter]] -i|input [data file] [ -i [data file ] ] [-v|inverse]",
-    "Owl file must exist:\$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/[owl].owl",
+    "Owl file must exist:\$GUS_HOME/ontology/release/production/[owl].owl",
     "Run without [[filter]] to see a list of options for this dataset",
     "Run without -i[[data files ...]] to print only columns that are mapped in this dataset",
     "Run with -v to get only columns in [[filter]]\n"
@@ -106,7 +107,7 @@ printf STDERR ("%d files, %d columns\n", scalar @files, scalar keys %columns);
 
 my $owlFile = $dataset;
 unless( -e $owlFile ){
-  $owlFile = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production/$dataset.owl";
+  $owlFile = "$GUS_HOME/ontology/release/production/$dataset.owl";
 }
 
 my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
@@ -125,8 +126,8 @@ while (my $row = $it->next) {
 }
 
 unless(@filters){
-  printf STDERR ("Choose one of these top-level entities:\n\t%s\n", join("\n\t", map {sprintf("%s\t%s",$_, $filterOptions{$_})} sort keys %filterOptions));
-  exit;
+  printf STDERR ("No top-level category provided (-f option), using all:\n\t%s\n", join("\n\t", map {sprintf("%s\t%s",$_, $filterOptions{$_})} sort keys %filterOptions));
+  @filters = keys %filterOptions;
 } 
 
 ## Use other .owl attributes as keep flags

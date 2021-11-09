@@ -211,6 +211,7 @@ sub read {
     my %rowData;
     for(my $i = 0; $i < scalar @$headersAr; $i++) {
       my $key = lc($headersAr->[$i]);
+      next if ($key eq ''); ## empty column header (usually row number, 1st column)
       if($forceFilePrefix){ $key = join("::", $fileBasename, $key) }
       my $value = lc($valuesAr->[$i]);
       next if($value eq '[skipped]');

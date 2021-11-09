@@ -101,7 +101,7 @@ foreach my $propFile (@propFiles){
   
     $ontologyOwlFile ||= $properties->{$ONTOLOGY_OWL_FILE};
     unless(-e $ontologyOwlFile){
-      $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
+      $ontologyOwlFile = sprintf("%s/ontology/release/production/%s.owl", $ENV{GUS_HOME}, $ontologyOwlFile);
     }
     $valuesOwlFile ||= $properties->{$VALUES_OWL_FILE};
     $valueMappingFile ||= $properties->{$VALUE_MAPPING_FILE};
@@ -225,6 +225,7 @@ $metadataHelper->setMergedOutput({});
 
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
+  next if !defined($attr) || $attr eq '';
   my($k,$v) = split(/\s*[=:]\s*/, $attr);
   next unless $k;
   $filterOwlAttrHash->{$k} = $v;

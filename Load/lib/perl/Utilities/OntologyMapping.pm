@@ -7,7 +7,7 @@ use open ':std', ':encoding(UTF-8)';
 use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::MetadataReader;
 use File::Basename qw/basename dirname/;
-use Env qw/PROJECT_HOME/;
+use Env qw/PROJECT_HOME GUS_HOME/;
 use XML::Simple;
 use Data::Dumper;
 
@@ -24,7 +24,7 @@ sub new {
 sub run {
   my ($self,$owlFile,$functionsFile,$sortByIRI) = @_;
   unless( -f $owlFile ){
-    my $owlDir = "$PROJECT_HOME/ApiCommonData/Load/ontology/release/production";
+    my $owlDir = "$GUS_HOME/ontology/release/production";
     my $tmp = "$owlDir/$owlFile.owl";
     if(-f $tmp){
       $owlFile = $tmp;

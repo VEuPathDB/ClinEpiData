@@ -16,7 +16,7 @@ use JSON qw/to_json/;
 my ($owlFile) = @ARGV;
 
 unless(-e $owlFile){
-  $owlFile = join("/", $ENV{PROJECT_HOME}, "ApiCommonData/Load/ontology/release/production", $owlFile);
+  $owlFile = join("/", $ENV{GUS_HOME}, "ontology/release/production", $owlFile);
   $owlFile .= ".owl" unless $owlFile =~ /\.owl$/i;
 }
 print STDERR "Reading $owlFile\n";
@@ -56,7 +56,7 @@ defaultBinWidth => [qw/nonzero empty/],
 defaultDisplayRangeMax => [qw/numeric date empty/],
 defaultDisplayRangeMin => [qw/numeric date empty/],
 displayOrder => [qw/numeric empty/],
-# hidden => [qw/"yes" empty/],
+# hidden => [qw/"yes" "everywhere" "variableTree" empty/],
 is_featured => [qw/"yes" empty/],
 is_temporal => [qw/"yes" empty/],
 mergeKey => [qw/"yes" empty/],
@@ -83,15 +83,21 @@ while( my( $termId, $props ) = each %outputHashes ){
   my $termType = defined($props->{termType}->[0]) ? lc($props->{termType}->[0]) : '';
   delete($outputHashes{$termId}->{termType});
   delete($outputHashes{$termId}->{hidden});
+  if(!$hidden && $props->{variable}){ # hidden not defined, scope is unlimited
+    $outputHashes{$termId}->{scope} = ['download','variableTree'];
+  }
   next unless $hidden || $termType;
   # printf STDERR ("HIDDEN = $hidden, TERM_TYPE = $termType\n");
   if( $hidden eq 'yes' || $hidden eq 'everywhere' ){
     $outputHashes{$termId}->{displayType} = ['hidden'];
+    # $outputHashes{$termId}->{scope} is NULL
   }
   elsif( $termType eq 'multifilter' ){
     $outputHashes{$termId}->{displayType} = ['multifilter'];
   }
-  # always delete hidden and termType
+  if($hidden eq 'variableTree'){
+    $outputHashes{$termId}->{scope} = ['download'];
+  }
 }
 
 ## do validation

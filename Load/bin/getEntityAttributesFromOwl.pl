@@ -12,6 +12,7 @@ use File::Basename;
 use Switch;
 use Scalar::Util qw/blessed looks_like_number/;
 use JSON qw/to_json/;
+use Data::Dumper;
 
 my ($owlFile) = @ARGV;
 
@@ -48,15 +49,16 @@ unitIRI => 1,
 unitLabel => 1,
 variable => 1,
 displayType => 1, ## derived annotation property
+forceStringType => 1,
 );
 
 # if a value passes ANY test, it passes validation
 my %validationTest = (
 defaultBinWidth => [qw/nonzero empty/],
-defaultDisplayRangeMax => [qw/numeric date empty/],
-defaultDisplayRangeMin => [qw/numeric date empty/],
+defaultDisplayRangeMax => [qw/numeric "year" "month" "week" "day" empty/],
+defaultDisplayRangeMin => [qw/numeric "year" "month" "week" "day" empty/],
 displayOrder => [qw/numeric empty/],
-# hidden => [qw/"yes" "everywhere" "variableTree" empty/],
+hidden => [qw/"no" "yes" "everywhere" "variableTree" "download" empty/],
 is_featured => [qw/"yes" empty/],
 is_temporal => [qw/"yes" empty/],
 mergeKey => [qw/"yes" empty/],
@@ -72,6 +74,7 @@ while (my $row = $it->next) {
     my $attribValue = $row->{ value }->as_hash->{literal};
   ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
   next unless $keep{$attribName};
+  next unless ($attribValue ne "");
   $outputHashes{$termId} ||= {};
   $outputHashes{$termId}->{$attribName} ||= [];
   push(@{$outputHashes{$termId}->{$attribName}},$attribValue);
@@ -82,21 +85,17 @@ while( my( $termId, $props ) = each %outputHashes ){
   my $hidden = defined($props->{hidden}->[0]) ? lc($props->{hidden}->[0]) : '';
   my $termType = defined($props->{termType}->[0]) ? lc($props->{termType}->[0]) : '';
   delete($outputHashes{$termId}->{termType});
-  delete($outputHashes{$termId}->{hidden});
-  if(!$hidden && $props->{variable}){ # hidden not defined, scope is unlimited
-    $outputHashes{$termId}->{scope} = ['download','variableTree'];
-  }
-  next unless $hidden || $termType;
-  # printf STDERR ("HIDDEN = $hidden, TERM_TYPE = $termType\n");
-  if( $hidden eq 'yes' || $hidden eq 'everywhere' ){
+ #if(!$hidden && $props->{variable}){ # hidden not defined, scope is unlimited
+ #  $outputHashes{$termId}->{scope} = ['download','variabletree'];
+ #}
+  next unless($hidden || $termType);
+  ## 2022-01-11 As of now the value of scope is the value of hidden, as-is
+  ## TODO: phase out displayType = 'hidden', including $hidden above
+  if( $hidden eq 'yes' || $hidden eq 'everywhere' || $hidden eq 'variabletree' ){
     $outputHashes{$termId}->{displayType} = ['hidden'];
-    # $outputHashes{$termId}->{scope} is NULL
   }
   elsif( $termType eq 'multifilter' ){
     $outputHashes{$termId}->{displayType} = ['multifilter'];
-  }
-  if($hidden eq 'variableTree'){
-    $outputHashes{$termId}->{scope} = ['download'];
   }
 }
 
@@ -104,6 +103,7 @@ while( my( $termId, $props ) = each %outputHashes ){
 while( my ($termId, $termHash) = each %outputHashes){
   while (my ($propName, $values) = each %$termHash){
     next unless $validationTest{$propName};
+    if( 1 > @$values ){ delete $outputHashes{$termId}->{$propName}; next }
     foreach my $value (@$values){
       my $score = scalar @{$validationTest{$propName}}; # value assumed to be valid
       ## if $score reaches zero, all tests failed
@@ -124,7 +124,15 @@ while( my ($termId, $termHash) = each %outputHashes){
     }
   }
 }
-  
+
+## final preprocessing ...
+while( my ($termId, $termHash) = each %outputHashes){
+  # rename hidden -> scope
+  if( defined($termHash->{hidden})){
+    $termHash->{scope} = $termHash->{hidden};
+    delete $termHash->{hidden};
+  }
+}
 
 my $max = 0;
 

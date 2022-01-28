@@ -33,8 +33,8 @@ foreach my $row( @$valueMap ){
 
 if(0 < keys %perms){
   printf("%s\n", join("\t", qw/SOURCE_ID ordinal_values/));
-  while( my ($iri, $hash) = each %perms ){
-    my @perm =  sort { $hash->{$a} <=> $hash->{$b} } keys %$hash;
+  foreach my $iri (sort keys %perms){
+    my @perm =  sort { $perms{$iri}->{$a} <=> $perms{$iri}->{$b} } keys %{$perms{$iri}};
     my $json = to_json(\@perm);
     printf("%s\t%s\n", $iri, $json);
   }

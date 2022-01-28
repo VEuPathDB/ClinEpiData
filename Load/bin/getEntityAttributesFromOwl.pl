@@ -126,13 +126,13 @@ while( my ($termId, $termHash) = each %outputHashes){
 }
 
 ## final preprocessing ...
-while( my ($termId, $termHash) = each %outputHashes){
-  # rename hidden -> scope
-  if( defined($termHash->{hidden})){
-    $termHash->{scope} = $termHash->{hidden};
-    delete $termHash->{hidden};
-  }
-}
+#while( my ($termId, $termHash) = each %outputHashes){
+#  # rename hidden -> scope
+#  if( defined($termHash->{hidden})){
+#    $termHash->{scope} = $termHash->{hidden};
+#    delete $termHash->{hidden};
+#  }
+#}
 
 my $max = 0;
 

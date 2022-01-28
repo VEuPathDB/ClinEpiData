@@ -6,7 +6,7 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV_XS;
 use Data::Dumper;
-use open ':std', ':encoding(UTF-8)';
+#use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
@@ -39,11 +39,11 @@ sub cleanAndAddDerivedData {}
 sub updateConfig {}
 
 sub readAncillaryInputFile {
-  die "Ancillary File provided bun no method implemented to read it.";
+  die "Ancillary File provided but no method implemented to read it.";
 }
 
 sub applyAncillaryData {
-  die "Ancillary File provided bun no method implemented to use it.";
+  die "Ancillary File provided but no method implemented to use it.";
 }
 
 sub rowMultiplier { return [ $_[1] ]; }
@@ -138,8 +138,14 @@ sub new {
   $self->setColExcludes($colExcludes);
   $self->setParentParsedOutput($parentParsedOutput);
 
-  my $ancillaryData = $self->readAncillaryInputFile($ancillaryInputFiles);
-  $self->setAncillaryData($ancillaryData);
+  my @ancfiles;
+  foreach my $ancf (@$ancillaryInputFiles ){ 
+    if( $ancf && -e $ancf ){ push(@ancfiles, $ancf) }
+  }
+  if(0 < scalar @ancfiles){
+    my $ancillaryData = $self->readAncillaryInputFile(\@ancfiles);
+    $self->setAncillaryData($ancillaryData);
+  }
   $self->{_CONFIG} = $config;
 
   my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 
@@ -205,6 +211,7 @@ sub read {
     my %rowData;
     for(my $i = 0; $i < scalar @$headersAr; $i++) {
       my $key = lc($headersAr->[$i]);
+      next if ($key eq ''); ## empty column header (usually row number, 1st column)
       if($forceFilePrefix){ $key = join("::", $fileBasename, $key) }
       my $value = lc($valuesAr->[$i]);
       next if($value eq '[skipped]');

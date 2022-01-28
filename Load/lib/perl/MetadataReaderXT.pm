@@ -15,6 +15,8 @@ sub readAncillaryInputFile {
     open(FH, "<$ancFile") or die "Cannot read $ancFile:$!\n";
     while(my $row = <FH>){
       chomp $row;
+      next unless $row;
+      next if ($row =~ /^\s*#/);
       $row =~ s/(\r|\l)$//g;
       my($col, $iri, $val, $mapVal) = split(/\t/,$row);
       if(defined($val) && defined($mapVal)){
@@ -32,7 +34,7 @@ sub readAncillaryInputFile {
         }
       }
       ## For applyMappedIRI
-      unless(lc($col) eq lc($iri)){
+      unless($col && $iri && (lc($col) eq lc($iri))){
       # Only map if they are different (avoids overwriting from another line
         $anc->{iri}->{lc($col)}=lc($iri);
       }

@@ -168,7 +168,7 @@ sub cleanAndAddDerivedData {
 		die "$a conflicts with $b" if(defined($hash->{$b}) && $hash->{$a} ne $hash->{$b});
 		my $hash->{$b} = $hash->{$a};
 		delete $hash->{$a};
-		printf STDERR ("remapped $a to $b: $hash->{$b}\n");
+		# printf STDERR ("remapped $a to $b: $hash->{$b}\n");
 	}
 }
 
@@ -338,9 +338,12 @@ sub cleanAndAddDerivedData {
  		$hash->{$k} = $hash->{$col};
  		delete $hash->{$col};
  	}
-	if(defined($hash->{'x87._total_wbc_count'}) && $hash->{'x87._total_wbc_count'} > 0){
-		$hash->{'x87._total_wbc_count'} /= 1000;
-	}
+  # convert to 10^3
+  foreach my $col ( qw/x87._total_wbc_count x95._platelet_count/ ){
+  	if(defined($hash->{$col}) && $hash->{$col} > 0){
+  		$hash->{$col} /= 1000;
+  	}
+  }
 }
 
 sub makeParent {
@@ -366,7 +369,7 @@ sub makePrimaryKey {
 }
 
 sub getPrimaryKeyPrefix {
-	return 'S';
+	return 's_';
 }
 
 sub makeSampleParentKey{
@@ -432,5 +435,16 @@ sub makeSampleParentKey{
 1;
 
 package ClinEpiData::Load::IcemrSouthAsiaReader::OutputReader;
-#use base qw(ClinEpiData::Load::GenericReader::OutputReader);
+use base qw(ClinEpiData::Load::IcemrSouthAsiaReader);
+sub makeParent {
+  my ($self, $hash) = @_;
+  return $hash->{parent};
+}
+
+sub makePrimaryKey {
+  my ($self, $hash) = @_;
+  return $hash->{primary_key};
+}
+sub cleanAndAddDerivedData {
+}
 1;

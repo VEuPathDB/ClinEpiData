@@ -15,6 +15,7 @@ sub updateConfig {
       chomp $row;
       next unless length($row);
       my($mdfile,$type,$col) = map { lc($_) } split(/\t/, $row);
+      next unless $col;
       $mdfile = lc($mdfile);
       my @idCols;
       if($noFilePrefix){
@@ -55,9 +56,9 @@ sub getId {
   my $mdfile = $self->getMetadataFileLCB();
   # die "$mdfile has no ID mapping" unless $mdfile;
   unless(defined($idMap->{$mdfile}->{$type})){
-    my $warn = "[a] WARNING: $type not defined for $mdfile";
-    printf STDERR ("$warn\n") unless $warnings->{$warn};
-    $warnings->{$warn} = 1;
+   #my $warn = "[a] WARNING: $type not defined for $mdfile";
+   #printf STDERR ("$warn\n") unless $warnings->{$warn};
+   #$warnings->{$warn} = 1;
     return undef;
   }
   print STDERR "$type ID mapping not defined in $mdfile" unless defined($idMap->{$mdfile}->{$type});

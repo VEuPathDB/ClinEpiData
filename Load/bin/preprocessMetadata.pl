@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
@@ -46,7 +46,7 @@ my @readerConfigProps = qw/category parentCategory type parentType idMappingFile
   "$PARENT_MERGED_FILE=s" => \$parentMergedFile,
   "$ONTOLOGY_MAPPING_XML_FILE=s" => \$ontologyMappingXmlFile, 
   "i|$INVESTIGATION_FILE=s" => \$investigationFile, 
-  "$METADATA_FILE=s" => \@metadataFiles,
+  "f|$METADATA_FILE=s" => \@metadataFiles,
   "$ROW_EXCLUDE_FILE=s" => \$rowExcludeFile,
   "$COL_EXCLUDE_FILE=s" => \$colExcludeFile,
   "$OUTPUT_FILE=s" => \$outputFile,
@@ -101,7 +101,7 @@ foreach my $propFile (@propFiles){
   
     $ontologyOwlFile ||= $properties->{$ONTOLOGY_OWL_FILE};
     unless(-e $ontologyOwlFile){
-      $ontologyOwlFile = sprintf("%s/ApiCommonData/Load/ontology/release/production/%s.owl", $ENV{PROJECT_HOME}, $ontologyOwlFile);
+      $ontologyOwlFile = sprintf("%s/ontology/release/production/%s.owl", $ENV{GUS_HOME}, $ontologyOwlFile);
     }
     $valuesOwlFile ||= $properties->{$VALUES_OWL_FILE};
     $valueMappingFile ||= $properties->{$VALUE_MAPPING_FILE};
@@ -138,8 +138,13 @@ foreach my $propFile (@propFiles){
     }
   
     unless(scalar @metadataFiles > 0) {
-      my $metadataFileString = $properties->{$METADATA_FILE};
-      @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+      if(ref($properties->{$METADATA_FILE}) eq 'ARRAY'){
+        @metadataFiles = @{$properties->{$METADATA_FILE}};
+      }
+      else {
+        my $metadataFileString = $properties->{$METADATA_FILE};
+        @metadataFiles = split(/\s*,\s*/, $metadataFileString);
+      }
     }
     #foreach my $mdfile (@metadataFiles){
     while(my $mdfile = shift @metadataFiles){
@@ -220,6 +225,7 @@ $metadataHelper->setMergedOutput({});
 
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
+  next if !defined($attr) || $attr eq '';
   my($k,$v) = split(/\s*[=:]\s*/, $attr);
   next unless $k;
   $filterOwlAttrHash->{$k} = $v;
@@ -293,6 +299,7 @@ sub updateValueMappingFile {
     my ($sid) = ($data[3] =~ m/^\{\{(.*)\}\}$/);
     if(defined($sid)){
       if(defined($iriToLiteralValue{$sid})){
+        $data[4] //= '';
         $data[5] = $data[3];
         $data[3] = $iriToLiteralValue{$sid};
         $row = join("\t", @data);

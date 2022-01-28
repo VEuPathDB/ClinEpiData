@@ -10,15 +10,25 @@ use warnings;
 use XML::Simple;
 use Data::Dumper;
 use File::Basename;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/;
 
 unless (@ARGV){
 	printf("%s", join("\t\n", "Usage:", basename($0) . " ontologyMapping.xml merged-file1 merged-file2 ...", "scans for missing or duplicated fields in merged files", ""));
 	exit;
 }
 
+my ($dupcols);
+
 my $VERBOSE=0;
-GetOptions('v|verbose'=>\$VERBOSE);
+GetOptions(
+  'v|verbose'=>\$VERBOSE,
+  'd!' => \$dupcols
+);
+
+if($dupcols){
+  scanDupCols(@ARGV);
+  exit;
+} 
 
 
 my ($ontofile, @outfiles) = @ARGV;
@@ -85,3 +95,41 @@ foreach my $field (sort keys %mapped){
 }
   
   
+sub scanDupCols {
+  my (@files) = @_;
+  foreach my $f ( @files ){
+    open(FH, "<$f");
+    my $row = <FH>;
+    chomp $row;
+    my @cols = (split(/\t/, $row));
+    my %map;
+    for(my $i = 0; $i < $#cols; $i++){
+      $map{ $cols[$i] } = $i;
+    }
+
+    foreach my $c (@cols){
+      my @colset = ($c);
+      my $N = 1;
+      my $cN = sprintf("%s_%d", $c, $N);
+      while( defined($map{$cN}) ){
+        push(@colset, $cN);
+        $N++;
+        $cN = sprintf("%s_%d", $c, $N);
+      }
+      if(@colset > 1){
+        printf("%s\n", join("\t", $cols[0], @colset));
+        while($row = <FH>) {
+          chomp $row;
+          my @data = split(/\t/, $row);
+          my %countVals = map { $data[ $map{$_} ] => 1 } grep { /.+/ } @colset;
+          if(1 < scalar keys %countVals){
+            printf("%s\n", join("\t", $data[0], map { $data[ $map{$_} ] } @colset));
+          }
+        }
+      }
+      seek(FH, 0, 0);
+      <FH>;
+    } 
+    close(FH);
+  }
+}

@@ -27,16 +27,16 @@ sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
   $self->SUPER::cleanAndAddDerivedData($hash);
   $hash->{country} = "India";
-	if(defined($hash->{redcap_event_name})){
-		if($hash->{redcap_event_name} !~ /^house/i){
-			delete $hash->{$_} for keys %$hash;
-			return undef;
-		}
-	  else{
-	  	$hash->{household_redcap_event_name} = $hash->{redcap_event_name};
-	  	delete $hash->{redcap_event_name};
-	  }
-	}
+##if(defined($hash->{redcap_event_name})){
+##	if($hash->{redcap_event_name} !~ /^house/i){
+##		delete $hash->{$_} for keys %$hash;
+##		return undef;
+##	}
+##  else{
+##  	$hash->{household_redcap_event_name} = $hash->{redcap_event_name};
+##  	delete $hash->{redcap_event_name};
+##  }
+##}
 	if(!defined($hash->{studysite})){
 		my $id = $hash->{cen_fid} || $hash->{sid};
 		switch(substr(lc($hash->{cen_fid}),0,2)){

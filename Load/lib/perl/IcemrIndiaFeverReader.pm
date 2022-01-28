@@ -21,8 +21,8 @@ sub getId {
 
 package ClinEpiData::Load::IcemrIndiaFeverReader::ParticipantReader;
 use base qw(ClinEpiData::Load::IcemrIndiaFeverReader);
-# sub cleanAndAddDerivedData {
-#   my ($self, $hash) = @_;
+sub cleanAndAddDerivedData {
+  my ($self, $hash) = @_;
 #   if(defined($hash->{pastyear_treatdate})){
 #     $hash->{pastyear_treat_date} = $hash->{pastyear_treatdate};
 #     delete $hash->{pastyear_treatdate};
@@ -36,7 +36,8 @@ use base qw(ClinEpiData::Load::IcemrIndiaFeverReader);
 #     $val =~ s/^(\d{1,2})-(\d+)$/1-$1-$2/; ## mm-yyyy
 #     $hash->{pastyear_treat_date} = $val;
 #   }
-# }
+  $hash->{country} = 'India';
+}
 
 sub makeParent {
   my ($self, $hash) = @_;

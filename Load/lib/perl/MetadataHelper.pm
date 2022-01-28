@@ -15,6 +15,7 @@ use ApiCommonData::Load::OwlReader;
 
 use Data::Dumper;
 
+my $MAX_TREE_NODES = 100;
 
 sub getReaders { $_[0]->{_readers} }
 sub setReaders { $_[0]->{_readers} = $_[1] }
@@ -545,10 +546,24 @@ sub writeInvestigationTree {
     else {
 			printf STDERR ("%d values %d distinct in %s %s\n", $total, $size, $sourceId, join(",", @altQualifiers) || "");
       @summary = ('string', $label, $cols, $total, $size);
-			if($size == $totalRows){ # do not print values when they are 1:1 
+		  if($size > 100){ 
         $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.1", attributes => {"displayName" => "$size distinct values", "isLeaf" => 1, "keep" => 1} }));
-			}
-			else {
+        my $width = 10;
+     	  my $things = 0;
+        my $ct = 1;
+        my @row;
+     	  while(my ($value,$vc) = each %valueCount) {
+          push(@row, sprintf("%s (%d)", $value, $vc));
+     	    $things++;
+          if($things % $width == 0){
+     	      $ct++;
+            my $text = join(",", @row);
+     	      $parentNode->add_daughter(ClinEpiData::Load::OntologyDAGNode->new({name => "$sourceId.$ct", attributes => {"displayName" => "$text", "isLeaf" => 1, "keep" => 1} })) ;
+            @row = ();
+          }
+     	  }
+		  }
+		  else {
      	  my $ct = 1;
         #my @sumValues;
      	  foreach my $value (keys %valueCount) {

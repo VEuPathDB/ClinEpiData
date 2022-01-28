@@ -6,7 +6,7 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV_XS;
 use Data::Dumper;
-use open ':std', ':encoding(UTF-8)';
+#use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }

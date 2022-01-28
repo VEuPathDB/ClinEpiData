@@ -26,7 +26,7 @@ sub getPrimaryKeyPrefix {
   my ($self, $hash) = @_;
 
   unless($hash->{"primary_key"}) {
-    return "HH";
+    return "h_";
   }
   return "";
 }
@@ -63,7 +63,7 @@ sub makePrimaryKey {
 sub getParentPrefix {
   my ($self, $hash) = @_;
 
-  return "HH";
+  return "h_";
 }
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
@@ -118,50 +118,60 @@ sub makePrimaryKey {
 
   return $hash->{uniqueid};
 }
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+
+  unless($hash->{"primary_key"}) {
+    return "o_";
+  }
+  return "";
+}
 
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-	my $mdfile = basename($self->getMetadataFile());
-	my $lamp = $hash->{lamp};
-	my $mcat = $hash->{malariacat};
-	if($mdfile eq 'updated_lamp_results_with_uniqueid_v2.txt'){
-		my %vmap = (
-			1 => 'Blood smear not indicated',
-			2 => 'Blood smear indicated but not done',
-			3 => 'Blood smear negative / LAMP negative',
-			4 => 'Blood smear negative / LAMP not done',
-			5 => 'Blood smear negative / LAMP positive',
-			6 => 'Blood smear positive / no malaria',
-			7 => 'Symptomatic malaria',
-		);
-		if(defined($vmap{$mcat})){ $mcat = $vmap{$mcat};}
-	}
 
-  if($mcat eq 'negative blood smear') {
-    if(($lamp eq 'positive') || ($lamp eq '1')) {
-      $mcat = 'Blood smear negative / LAMP positive';    
-    }
-    elsif(($lamp eq 'negative') || ($lamp eq '0')) {
-      $mcat = 'Blood smear negative / LAMP negative';    
-    }
-    else {
-      $mcat = 'Blood smear negative / LAMP not done';
-    }
-  }
-  elsif($mcat eq 'malaria') {
-		$mcat = 'Symptomatic malaria';
-	}
-  elsif($mcat eq 'asymptomatic parasitemia') {
-		$mcat = 'Blood smear positive / no malaria';
-	}
-  elsif($mcat eq 'blood smear not indicated') {
-		$mcat = 'Blood smear not indicated';
-	}
-  elsif($mcat eq 'blood smear should have been done') {
-		$mcat = 'Blood smear indicated but not done';
-	}
-	$hash->{malariacat} = $mcat;
+# my $mdfile = basename($self->getMetadataFile());
+# my $lamp = $hash->{lamp};
+# my $mcat = $hash->{malariacat};
+# if($mdfile =~ /updated_lamp_results/){
+# 	my %vmap = (
+# 		1 => 'Blood smear not indicated',
+# 		2 => 'Blood smear indicated but not done',
+# 		3 => 'Blood smear negative / LAMP negative',
+# 		4 => 'Blood smear negative / LAMP not done',
+# 		5 => 'Blood smear negative / LAMP positive',
+# 		6 => 'Blood smear positive / no malaria',
+# 		7 => 'Symptomatic malaria',
+# 	);
+# 	if(defined($vmap{$mcat})){ $mcat = $vmap{$mcat};}
+# }
+
+# if($mcat eq 'negative blood smear') {
+#   if(($lamp eq 'positive') || ($lamp eq '1')) {
+#     $mcat = 'Blood smear negative / LAMP positive';    
+#   }
+#   elsif(($lamp eq 'negative') || ($lamp eq '0')) {
+#     $mcat = 'Blood smear negative / LAMP negative';    
+#   }
+#   else {
+#     $mcat = 'Blood smear negative / LAMP not done';
+#   }
+# }
+# elsif($mcat eq 'malaria') {
+# 	$mcat = 'Symptomatic malaria';
+# }
+# elsif($mcat eq 'asymptomatic parasitemia') {
+# 	$mcat = 'Blood smear positive / no malaria';
+# }
+# elsif($mcat eq 'blood smear not indicated') {
+# 	$mcat = 'Blood smear not indicated';
+# }
+# elsif($mcat eq 'blood smear should have been done') {
+# 	$mcat = 'Blood smear indicated but not done';
+# }
+# $hash->{malariacat} = $mcat;
+
 
   my @symptomsAndSigns = (['abdominalpain', 'apainduration'],
                           ['anorexia', 'aduration'],
@@ -194,20 +204,20 @@ sub cleanAndAddDerivedData {
     $hash->{cmcategory} = undef;
   }
 
-  foreach my $key (keys %$hash) {
-    if($key =~ /^med\d*code$/) {
+ #foreach my $key (keys %$hash) {
+ #  if($key =~ /^med\d*code$/) {
 
-      # these 3 are the malaria ones
-      if($hash->{$key} eq '40' || $hash->{$key} eq '41' || $hash->{$key} eq '50') {
+ #    # these 3 are the malaria ones
+ #    if($hash->{$key} eq '40' || $hash->{$key} eq '41' || $hash->{$key} eq '50') {
 
-        my $newKey = $key . "_malaria";
+ #      my $newKey = $key . "_malaria";
 
-        $hash->{$newKey} = $hash->{$key};
+ #      $hash->{$newKey} = $hash->{$key};
 
-        delete $hash->{$key};
-      }
-    }
-  }
+ #      delete $hash->{$key};
+ #    }
+ #  }
+ #}
 
 
 
@@ -287,9 +297,11 @@ sub read {
   my ($self) = @_;
 
   my $metadataFile = $self->getMetadataFile();
-  my $baseMetaDataFile = basename $metadataFile;
+  #my $baseMetaDataFile = basename $metadataFile;
+  my $mdfile = $self->getMetadataFileLCB;
 
-  if(($baseMetaDataFile eq "Prism_samples.txt" || $baseMetaDataFile eq "Prism_samples_update.txt") && (ref($self) eq "ClinEpiData::Load::PrismReader::SampleReader")) {
+  #if(($baseMetaDataFile eq "Prism_samples.txt" || $baseMetaDataFile eq "Prism_samples_update.txt") && (ref($self) eq "ClinEpiData::Load::PrismReader::SampleReader")) {
+  if(($mdfile =~ /prism_samples/) && (ref($self) eq "ClinEpiData::Load::PrismReader::SampleReader")) {
     my $colExcludes = $self->getColExcludes();
     my $rowExcludes = $self->getRowExcludes();
     my $parentParsedOutput = $self->getParentParsedOutput();
@@ -383,6 +395,11 @@ sub makeParent {
   die "No Date found for Sample $primaryKey (Participant ID=$participant)\n";
 
 }
+sub getParentPrefix {
+  my ($self, $hash) = @_;
+
+  return "o_";
+}
 
 # Default is for the tororo file
 sub makePrimaryKey {
@@ -395,6 +412,11 @@ sub makePrimaryKey {
     return $hash->{subjectid}  . $hash->{randomnumber};
   }
   return undef;
+}
+sub getPrimaryKeyPrefix {
+  my ($self, $hash) = @_;
+
+  return "s_";
 }
 
 
@@ -434,7 +456,7 @@ sub makeParent {
 sub getParentPrefix {
   my ($self, $hash) = @_;
 
-  return "HH";
+  return "h_";
 }
 
 1;

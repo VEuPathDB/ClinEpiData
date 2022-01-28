@@ -338,9 +338,12 @@ sub cleanAndAddDerivedData {
  		$hash->{$k} = $hash->{$col};
  		delete $hash->{$col};
  	}
-	if(defined($hash->{'x87._total_wbc_count'}) && $hash->{'x87._total_wbc_count'} > 0){
-		$hash->{'x87._total_wbc_count'} /= 1000;
-	}
+  # convert to 10^3
+  foreach my $col ( qw/x87._total_wbc_count x95._platelet_count/ ){
+  	if(defined($hash->{$col}) && $hash->{$col} > 0){
+  		$hash->{$col} /= 1000;
+  	}
+  }
 }
 
 sub makeParent {
@@ -366,7 +369,7 @@ sub makePrimaryKey {
 }
 
 sub getPrimaryKeyPrefix {
-	return 'S';
+	return 's_';
 }
 
 sub makeSampleParentKey{

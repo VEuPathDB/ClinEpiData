@@ -4,7 +4,7 @@ use strict;
 
 use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
-use Text::CSV_XS;
+use Text::CSV;
 use Data::Dumper;
 #use open ':std', ':encoding(UTF-8)';
 
@@ -148,8 +148,8 @@ sub new {
   }
   $self->{_CONFIG} = $config;
 
-  my $csv = Text::CSV_XS->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 
-      or die "Cannot use CSV: ".Text::CSV_XS->error_diag ();  
+  my $csv = Text::CSV->new({ binary => 1, sep_char => "\t", quote_char => '"', allow_loose_quotes => 1 }) 
+      or die "Cannot use CSV: ".Text::CSV->error_diag ();  
 
   $self->setLineParser($csv);
   return $self;

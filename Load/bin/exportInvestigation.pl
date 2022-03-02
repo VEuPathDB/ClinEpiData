@@ -69,7 +69,6 @@ unless($autoMode || -e $dateObfuscationFile){
 my $labels = {};
 if($ontologyOwlFile){
   $labels = getLabelsFromOwl($ontologyOwlFile);
-  use ApiCommonData::Load::OwlReader;
 }
 
 if($autoMode){
@@ -333,7 +332,9 @@ sub getLabelsFromOwl {
     my $ontdir = $ENV{GUS_HOME} . "/ontology/release/production";
   	$owlFile = sprintf("%s/%s.owl", $ontdir, $ont);
   }
-  my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
+  my $owl = {};
+  eval 'require ApiCommonData::Load::OwlReader';
+  eval '$owl = ApiCommonData::Load::OwlReader->new($owlFile)';
 	my $it = $owl->execute('get_terms');
 	while( my $row = $it->next ){
 		my $label = $row->{label} ? $row->{label}->as_sparql : ""  ;

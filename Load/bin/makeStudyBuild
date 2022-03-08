@@ -38,12 +38,6 @@ symlink "$dateobdir/dateObfuscation.txt", "$name/final/dateObfuscation.txt";
 symlink "$studydir/workspace", "$name/workspace";
 symlink "$studydir/fromProvider", "$name/fromProvider";
 mkdir "$studydir/workspace/build/conf";
-mkdir "$studydir/workspace/build/conf/com";
-mkdir "$studydir/workspace/build/conf/house";
-mkdir "$studydir/workspace/build/conf/ento";
-mkdir "$studydir/workspace/build/conf/part";
-mkdir "$studydir/workspace/build/conf/obs";
-mkdir "$studydir/workspace/build/conf/sam";
 mkdir "$studydir/workspace/build/data";
 mkdir "$studydir/workspace/build/out";
 
@@ -54,47 +48,84 @@ close FH;
 open FH, ">$studydir/workspace/build/conf/dateObfuscation.txt" or die "Cannot create the temp dateObfuscation.txt: $!\n";
 close FH;
 
-# outputfile, parentfile, dir, dir, type, parenttype
-my @com = qw/community UNDEF com com community UNDEF/;
-my @house = qw/households community house house household community/;
-my @ento = qw/entomology households ento ento entomology household/;
-my @part = qw/participants households part part participant household/;
-my @obs = qw/observations participants obs obs observation participant/;
-my @sam = qw/samples observations sam sam sample observation/;
-my %strings = (
-  com   => \@com,
-  house => \@house,
-  ento  => \@ento ,
-  part  => \@part ,
-  obs   => \@obs  ,
-  sam   => \@sam  ,
-);
-my $propFormat = <<'PROPFILE';
-ontologyOwlFile=%s
-outputFile=out/%s.txt
-type=Category
-parentMergedFile=out/%s.txt
-parentType=Output
-packageName=ClinEpiData::Load::GenericReader
-metadataFile=data
-ontologyMappingXmlFile=conf/ontologyMapping.xml
-valueMappingFile=conf/valueMap.txt
-colExcludeFile=conf/%s/colexclude.txt
-ancillaryInputFile=conf/%s/anc.txt
-dateObfuscationFile=conf/dateObfuscation.txt
-category = %s
-parentCategory = %s
-idMappingFile = conf/idMap.txt
-cleanFirst = 1
-noFilePrefix = 0
-applyMappedIRI = 0
-applyMappedValues = 0
-PROPFILE
+my $set = {
+  com => {
+    parent => 'UNDEF',
+    anc => 'UNDEF',
+    filter => 'repeated:no', 
+  },
+  comrm => {
+    parent => 'com',
+    anc => 'community',
+    filter => 'repeated:yes', 
+  },
+  house => {
+    parent => 'com',
+    anc => 'household',
+    filter => 'repeated:no', 
+  },
+  houserm => {
+    parent => 'house',
+    anc => 'household',
+    filter => 'repeated:yes', 
+  },
+  part => {
+    parent => 'house',
+    anc => 'participant',
+    filter => 'repeated:no', 
+  },
+  partrm => {
+    parent => 'part',
+    anc => 'participant',
+    filter => 'repeated:yes', 
+  },
+  sam => {
+    parent => 'obs',
+    anc => 'sample',
+    filter => 'UNDEF', 
+  },
+};
 
+foreach my $type (keys %$set){
+  mkdir "$studydir/workspace/build/conf/$type";
+  my $propfile = <<PPPP;
+#### TYPE SPECIFIC SETTINGS ####
 
-foreach my $type (keys %strings){
-  my $propfile = sprintf($propFormat, $owl, @{$strings{$type}});
-  $propfile =~ s/parentMergedFile=out\/UNDEF.txt|parentType => "UNDEF", //g;
+category : $type
+parentCategory : $set->{$type}->{parent}
+
+outputFile : out/$type.txt
+parentMergedFile : out/$set->{$type}->{parent}.txt
+colExcludeFile : conf/$type/colexclude.txt
+
+noFilePrefix : 0
+
+## Preprocess using ancillary input 
+ancillaryInputFile : conf/$type/anc.txt
+applyMappedIRI : 0
+applyMappedValues : 0
+ 
+## Parameters for makeExcludeCols
+filter : $set->{$type}->{anc}
+otherAttrib : $set->{$type}->{filter}
+
+################################
+####   GENERAL SETTINGS     ####
+ontologyOwlFile : $owl
+ontologyMappingXmlFile : conf/ontologyMapping.xml
+metadataFile : data
+valueMappingFile : conf/valueMap.txt
+dateObfuscationFile : conf/dateObfuscation.txt
+idMappingFile : conf/idMap.txt
+
+####   INTERNAL SETTINGS    ####
+type : Category
+parentType : Output
+packageName : ClinEpiData::Load::GenericReader
+cleanFirst : 1
+PPPP
+  
+  $propfile =~ s/^([\w :]UNDEF(\.txt)?)$//gms;
   open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
   printf FH ($propfile);
   close FH;

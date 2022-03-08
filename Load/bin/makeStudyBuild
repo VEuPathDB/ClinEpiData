@@ -107,7 +107,7 @@ applyMappedValues : 0
  
 ## Parameters for makeExcludeCols
 filter : $set->{$type}->{anc}
-otherAttrib : $set->{$type}->{filter}
+otherAttr : $set->{$type}->{filter}
 
 ################################
 ####   GENERAL SETTINGS     ####

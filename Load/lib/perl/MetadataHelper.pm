@@ -11,7 +11,7 @@ use XML::Simple;
 use File::Basename;
 use CBIL::ISA::InvestigationSimple;
 use Scalar::Util qw(looks_like_number); 
-# use ApiCommonData::Load::OwlReader;
+use ApiCommonData::Load::OwlReader;
 
 use Data::Dumper;
 
@@ -315,10 +315,8 @@ sub writeMergedFile {
 
 sub makeTreeObjFromOntology {
   my ($self, $owlFile, $filterParentSourceIds, $filterOwlAttributes) = @_;
-  
-  my $owl;
-  eval 'require ApiCommonData::Load::OwlReader';
-  eval '$owl = ApiCommonData::Load::OwlReader->new($owlFile)';
+
+	my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
   $self->setOwl($owl); # to use later
   my ($propertyNames, $propertySubclasses, $propertyOrder, $otherAttrs) = $owl->getLabelsAndParentsHashes($owlFile);
 

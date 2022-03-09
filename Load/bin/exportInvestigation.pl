@@ -5,6 +5,7 @@ use warnings;
 use lib "$ENV{GUS_HOME}/lib/perl";
 
 use CBIL::ISA::InvestigationSimple;
+use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::Utilities::Investigation;
 use ClinEpiData::Load::MetadataHelper;
 use ClinEpiData::Load::Utilities::File qw/csv2tab tabWriter/;
@@ -69,7 +70,6 @@ unless($autoMode || -e $dateObfuscationFile){
 my $labels = {};
 if($ontologyOwlFile){
   $labels = getLabelsFromOwl($ontologyOwlFile);
-  use ApiCommonData::Load::OwlReader;
 }
 
 if($autoMode){

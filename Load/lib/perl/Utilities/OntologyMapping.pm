@@ -100,10 +100,7 @@ sub printXml {
 }
 
 sub getOwl {
-  my $owl = {};
-  eval 'require ApiCommonData::Load::OwlReader';
-  eval '$owl = ApiCommonData::Load::OwlReader->new($_[1])';
-  return $owl;
+  return ApiCommonData::Load::OwlReader->new($_[1]);
 }
 
 sub getTermsFromSourceFile {

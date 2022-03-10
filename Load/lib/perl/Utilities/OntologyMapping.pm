@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use open ':std', ':encoding(UTF-8)';
-use ApiCommonData::Load::OwlReader;
+# use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::MetadataReader;
 use File::Basename qw/basename dirname/;
 use Env qw/PROJECT_HOME GUS_HOME/;

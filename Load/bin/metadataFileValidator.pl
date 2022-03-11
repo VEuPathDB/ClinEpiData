@@ -32,49 +32,56 @@ my %FORMAT = (
 # or, get list from stdin
 #
 my @files = @ARGV;
-unless(@files){
-  while(<>){
-    chomp;
-    push(@files, $_);
-  }
+while(<>){
+  chomp;
+  push(@files, $_);
 }
 
 unless(@files){
   printf STDERR ("No files to validate\n");
-  exit 0
+  exit 0;
 }
-
-# print Dumper \@files;
 
 my $exitcode = 0;
 
 my $results = { FAIL => {}, PASS => {}};
 
-foreach my $filepath (@ARGV){
-  my ($path, $name, $ext) = fileparse($filepath, qr/\..*/);
-  my $file = basename($filepath);
+foreach my $filepath (@files){
+  my ($path, $name, $ext) = fileparse($filepath, qr/\.[^\.]*$/);
+  my $filename = basename($filepath);
   unless( $ext && $FORMAT{ uc($ext) } ){
-    $results->{FAIL}->{$file} = "Unsupported file extension $ext";
-    # printf STDERR ("FAIL $file Unsupported file extension $ext\n");
+    $results->{FAIL}->{$filename} = "Unsupported file extension $ext";
     next;
   }
   my $delim = $FORMAT{uc($ext)};
-  # printf STDERR ("OK $file, extension $ext expecting delimiter [$delim]\n");
   unless( -e $filepath ){
-    $results->{FAIL}->{$file} = "File not found";
+    $results->{FAIL}->{$filename} = "File not found";
+    next;
+  }
+  unless( -f $filepath ){
+    $results->{FAIL}->{$filename} = "File not a plain file (may be link, pipe, directory, etc.)";
     next;
   }
 
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  if(-B $filepath){
+    $results->{FAIL}->{$filename} = "Binary file; only text is supported";
+    next;
+  }
   my $ifh;
   unless( open($ifh, "<$filepath")){
-    $results->{FAIL}->{$file} = "Cannot read file: $@";
+    $results->{FAIL}->{$filename} = "Cannot read file: $@";
     next;
   }
+  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
   my $headers = $csv->getline( $ifh );
+  unless($headers) {
+    $results->{FAIL}->{$filename} = "unreadable, possibly not a plain text file";
+    close($ifh);
+    next;
+  }
 
   if(@$headers < 2 ){ ## check headers
-    $results->{FAIL}->{$file} = "Only one column header found; check file format and delimiter";
+    $results->{FAIL}->{$filename} = "Only one column header found; check file format and delimiter";
     close($ifh);
     next;
   }
@@ -83,21 +90,20 @@ foreach my $filepath (@ARGV){
     while($csv->getline( $ifh )) { $lines++ }
   };
   unless($lines){ ## Text::CSV_XS threw an error
-    # printf STDERR ("FAIL $file parse error: File is empty (0 lines of data\n");
-    $results->{FAIL}->{$file} = "Empty (0 lines of data";
+    $results->{FAIL}->{$filename} = "Empty (no data rows)";
   }
   else {
-    $results->{PASS}->{$file} = "OK";
+    $results->{PASS}->{$filename} = "OK";
   }
   close($ifh);
 }
 
-while( my ($file, $message) = each %{$results->{FAIL}}){
-  printf("%s failed validation: %s\n", $file, $message);
+while( my ($filename, $message) = each %{$results->{FAIL}}){
+  printf STDERR ("%s\t%s\tFAIL\n", $filename, $message);
   $exitcode++;
 }
-while( my ($file, $message) = each %{$results->{PASS}}){
-  printf("%s passed validation: %s\n", $file, $message)
+while( my ($filename, $message) = each %{$results->{PASS}}){
+  printf STDERR ("%s\t%s\tPASS\n", $filename, $message)
 }
 
-exit $exitcode;
+exit $exitcode > 0;

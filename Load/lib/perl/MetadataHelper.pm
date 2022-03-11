@@ -483,7 +483,7 @@ sub writeInvestigationTree {
     unless($parentNode){ printf STDERR ("%s has no parent\n", $sourceId) }
     my $label = $parentNode->attributes->{displayName};
 
-    die "Source_id [$sourceId] is missing from the OWL file but used in data" unless($parentNode);
+    die "A variable was mapped to Source_id [$sourceId], but it was not found in the .OWL. You may need to update ontologyMapping.xml\n" unless($parentNode);
 
     $parentNode->attributes->{'alternativeQualifiers'} = \@altQualifiers;
 

@@ -29,6 +29,22 @@ my %FORMAT = (
 );
 
 # args: list of files
+# or, get list from stdin
+#
+my @files = @ARGV;
+unless(@files){
+  while(<>){
+    chomp;
+    push(@files, $_);
+  }
+}
+
+unless(@files){
+  printf STDERR ("No files to validate\n");
+  exit 0
+}
+
+# print Dumper \@files;
 
 my $exitcode = 0;
 

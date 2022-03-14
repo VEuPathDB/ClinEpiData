@@ -52,6 +52,18 @@ displayType => 1, ## derived annotation property
 forceStringType => 1,
 );
 
+my $forcedDisplayType = {
+'EUPATH_0043203' => 'geoaggregator',
+'EUPATH_0043204' => 'geoaggregator',
+'EUPATH_0043205' => 'geoaggregator',
+'EUPATH_0043206' => 'geoaggregator',
+'EUPATH_0043207' => 'geoaggregator',
+'EUPATH_0043208' => 'geoaggregator',
+'OBI_0001620' => 'latitude',
+'OBI_0001621'  => 'longitude'
+};
+
+
 # if a value passes ANY test, it passes validation
 my %validationTest = (
 defaultBinWidth => [qw/nonzero empty/],
@@ -64,7 +76,7 @@ is_temporal => [qw/"yes" empty/],
 mergeKey => [qw/"yes" empty/],
 repeated => [qw/"yes" empty/],
 # termType => [qw/category "multifilter" "value" "variable" "variable,derived" "value,derived"/],
-displayType => [qw/"hidden" "multifilter"/], ## derived from hidden and termType
+displayType => [qw/"hidden" "multifilter geoaggregator latitude longitude"/], ## derived from hidden and termType
 );
 
 my $it = $owl->execute('get_entity_attributes');
@@ -89,12 +101,10 @@ while( my( $termId, $props ) = each %outputHashes ){
  #  $outputHashes{$termId}->{scope} = ['download','variabletree'];
  #}
   next unless($hidden || $termType);
-  ## 2022-01-11 As of now the value of scope is the value of hidden, as-is
-  ## TODO: phase out displayType = 'hidden', including $hidden above
-  if( $hidden eq 'yes' || $hidden eq 'everywhere' || $hidden eq 'variabletree' ){
-    $outputHashes{$termId}->{displayType} = ['hidden'];
+  if( defined($forcedDisplayType->{$termId})  ){
+    $outputHashes{$termId}->{displayType} = [$forcedDisplayType->{$termId}];
   }
-  elsif( $termType eq 'multifilter' ){
+  if( $termType eq 'multifilter' ){
     $outputHashes{$termId}->{displayType} = ['multifilter'];
   }
 }
@@ -125,15 +135,6 @@ while( my ($termId, $termHash) = each %outputHashes){
   }
 }
 
-## final preprocessing ...
-#while( my ($termId, $termHash) = each %outputHashes){
-#  # rename hidden -> scope
-#  if( defined($termHash->{hidden})){
-#    $termHash->{scope} = $termHash->{hidden};
-#    delete $termHash->{hidden};
-#  }
-#}
-
 my $max = 0;
 
 printf("SOURCE_ID\tannotation_properties\n");
@@ -145,14 +146,5 @@ foreach my $termId (sort keys %outputHashes){
 }
 
 print STDERR ("Longest string was $max chars\n");
-  
-
-
-sub pp {
-  my ($val) = @_;
-  $val =~ s/^"|"$//g;
-  return $val;
-}
-
 
 

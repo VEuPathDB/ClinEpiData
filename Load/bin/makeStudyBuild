@@ -41,6 +41,10 @@ mkdir "$studydir/workspace/build/conf";
 mkdir "$studydir/workspace/build/data";
 mkdir "$studydir/workspace/build/out";
 
+if($owl){
+  system("makeOntologyMappingFile.pl -o $owl > $studydir/workspace/build/conf/ontologyMapping.xml");
+}
+
 
 mkdir $dateobdir;
 open FH, ">$dateobdir/dateObfuscation.txt" or die "Cannot write to $dateobdir: $!\n";

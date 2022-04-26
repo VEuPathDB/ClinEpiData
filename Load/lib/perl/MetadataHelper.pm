@@ -155,8 +155,10 @@ sub isValid {
     }
     my $qualifiersHash = $mergedOutput->{$pk};
     foreach my $qualifier (keys %$qualifiersHash) {
+      # We will automatically accept multiple values per entity by trimming off the suffix !!1 (!!2, !!3, ...)
+      my ($autoQual) = ($qualifier =~ /^(.*)\!\!.*$/);
       if($ontologyMapping) {
-        unless($ontologyMapping->{$qualifier}->{characteristicQualifier}->{source_id}) {
+        unless($ontologyMapping->{$autoQual}->{characteristicQualifier}->{source_id}) {
           unless(lc($qualifier) eq '__parent__'){
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} ||= 0 ;
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} += 1 ;
@@ -171,8 +173,9 @@ sub isValid {
           $errors->{$qualifier}->{"MERGE_ERRORS"} = $errors->{$qualifier}->{"MERGE_ERRORS"} + 1;
           $errorsDistinctQualifiers{$qualifier} = $errorsDistinctQualifiers{$qualifier} + 1;
         }
-
-        $distinctValues{$qualifier}->{$value} = 1;
+        # Merge values by $autoQual, even if $autoQual != $qualifier
+        $distinctValues{$autoQual}->{$value} = 1;
+        # Note that multi-value auto-generated vars (thing!!1) are omitted beyond this point
       }
     }
   }

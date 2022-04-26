@@ -263,7 +263,7 @@ sub read {
       my @values = @{$parsedOutput->{$primaryKey}->{$var}};
       for(my $i = 0; $i < scalar @values; $i++) {
         my $value = $values[$i];
-        my $newVar = $i == 0 ? $var : "${var}_$i";
+        my $newVar = $i == 0 ? $var : "${var}!!$i";
        #$rv->{$primaryKey}->{$newVar} = $values[$i];
         $row->{$newVar} = $values[$i];
 				next unless($skipEmpty &! $skipVars->{$var});

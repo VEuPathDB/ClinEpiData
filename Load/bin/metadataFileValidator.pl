@@ -32,9 +32,11 @@ my %FORMAT = (
 # or, get list from stdin
 #
 my @files = @ARGV;
-while(<>){
-  chomp;
-  push(@files, $_);
+unless(@files){
+  while(<>){
+    chomp;
+    push(@files, $_);
+  }
 }
 
 unless(@files){
@@ -106,4 +108,4 @@ while( my ($filename, $message) = each %{$results->{PASS}}){
   printf STDERR ("%s\t%s\tPASS\n", $filename, $message)
 }
 
-exit $exitcode > 0;
+exit ($exitcode > 0);

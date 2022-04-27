@@ -156,7 +156,8 @@ sub isValid {
     my $qualifiersHash = $mergedOutput->{$pk};
     foreach my $qualifier (keys %$qualifiersHash) {
       # We will automatically accept multiple values per entity by trimming off the suffix !!1 (!!2, !!3, ...)
-      my ($autoQual) = ($qualifier =~ /^(.*)\!\!.*$/);
+      my ($autoQual) = ($qualifier =~ /^(.*)\!\!.+$/);
+      $autoQual //= $qualifier;
       if($ontologyMapping) {
         unless($ontologyMapping->{$autoQual}->{characteristicQualifier}->{source_id}) {
           unless(lc($qualifier) eq '__parent__'){
@@ -310,6 +311,7 @@ sub writeMergedFile {
   my $mergedOutput = $self->getMergedOutput();
 
   open(my $fh, ">$outputFile") or die "Cannot open file $outputFile for writing:$!";
+  binmode($fh, "encoding(UTF-8)");
 
   &write($fh, $distinctQualifiers, $mergedOutput);
 

@@ -17,7 +17,7 @@
 
 use strict;
 use warnings;
-use lib "$ENV{GUS_HOME}/lib/perl";
+# use lib "$ENV{GUS_HOME}/lib/perl";
 use File::Basename;
 use Text::CSV_XS;
 use Data::Dumper;

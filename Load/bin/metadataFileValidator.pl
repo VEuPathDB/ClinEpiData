@@ -9,7 +9,7 @@
 # Validator tests for:
 # - Supported file format / extension
 # - File exists
-# - Can be parsed by Perl package Text::CSV_XS (same as Text::CSV)
+# - Can be parsed by Perl package Text::CSV
 # - Minimum number of columns
 #   - failure may indicate parse error, e.g. extention:delimiter mismatch
 # - Minimum number of rows
@@ -19,7 +19,7 @@ use strict;
 use warnings;
 # use lib "$ENV{GUS_HOME}/lib/perl";
 use File::Basename;
-use Text::CSV_XS;
+use Text::CSV;
 use Data::Dumper;
 
 my %FORMAT = (
@@ -74,7 +74,7 @@ foreach my $filepath (@files){
     $results->{FAIL}->{$filename} = "Cannot read file: $@";
     next;
   }
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  my $csv = Text::CSV->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
   my $headers = $csv->getline( $ifh );
   unless($headers) {
     $results->{FAIL}->{$filename} = "unreadable, possibly not a plain text file";
@@ -91,7 +91,7 @@ foreach my $filepath (@files){
   eval {
     while($csv->getline( $ifh )) { $lines++ }
   };
-  unless($lines){ ## Text::CSV_XS threw an error
+  unless($lines){ ## Text::CSV threw an error
     $results->{FAIL}->{$filename} = "Empty (no data rows)";
   }
   else {

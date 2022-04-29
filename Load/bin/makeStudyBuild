@@ -53,85 +53,103 @@ open FH, ">$studydir/workspace/build/conf/dateObfuscation.txt" or die "Cannot cr
 close FH;
 
 my $set = {
-  com => {
+  UNDEF => {
+    category => 'UNDEF',
     parent => 'UNDEF',
-    anc => 'UNDEF',
-    filter => 'repeated:no', 
+    repeated_of => 'UNDEF',
   },
-  comrm => {
+  com => {
+    category => 'community',
+    parent => 'UNDEF',
+    repeated_of => 'UNDEF',
+  },
+  crm => {
+    category => 'community_repeated_measures',
     parent => 'com',
-    anc => 'community',
-    filter => 'repeated:yes', 
+    repeated_of => 'community',
   },
   house => {
+    category => 'household',
     parent => 'com',
-    anc => 'household',
-    filter => 'repeated:no', 
+    repeated_of => 'UNDEF',
   },
-  houserm => {
+  hrm => {
+    category => 'household_repeated_measures',
     parent => 'house',
-    anc => 'household',
-    filter => 'repeated:yes', 
+    repeated_of => 'household',
   },
   part => {
+    category => 'participant',
     parent => 'house',
-    anc => 'participant',
-    filter => 'repeated:no', 
+    repeated_of => 'UNDEF',
   },
-  partrm => {
+  prm => {
+    category => 'participant_repeated_measures',
     parent => 'part',
-    anc => 'participant',
-    filter => 'repeated:yes', 
+    repeated_of => 'participant',
   },
   sam => {
-    parent => 'obs',
-    anc => 'sample',
-    filter => 'UNDEF', 
+    category => 'sample',
+    parent => 'prm',
+    repeated_of => 'UNDEF',
   },
 };
 
+open(TASKLIST, "> $studydir/workspace/build/tasks.sh");
 foreach my $type (keys %$set){
   mkdir "$studydir/workspace/build/conf/$type";
+  my $excludeParam = 'repeated:no';
+  if( $set->{$type}->{repeated_of} ne 'UNDEF'){
+    $excludeParam = 'repeated:yes';
+  }
   my $propfile = <<PPPP;
 #### TYPE SPECIFIC SETTINGS ####
 
-category : $type
-parentCategory : $set->{$type}->{parent}
+category = $set->{$type}->{category}
+parentCategory = $set->{$set->{$type}->{parent}}->{category}
 
-outputFile : out/$type.txt
-parentMergedFile : out/$set->{$type}->{parent}.txt
-colExcludeFile : conf/$type/colexclude.txt
+outputFile = out/$type.txt
+parentMergedFile = out/$set->{$type}->{parent}.txt
+colExcludeFile = conf/$type/colexclude.txt
 
-noFilePrefix : 0
+noFilePrefix = 0
 
 ## Preprocess using ancillary input 
-ancillaryInputFile : conf/$type/anc.txt
-applyMappedIRI : 0
-applyMappedValues : 0
+ancillaryInputFile = conf/$type/anc.txt
+applyMappedIRI = 0
+applyMappedValues = 0
  
 ## Parameters for makeExcludeCols
-filter : $set->{$type}->{anc}
-otherAttr : $set->{$type}->{filter}
+filter = $set->{$type}->{repeated_of}
+otherAttr = $excludeParam
 
 ################################
 ####   GENERAL SETTINGS     ####
-ontologyOwlFile : $owl
-ontologyMappingXmlFile : conf/ontologyMapping.xml
-metadataFile : data
-valueMappingFile : conf/valueMap.txt
-dateObfuscationFile : conf/dateObfuscation.txt
-idMappingFile : conf/idMap.txt
+ontologyOwlFile = $owl
+ontologyMappingXmlFile = conf/ontologyMapping.xml
+metadataFile = data
+valueMappingFile = conf/valueMap.txt
+dateObfuscationFile = conf/dateObfuscation.txt
+idMappingFile = conf/idMap.txt
 
 ####   INTERNAL SETTINGS    ####
-type : Category
-parentType : Output
-packageName : ClinEpiData::Load::GenericReader
-cleanFirst : 1
+type = Category
+parentType = Output
+packageName = ClinEpiData::Load::GenericReader
+cleanFirst = 1
 PPPP
   
   $propfile =~ s/^([\w :]UNDEF(\.txt)?)$//gms;
   open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
   printf FH ($propfile);
   close FH;
+  # try to make exclude cols
+  my @args = ("-p $name/conf/$type/prop.conf");
+  if($set->{$type}->{repeated_of} ne 'UNDEF'){push(@args, "-f $set->{$type}->{repeated_of}", "-a repeated:yes")}
+  else{push(@args, "-a repeated:no")}
+  printf TASKLIST ("makeExcludeCols.pl %s > $name/conf/$type/colexclude.txt\n", join(" ", @args));
 }  
+close(TASKLIST);
 
+#end
+;

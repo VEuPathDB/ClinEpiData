@@ -1,5 +1,6 @@
 package ClinEpiData::Load::GenericReader;
 use base qw(ClinEpiData::Load::MetadataReaderXT);
+use Data::Dumper;
 
 use strict;
 use warnings;
@@ -19,11 +20,12 @@ sub updateConfig {
       $mdfile = lc($mdfile);
       my @idCols;
       if($noFilePrefix){
-        @idCols = split(/\+/, $col);
+        @idCols = $self->_parse_id_formula($col);
       }
       else{
-        foreach my $c (split(/\+/, $col)){
-          if($c =~ /^\{\{.*\}\}$/){ push(@idCols, $c) }
+        foreach my $c ($self->_parse_id_formula($col)){
+          if($c =~ /^\{\{.+\}\}$/){ push(@idCols, $c) }
+          elsif($c eq '__line__'){ push(@idCols, $c) }
           else { push(@idCols, join("::", $mdfile, $c)) }
         }
       }
@@ -38,6 +40,13 @@ sub updateConfig {
     ($type) = map { lc($_) } (ref($self) =~ m/::([^:]*)Reader$/);
     $self->setConfig('type', $type);
   }
+} 
+
+sub _parse_id_formula {
+  my ($self, $formula) = @_;
+  $formula =~ s/^\s*|\s*$//g;
+  my @cols = map { s/^\s*|\s*$//g; lc } split(/\+/, $formula);
+  return @cols;
 } 
 
 sub getId {

@@ -163,6 +163,7 @@ sub isValid {
           unless(lc($qualifier) eq '__parent__'){
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} ||= 0 ;
             $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} += 1 ;
+            # DEBUG with this: # $errors->{$qualifier}->{"MISSING_ONTOLOGY_MAPPING"} = Dumper($ontologyMapping->{$autoQual}) ;
           }
         }
       }
@@ -265,9 +266,16 @@ sub readOntologyMappingXmlFile {
     foreach my $ot (@{$ontologyMappingXML->{ontologyTerm}}) {
       my $sourceId = $ot->{source_id};
 
+      my %names;
       foreach my $name (@{$ot->{name}}) {
         $ontologyMapping{lc($name)}->{$ot->{type}} = $ot;
+        $names{$name} = 1;
       }
+      # also hash by source_id
+      unless($names{lc($sourceId)}){
+        push(@{$ot->{name}}, lc($sourceId))
+      }
+      $ontologyMapping{lc($sourceId)}->{characteristicQualifier} = $ot;
     }
 
     return \%ontologyMapping;

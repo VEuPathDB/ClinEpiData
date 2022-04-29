@@ -3,12 +3,13 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders/;
+our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders/;
 use Text::CSV_XS;
 use Config::Std;
 use Scalar::Util qw/looks_like_number/;
 use open ':std', ':encoding(UTF-8)';
 use Data::Dumper;
+use File::Basename;
 
 sub tabWriter{
   my $csv = Text::CSV_XS->new({binary => 1, sep_char => "\t", quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();
@@ -39,6 +40,14 @@ sub getHeaders {
   my $row = $csv->getline( $ifh );
   close($ifh);
   return $row; 
+}
+
+sub getPrefixedHeaders {
+  my ($file, $delim) = @_;
+  my $h = getHeaders($file, $delim);
+  my $prefix = lc(fileparse($file, qr/\.[^\.]+$/));
+  my @row = map { join("::", $prefix, $_) } @$h;
+  return \@row; 
 }
 
 sub csv2array {

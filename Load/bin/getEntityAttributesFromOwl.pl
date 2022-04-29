@@ -76,7 +76,7 @@ is_temporal => [qw/"yes" empty/],
 mergeKey => [qw/"yes" empty/],
 repeated => [qw/"yes" empty/],
 # termType => [qw/category "multifilter" "value" "variable" "variable,derived" "value,derived"/],
-displayType => [qw/"hidden" "multifilter geoaggregator latitude longitude"/], ## derived from hidden and termType
+displayType => [qw/"multifilter" "geoaggregator" "latitude" "longitude"/], ## derived from termType
 );
 
 my $it = $owl->execute('get_entity_attributes');
@@ -94,13 +94,8 @@ while (my $row = $it->next) {
 
 ## post-processing in this while loop
 while( my( $termId, $props ) = each %outputHashes ){
-  my $hidden = defined($props->{hidden}->[0]) ? lc($props->{hidden}->[0]) : '';
-  my $termType = defined($props->{termType}->[0]) ? lc($props->{termType}->[0]) : '';
+  my $termType = defined($props->{termType}->[0]) ? $props->{termType}->[0] : '';
   delete($outputHashes{$termId}->{termType});
- #if(!$hidden && $props->{variable}){ # hidden not defined, scope is unlimited
- #  $outputHashes{$termId}->{scope} = ['download','variabletree'];
- #}
-  next unless($hidden || $termType);
   if( defined($forcedDisplayType->{$termId})  ){
     $outputHashes{$termId}->{displayType} = [$forcedDisplayType->{$termId}];
   }
@@ -120,7 +115,7 @@ while( my ($termId, $termHash) = each %outputHashes){
       ## otherwise, it passed at least one test
       foreach my $test ( @{$validationTest{$propName}} ){ 
         switch ($test){
-          case /^"(.+)"$/ { $score-- unless $value =~ /$1/ }
+          case /^".+"$/ { my ($word) = ($test =~ /"(.+)"/); $score-- unless $value eq $word }
           case 'numeric' { $score-- unless looks_like_number($value) }
           case 'nonzero' { $score-- unless $value != '0' }
           case 'date' { $score-- unless $value =~ /^\d{4}-\d{2}-\d{2}$/ }

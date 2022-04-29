@@ -51,6 +51,7 @@ sub applyMappedValues {
   if($self->getConfig('applyMappedIRI')){
     $type = 'var2';
   }
+  my $mdfile = $self->getMetadataFileLCB();# may be needed by :::eval:::
   while(my ($col, $v0) = each %$hash){
     my $origKey = $col;
     $col = lc($col);
@@ -99,7 +100,6 @@ sub applyMappedValues {
       }
     }
   }
-  my $mdfile = $self->getMetadataFileLCB();
   if(defined($anc->{':::append:::'}->{$mdfile})){
     while(my ($k, $v) = each %{$anc->{':::append:::'}->{$mdfile}}){
       $hash->{$k} = $v;

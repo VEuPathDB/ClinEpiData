@@ -35,7 +35,6 @@ if(defined($propFile) && -e $propFile) {
   }
   $dataset ||= $p->{ontologyOwlFile};
   my $type  = $p->{category} || $p->{type};
-  push(@filters, lc($type)) unless @filters;
   unless(@filterOwlAttributes){
     if(ref($p->{filterOwlAttribute}) eq 'ARRAY'){
       @filterOwlAttributes = @{$p->{filterOwlAttribute}};
@@ -44,6 +43,9 @@ if(defined($propFile) && -e $propFile) {
       @filterOwlAttributes = ($p->{filterOwlAttribute});
     }
   }
+  if($p->{filter}){ push(@filters, $p->{filter}) }
+  if($p->{otherAttr}){ push(@filterOwlAttributes, $p->{otherAttr}) }
+  push(@filters, lc($type)) unless @filters;
 }
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){

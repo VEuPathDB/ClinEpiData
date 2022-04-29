@@ -22,7 +22,7 @@ sub new {
 }
 
 sub run {
-  my ($self,$owlFile,$functionsFile,$sortByIRI) = @_;
+  my ($self,$owlFile,$functionsFile,$sortByIRI,$categoryPrefix) = @_;
   unless( -f $owlFile ){
     my $owlDir = "$GUS_HOME/ontology/release/production";
     my $tmp = "$owlDir/$owlFile.owl";
@@ -124,12 +124,13 @@ sub getTermsFromSourceFile {
 }
 
 sub getTermsFromOwl{
-  my ($self,$owl,$funcToAdd,$sortByIRI) = @_;
-  my $it = $owl->execute('get_column_sourceID');
+  my ($self,$owl,$funcToAdd,$sortByIRI,$categoryPrefix) = @_;
+  my $it = $owl->execute('column2iri');
   my %terms;
   while (my $row = $it->next) {
-    my $sid = $row->{iri}->as_hash()->{literal};
-    my $names = $row->{vars}->as_hash()->{literal};
+    my $names = $row->{col}->as_hash()->{literal};
+    my $sid = $row->{sid}->as_hash()->{literal};
+    my $category = $row->{category}->as_hash()->{literal};
 #my $name = "";
     if(ref($names) eq 'ARRAY'){
 #$name = lc($names->[0]);
@@ -174,7 +175,7 @@ sub getTermsFromOwl{
       }
       @funcs = sort { $funcHash{$a} <=> $funcHash{$b} } keys %funcHash;
     }
-    $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'function' => \@funcs };
+    $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'category' => lc($category), 'function' => \@funcs };
   }
   my @sorted;
   if($sortByIRI){

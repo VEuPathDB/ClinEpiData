@@ -1,0 +1,380 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use lib $ENV{GUS_HOME} . "/lib/perl";
+
+use feature qq/switch/; # given/when
+use Cwd qw/abs_path/;
+use Config::Std; # read_config()
+use Data::Dumper;
+use File::Basename;
+use Scalar::Util qw/looks_like_number/;
+use JSON qw/to_json/;
+use ApiCommonData::Load::OwlReader;
+use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders/;
+use XML::Simple;
+use Config::Std; # read_config()
+
+my $this = basename $0;
+my ($cmd, @args) = @ARGV;
+
+my $config = {};
+my $cfgfile = '.buildconfig';
+my $CFGDIR = 'conf';
+
+my $msg = {
+  nobuild => 'Not in build dir',
+  noworkspace => 'Not in a workspace',
+  info => 'INFO: ',
+};
+
+my $systemcommands = {
+  owl => 'grep ontologyOwlFile conf/*/prop.conf|cut -d= -f2|cut -d: -f2|uniq',
+};
+
+my @usages = (
+  [ 'Usage',
+    "$this [commands listed below] [parameter] ([optional parameter])",
+    "",
+  ],
+  [
+    "$this ordinals [valueMap.txt] ([output-file])",
+    "Extract ordinals from specified valueMap.txt, prints output to terminal or [output-file]",
+  ],
+  [
+ "$this owl",
+ "Scans conf/*/prop.conf for owl file setting",
+  ],
+  [
+ "$this ontomap ([output-file])",
+ "Generates ontologyMapping.xml (default)",
+  ],
+  [
+ "$this derive [category] [pattern] ([suffix])",
+ "Create derived variables for [category] variables matching [pattern] by applying [category] as a suffix (or [suffix])",
+  ],
+);
+my %usage = map { $_->[0] => $_->[1] } @usages;
+
+#-----------------------------------
+#-------------- RUN ----------------
+
+my ($command, @params) = @ARGV;
+
+init($command);
+if($command){
+  run($command, @params);
+}
+else{
+  foreach $command ( map { $_->[0] } @usages ){
+    printf("\n\t%-10s\n\t\t%s\n\n", $command, $usage{$command})
+  }
+}
+
+
+
+#-----------------------------------
+#-----------------------------------
+
+sub run {
+  my ($cmd, @args) = @_;
+
+  for($cmd){
+    when('clean'){
+      unlink($cfgfile) if(-e $cfgfile);
+      init();
+    }
+    when('ordinals') {
+      ordinals(@args);
+    }
+    when('owl') {
+      err($config->{global}->{owl});
+    }
+    when('attrs') {
+      owlAttributes(@args);
+    }
+    when('ontomap'){
+      my ($outfile) = @args;
+      if(-e 'conf/ontologyMapping.xml'){
+        $outfile ||= 'ontologyMapping.xml';
+        printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml > conf/func');
+        printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $outfile");
+        printsystemcall("ls -l $outfile\n");
+      }
+    }
+    when('derive'){
+      derive(@args);
+    }
+    when('var2iri'){
+      my $results = var2iri(@args);
+      foreach my $iri (sort keys %$results){
+        printf("%s\n", $iri);
+      }
+    }
+    default {
+      err("Command '$cmd' not implemented")
+    }
+  }
+}
+
+sub init {
+  my ($cmd) = @_;
+  $cmd ||= "_NULL_";
+  $config = {};
+  my $path = abs_path();
+  my $build = basename($path); 
+  if($build ne 'build' && $cmd ne 'init' ){ err('nobuild', $path); return  }
+  my $workspace = basename(dirname($path)); 
+  if($workspace ne 'workspace' && $cmd ne 'init' ){ err('noworkspace',$path); return  }
+  unless( -e $cfgfile){
+    err('noconfig',"Initializing $cfgfile");
+    my $owl = systemcall($systemcommands->{owl});
+    my $owlpath = sprintf("%s/ontology/release/production/%s.owl", $ENV{GUS_HOME}, $owl->[0]);
+    if(@$owl > 1){ err('info','Problem: multiple owl files found in config files; using the first one found:' . join("\n",@$owl)) }
+    $config->{global}->{owl} = $owl->[0];
+    $config->{global}->{owlpath} = $owlpath;
+    $config->{global}->{cfgdir} = $CFGDIR;
+    if(-d $CFGDIR){
+      opendir(DH, $CFGDIR);
+      my @configdirs = grep { !/^\./ } readdir(DH);
+      closedir(DH);
+      foreach my $dir (@configdirs){
+        my $propfile = "$CFGDIR/$dir/prop.conf";
+        next unless( -f $propfile );
+        read_config($propfile, my %subcfg);
+        $config->{ $dir } = $subcfg{''};
+        $config->{ $dir }->{ propfile } = $propfile;
+      }
+    }
+   #if( -f "conf/ontologyMapping.xml"){
+   #  my $xml = XMLin( "conf/ontologyMapping.xml", forceArray => 1 );
+   #  $config->{global}->{ontology_mapping} = $xml;
+   #}
+    write_config($config, $cfgfile);
+  }
+  read_config($cfgfile, %$config);
+}
+
+sub owlAttributes {
+  my ($outfile) = @_;
+  err('info', "Writing $outfile");
+  my $owlname = $config->{global}->{owl};
+  my $lines = systemcall("getEntityAttributesFromOwl.pl $owlname");
+  if(ref($lines) eq 'ARRAY'){
+    my $out = *STDOUT;
+    if($outfile){ open($out, ">$outfile") or die "Cannot write $outfile: $!\n" }
+    printf $out ("%s\n", $_) for @$lines;
+    if($outfile){ close($out) }
+  }
+  else {
+    err("No output, something went wrong")
+  }
+}
+
+
+sub ordinals {
+  my ($infile, $outfile) = @_;
+  my $valueMap = csv2array($infile, "\t");
+  my $irimap = getIRImap();
+  my %ordinals;
+  my $_line = 0;
+  foreach my $row( @$valueMap ){
+    $_line++;
+    my ($var, $iri, $orig, $val, $order) = @$row;
+    next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
+    unless(looks_like_number($order)){
+      err("WARNING: LINE $_line: '$order' is not a number, skipping");
+      next;
+    }
+    my $mappedIRI = $irimap->{$iri};
+    unless($mappedIRI){
+      err("ERROR: LINE $_line: no valid IRI mapped in owl for [$var] or [$iri]\n");
+      next;
+    }
+    # warn if already inserted with a different ordering
+    if(defined($ordinals{$mappedIRI}->{ $val }) && $ordinals{$mappedIRI}->{ $val } != $order){
+      err(sprintf("ERROR: LINE $_line: $iri $val does not match previous: %s", $ordinals{$mappedIRI}->{$val}));
+    }
+    $ordinals{$mappedIRI}->{$val} = $order;
+  }
+  
+  if(0 < keys %ordinals){
+    my $out = *STDOUT;
+    if($outfile){ open($out, ">$outfile") or die "Cannot write $outfile: $!\n" }
+    printf $out ("%s\n", join("\t", qw/SOURCE_ID ordinal_values/));
+    foreach my $iri (sort keys %ordinals){
+      my @perm =  sort { $ordinals{$iri}->{$a} <=> $ordinals{$iri}->{$b} } keys %{$ordinals{$iri}};
+      my $json = to_json(\@perm);
+      printf $out ("%s\t%s\n", $iri, $json);
+    }
+    if($outfile){ close($out) }
+  }
+}
+
+sub getIRImap {
+  if( $config->{_irimap} ){ return $config->{_irimap} }
+  my $owl = getOwl();
+	my $it = $owl->execute('column2iri');
+	while (my $row = $it->next) {
+		my $col = $row->{col} ? $row->{col}->as_hash()->{literal} : "";
+		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
+    $col =~ s/"//g;
+    $sid =~ s/"//g;
+    $config->{_irimap}->{$col} = $sid;
+    $config->{_irimap}->{$sid} = $sid; # also a valid key
+	}
+  return $config->{_irimap};
+}
+
+sub derive {
+  my ($cat, $var, $suffix) = @_;
+  $suffix //= $cat;
+  my $headers = allPrefixedHeaders($cat);
+  my @matches = grep { /$var/ } @$headers;
+  my @addrows;
+  foreach my $match ( @matches ){
+    my $derived = join(":", $match, $suffix);
+    if($suffix eq 'IRI'){
+      my $lookup = var2iri($cat, "^$match\$");
+      ($derived) = keys %$lookup;
+    }
+    push(@addrows, join("\t", $match, $derived));
+  }
+  
+  my $ancfile = $config->{ $cat }->{ ancillaryInputFile };
+  if(-f $ancfile){
+    err("Scanning $ancfile for $var...");
+    printsystemcall("grep '$var' $ancfile");
+    err("Done.");
+  }
+  err("Rules to add:");
+  printf("%s\n", join("\n", @addrows));
+  my $ans = ask("Continue y/n ?", [ 'y', 'n' ], 'y');
+  if($ans eq 'y'){
+    open(FH, ">>$ancfile");
+    printf FH ("%s\n", join("\n", @addrows));
+    close(FH);
+    err("Done writing rules to $ancfile");
+    my $propfile = $config->{ $cat }->{ propfile };
+    printsystemcall("sed -i 's/applyMappedIRI\\s*=\\s*0/applyMappedIRI = 1/' $propfile");
+  }
+  else { err("No rules added.") }
+  my $colexfile = $config->{ $cat }->{colExcludeFile};
+  if(-f $colexfile){
+    err("Scanning $colexfile for $var...");
+    printsystemcall("grep '$var' $colexfile");
+    err("Done.");
+  }
+  $ans = ask("Exclude these? \n\t" . join("\n\t", @matches) . "\n\t [y/n] ?", [ 'y', 'n' ], 'y');
+  if($ans eq 'y'){
+    open(FH, ">>$colexfile");
+    printf FH ("%s\n", join("\n", @matches));
+    close(FH);
+    err("Done adding columns to $colexfile.");
+  }
+  else { err("Original columns will not be excluded.") }
+}
+
+sub var2iri {
+  my ($cat, $var) = @_;
+  my $category = $config->{$cat}->{parentCategory} || $config->{$cat}->{category};
+  my $xml = XMLin( $config->{$cat}->{ontologyMappingXmlFile}, forceArray => 1 );
+  my %results;
+  foreach my $ot ( @{ $xml->{ontologyTerm} } ){
+    foreach my $name ( @{ $ot->{name} } ){
+      next unless( $name =~ /$var/ );
+      next if($ot->{category} && lc($ot->{category}) ne $category);
+      $results{$ot->{source_id}} = 1;
+    }
+  }
+  return \%results;
+}
+
+sub allPrefixedHeaders {
+  my ($cat) = @_;
+  my $files = mdfiles($cat);
+  my @headers;
+  foreach my $file (@$files){
+    my $h = getPrefixedHeaders($file, "\t");
+    push(@headers, @$h);
+  }
+  return \@headers;
+}
+
+sub fileprefix {
+  my ($file) = @_;
+  return lc(basename($file, /\.[^.]*$/))
+}
+
+sub mdfiles {
+  my($cat) = @_;
+  my $md = [];
+  my @files;
+  my $mdconf = $config->{$cat}->{metadataFile};
+  if( ref($mdconf) eq 'ARRAY' ){ $md = $mdconf }
+  else{ push(@$md, $mdconf) }
+  foreach my $x ( @$md ){
+    if( -d $x ){
+      opendir(DH, $config->{$cat}->{metadataFile});
+      foreach my $file ( grep { !/^\./ } readdir(DH) ){
+        if( -f "$x/$file" ){ push( @files, "$x/$file" ) }
+      }
+    }
+    elsif ( -f $x ){ push( @files, $x ) }
+  }
+  return \@files;
+}
+
+sub getOwl {
+  err('info', "owl file = " . $config->{global}->{owlpath});
+  unless( $config->{_owlpath} ){ $config->{_owl} = ApiCommonData::Load::OwlReader->new($config->{global}->{owlpath}) }
+  return $config->{_owl} 
+}
+
+sub ask {
+  my ($msg,$opts,$default) = @_;
+  my $options = "";
+  if(ref($opts) eq 'ARRAY') { $options = sprintf("(%s)", join(" ", @$opts))}
+  printf STDERR ("%s %s ? %s", $msg, $options, $default ? "default: $default " : "");
+	while(my $r = <STDIN>){
+		chomp $r;
+    if( $r eq "" && $default){
+      return $default
+    }
+    if( my ($response) =  grep { /^$r$/ } @$opts ) {
+      return $response;
+    }
+		else {
+			print "$r is not a valid option\n";
+      printf STDERR ("%s (%s) ? %s", $msg, $options, $default ? "default: $default " : "");
+		}
+	}
+}
+
+sub systemcall {
+  my $call = join(" ", @_);
+  err('info', "Execute: $call");
+  open(COM, "$call |") or die "Cannot run system call '$call'\nError:$!\n";
+  my @result;
+  while(<COM>){
+    chomp;
+    s/^\s+//;
+    s/\s+$//;
+    push(@result, $_);
+  }
+  return \@result;
+}
+
+sub printsystemcall {
+  my $result = systemcall(@_);
+  printf ("%s\n", join("\n", @$result));
+}
+
+sub err {
+  my ($key,@other) = @_;
+  printf STDERR ("%s\n", $msg->{$key} || $key);
+  if(@other){
+    printf STDERR ("%s\n", join("\n", @other));
+  }
+}

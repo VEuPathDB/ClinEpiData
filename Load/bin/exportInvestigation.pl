@@ -12,6 +12,7 @@ use ClinEpiData::Load::Utilities::OntologyMapping;
 # use Data::Dumper;
 use File::Basename;
 use File::Temp qw/tempfile tempdir/;
+use POSIX qw/strftime/;
 use Cwd qw/abs_path/;
 use Getopt::Long qw(:config no_ignore_case);
 use JSON;
@@ -72,7 +73,8 @@ if($ontologyOwlFile){
 }
 
 if($autoMode){
-  my $dir = tempdir("auto_XXXX", CLEANUP => $cleanUp);
+  my $timestamp = strftime("%Y%m%d%H%M%S", localtime);
+  my $dir = tempdir("auto_${timestamp}_XXXX", CLEANUP => $cleanUp);
   $dateObfuscationFile = "$dir/dateObfuscation.txt";
   open(FH, ">$dateObfuscationFile") or die "$!\n";
   close(FH);

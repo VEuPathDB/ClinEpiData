@@ -9,6 +9,7 @@ use Cwd qw/abs_path/;
 use Config::Std; # read_config()
 use Data::Dumper;
 use File::Basename;
+use File::Copy;
 use Scalar::Util qw/looks_like_number/;
 use JSON qw/to_json/;
 use ApiCommonData::Load::OwlReader;
@@ -20,7 +21,7 @@ my $this = basename $0;
 my ($cmd, @args) = @ARGV;
 
 my $config = {};
-my $cfgfile = '.buildconfig';
+my $CFGFILE = '.buildconfig';
 my $CFGDIR = 'conf';
 
 my $msg = {
@@ -35,27 +36,34 @@ my $systemcommands = {
 
 my @usages = (
   [ 'Usage',
-    "$this [commands listed below] [parameter] ([optional parameter])",
+    "$this [command] [parameter] ([optional parameter])",
     "",
   ],
   [
-    "$this ordinals [valueMap.txt] ([output-file])",
+    "ordinals [valueMap.txt] ([output-file])",
     "Extract ordinals from specified valueMap.txt, prints output to terminal or [output-file]",
   ],
   [
- "$this owl",
+ "owl",
  "Scans conf/*/prop.conf for owl file setting",
   ],
   [
- "$this ontomap ([output-file])",
+ "ontomap ([output-file])",
  "Generates ontologyMapping.xml (default)",
   ],
   [
- "$this derive [category] [pattern] ([suffix])",
+ "derive [category] [pattern] ([suffix])",
  "Create derived variables for [category] variables matching [pattern] by applying [category] as a suffix (or [suffix])",
   ],
 );
 my %usage = map { $_->[0] => $_->[1] } @usages;
+## more
+$usage{'clean'} = "remake .buildconfig";
+$usage{'var2iri [iri]'} = "lookup the IRI for a variable/pattern";
+$usage{'excol [cat]'} = "make a column exclude file for [cat]";
+$usage{'check'} = "scan for missing and duplicated variables in merged files";
+$usage{'run [cat]'} = "make the [cat] merged file";
+$usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -67,8 +75,8 @@ if($command){
   run($command, @params);
 }
 else{
-  foreach $command ( map { $_->[0] } @usages ){
-    printf("\n\t%-10s\n\t\t%s\n\n", $command, $usage{$command})
+  foreach my $command ( sort keys %usage ){
+    printf("\n  %s\n    %s\n", $command, $usage{$command})
   }
 }
 
@@ -82,7 +90,7 @@ sub run {
 
   for($cmd){
     when('clean'){
-      unlink($cfgfile) if(-e $cfgfile);
+      unlink($CFGFILE) if(-e $CFGFILE);
       init();
     }
     when('ordinals') {
@@ -107,10 +115,53 @@ sub run {
       derive(@args);
     }
     when('var2iri'){
-      my $results = var2iri(@args);
-      foreach my $iri (sort keys %$results){
-        printf("%s\n", $iri);
+      my ($cat, $var) = @args;
+      my $results = var2iri($cat, $var, 1);
+     #foreach my $iri (sort keys %$results){
+     #  if($results->{$iri} ne '1'){ printf("%s\t%s\n", $iri, $results->{$iri}) }
+     #  else{ printf("%s\n", $iri) }
+     #}
+    }
+    when('excol'){
+      my ($cat, @flags) = @args;
+      if( -f $config->{$cat}->{propfile} && $config->{$cat}->{colExcludeFile}){
+        my $bak;
+        if( -f $config->{$cat}->{colExcludeFile}){
+          $bak = $config->{$cat}->{colExcludeFile} . ".bak";
+          copy($config->{$cat}->{colExcludeFile},$bak);
+          err("created backup $bak");
+        }
+        printsystemcall( sprintf("makeExcludeCols.pl -p %s %s > %s",
+          $config->{$cat}->{propfile}, join(" ", @flags), $config->{$cat}->{colExcludeFile}));
+        if($bak){
+          printsystemcall("diff -q $config->{$cat}->{colExcludeFile}*");
+        }
       }
+      else { err("Problem: propfile missing for $cat, or colExcludeFile setting not found") }
+    }
+    when('check'){
+      check(@args);
+    }
+    when('run'){
+      my $cat = shift @args;
+      my $propfile = $config->{$cat}->{propfile};
+      if(-T $propfile){
+        my $overrides;
+        if(@args){ $overrides = join(" ", @args) }
+        printsystemcall("preprocessMetadata.pl -p $propfile $overrides");
+      }
+    }
+    when('update'){
+      my $cat = shift @args;
+      my $propfile = $config->{$cat}->{propfile};
+      if(-T $propfile){
+        my $overrides;
+        if(@args){ $overrides = join(" ", @args) }
+        printsystemcall("preprocessMetadata.pl -m -p $propfile $overrides");
+      }
+    }
+    when('whereis'){
+      printsystemcall("grep '$args[0]' out/*.tree.txt",)
     }
     default {
       err("Command '$cmd' not implemented")
@@ -127,8 +178,8 @@ sub init {
   if($build ne 'build' && $cmd ne 'init' ){ err('nobuild', $path); return  }
   my $workspace = basename(dirname($path)); 
   if($workspace ne 'workspace' && $cmd ne 'init' ){ err('noworkspace',$path); return  }
-  unless( -e $cfgfile){
-    err('noconfig',"Initializing $cfgfile");
+  unless( -e $CFGFILE){
+    err('noconfig',"Initializing $CFGFILE");
     my $owl = systemcall($systemcommands->{owl});
     my $owlpath = sprintf("%s/ontology/release/production/%s.owl", $ENV{GUS_HOME}, $owl->[0]);
     if(@$owl > 1){ err('info','Problem: multiple owl files found in config files; using the first one found:' . join("\n",@$owl)) }
@@ -147,17 +198,18 @@ sub init {
         $config->{ $dir }->{ propfile } = $propfile;
       }
     }
-   #if( -f "conf/ontologyMapping.xml"){
+    if( -f "conf/ontologyMapping.xml"){
    #  my $xml = XMLin( "conf/ontologyMapping.xml", forceArray => 1 );
-   #  $config->{global}->{ontology_mapping} = $xml;
-   #}
-    write_config($config, $cfgfile);
+      $config->{global}->{ontologyMappingXmlFile} = "conf/ontologyMapping.xml";
+    }
+    write_config($config, $CFGFILE);
   }
-  read_config($cfgfile, %$config);
+  read_config($CFGFILE, %$config);
 }
 
 sub owlAttributes {
   my ($outfile) = @_;
+  $outfile //= "owlAttributes.txt";
   err('info', "Writing $outfile");
   my $owlname = $config->{global}->{owl};
   my $lines = systemcall("getEntityAttributesFromOwl.pl $owlname");
@@ -239,7 +291,7 @@ sub derive {
       my $lookup = var2iri($cat, "^$match\$");
       ($derived) = keys %$lookup;
     }
-    push(@addrows, join("\t", $match, $derived));
+    push(@addrows, join("\t", $match, lc($derived)));
   }
   
   my $ancfile = $config->{ $cat }->{ ancillaryInputFile };
@@ -277,15 +329,24 @@ sub derive {
 }
 
 sub var2iri {
-  my ($cat, $var) = @_;
-  my $category = $config->{$cat}->{parentCategory} || $config->{$cat}->{category};
-  my $xml = XMLin( $config->{$cat}->{ontologyMappingXmlFile}, forceArray => 1 );
+  my ($cat, $var, $verbose) = @_;
+  my $category;
+  if(!$var){
+    $var = $cat; #shift vars
+  }
+  elsif($config->{$cat}){
+    $category = $config->{$cat}->{parentCategory} || $config->{$cat}->{category};
+  }
+  my $xml = XMLin( $config->{global}->{ontologyMappingXmlFile}, forceArray => 1 );
   my %results;
   foreach my $ot ( @{ $xml->{ontologyTerm} } ){
     foreach my $name ( @{ $ot->{name} } ){
       next unless( $name =~ /$var/ );
-      next if($ot->{category} && lc($ot->{category}) ne $category);
-      $results{$ot->{source_id}} = 1;
+      next if($category && $ot->{category} && lc($ot->{category}) ne $category);
+      $results{$ot->{source_id}} = $ot->{category} || 1;
+      if($verbose){
+        printf STDERR ("%s\n", join("\t", $ot->{source_id}, $ot->{category} ||"-", $name));
+      }
     }
   }
   return \%results;
@@ -352,9 +413,31 @@ sub ask {
 	}
 }
 
+sub check {
+  my ($dir) = @_;
+  my @files;
+  if($dir && -d $dir){
+    opendir(DH, $dir);
+    my @files = map { "$dir/$_" } grep { !/^\./ && !/\.txt\./ && /\.txt/ } readdir(DH);
+  }
+  else {
+    while(my ($cat, $prop) = each %$config){
+      if($prop->{outputFile} && -e $prop->{outputFile}){
+        push(@files,  $prop->{outputFile})
+      }
+    }
+  }
+  if(@files){
+    unshift(@files, $config->{global}->{ontologyMappingXmlFile});
+    printsystemcall(join(" ", "checkMergedFiles.pl", @files));
+  }
+  else { err("No output files found") }
+}
+    
+
 sub systemcall {
   my $call = join(" ", @_);
-  err('info', "Execute: $call");
+  #err('info', "Execute: $call");
   open(COM, "$call |") or die "Cannot run system call '$call'\nError:$!\n";
   my @result;
   while(<COM>){

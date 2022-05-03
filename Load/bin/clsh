@@ -13,7 +13,7 @@ use File::Copy;
 use Scalar::Util qw/looks_like_number/;
 use JSON qw/to_json/;
 use ApiCommonData::Load::OwlReader;
-use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders/;
+use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues/;
 use XML::Simple;
 use Config::Std; # read_config()
 
@@ -227,6 +227,14 @@ sub owlAttributes {
 
 sub ordinals {
   my ($infile, $outfile) = @_;
+  my %valid;
+  while( my ($cat,$prop) = each %$config ){
+    if( $prop->{outputFile} && -e $prop->{outputFile}){
+      err("Reading values from $prop->{outputFile} ...");
+      my $values = getValidValues($prop->{outputFile}, "\t");
+      %valid = (%valid, %$values);
+    }
+  }
   my $valueMap = csv2array($infile, "\t");
   my $irimap = getIRImap();
   my %ordinals;
@@ -244,15 +252,15 @@ sub ordinals {
     }
     $iri = $mappedIRI;
     
-    my $score = 1;
+    my $score = 0;
     unless(looks_like_number($order)){
-      printf STDERR ("ERROR: LINE $_line: '$order' is not a number, skipping\n");
-      next;
+      printf STDERR ("ERROR: LINE $_line: '$order' is not a number\n");
+      $score++;
     }
     # warn if already inserted with a different ordering
     if(defined($ordinals{$iri}->{ $val }) && $ordinals{$iri}->{ $val } != $order){
       printf STDERR ("ERROR: LINE $_line: $iri $val ordinal value '%s' does not match previous: %s\n", $order, $ordinals{$iri}->{$val});
-      $score--;
+      $score++;
     }
     if ( looks_like_number($val) ){
       printf STDERR ("WARNING: LINE $_line: $iri $val looks like a number, this variable will be loaded as ORDINAL\n");
@@ -260,13 +268,18 @@ sub ordinals {
     }
     if ( $val =~ /UNDEF/i ){
       printf STDERR ("ERROR: LINE $_line: $iri $val cannot have an ordinal ($order)\n");
-      $score--;
+      $score++;
     }
-    if($score > 0){
+    unless($valid{$var}->{$orig} || $valid{lc($iri)}->{$orig}){
+      printf STDERR ("ERROR: LINE $_line: $iri $var raw value is invalid '$orig', cannot map to '$val'\n");
+      $score++;
+    }
+      
+    if($score < 1){
       $ordinals{$iri}->{$val} = $order;
     }
     else{
-      printf STDERR ("ERROR: LINE $_line: $iri $val FAILED VALIDATION\n");
+      printf STDERR ("ERROR: LINE $_line: $iri $val FAILED $score VALIDATION TESTS\n");
     }
   }
     

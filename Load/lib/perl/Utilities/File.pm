@@ -3,7 +3,7 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders/;
+our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders getValidValues/;
 use Text::CSV_XS;
 use Config::Std;
 use Scalar::Util qw/looks_like_number/;
@@ -50,6 +50,24 @@ sub getPrefixedHeaders {
   return \@row; 
 }
 
+
+sub getValidValues {
+  my ($file, $delim) = @_;
+  $delim ||= detectDelimiter($file);
+  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  open(my $fh, "<$file") or die "$@\n";
+  my %valid;
+  $csv->column_names($csv->getline($fh));
+  while( my $row = $csv->getline_hr($fh)){
+    while( my ($col,$val) = each %$row ){
+      next if $val eq '';
+      $valid{$col}->{$val}++;
+    }
+  }
+  close($fh);
+  return \%valid
+}
+
 sub csv2array {
   my ($file, $delim) = @_;
   $delim ||= ",";
@@ -74,7 +92,7 @@ sub csv2array {
 sub csv2tab {
   my ($file, $out, $delim) = @_;
 #  use open ':std', ':encoding(UTF-8)';
-  $delim ||= ",";
+  $delim ||= detectDelimiter($file);
   my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
   open(my $ifh, "<$file") or die "$@\n";
   open(my $ofh, ">$out") or die "$@\n";
@@ -100,6 +118,13 @@ sub csv2tab {
   }
   close($ifh);
   close($ofh);
+}
+
+sub detectDelimiter {
+  my ($file) = @_;
+  my $headers = getHeaders($file); # assumes CSV
+  if($headers->[0] =~ /\t/){ return "\t" }
+  else { return "," }
 }
 
 sub diff {

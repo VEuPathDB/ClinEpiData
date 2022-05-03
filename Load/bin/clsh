@@ -231,38 +231,58 @@ sub ordinals {
   my $irimap = getIRImap();
   my %ordinals;
   my $_line = 0;
+  my %errors; # per IRI
+  my %warnings; # per IRI
   foreach my $row( @$valueMap ){
     $_line++;
     my ($var, $iri, $orig, $val, $order) = @$row;
     next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
-    unless(looks_like_number($order)){
-      err("WARNING: LINE $_line: '$order' is not a number, skipping");
-      next;
-    }
     my $mappedIRI = $irimap->{$iri};
     unless($mappedIRI){
-      err("ERROR: LINE $_line: no valid IRI mapped in owl for [$var] or [$iri]\n");
+      printf STDERR ("ERROR: LINE $_line: no valid IRI mapped in owl for [$iri]\n");
+      next;
+    }
+    $iri = $mappedIRI;
+    
+    my $score = 1;
+    unless(looks_like_number($order)){
+      printf STDERR ("ERROR: LINE $_line: '$order' is not a number, skipping\n");
       next;
     }
     # warn if already inserted with a different ordering
-    if(defined($ordinals{$mappedIRI}->{ $val }) && $ordinals{$mappedIRI}->{ $val } != $order){
-      err(sprintf("ERROR: LINE $_line: $iri $val does not match previous: %s", $ordinals{$mappedIRI}->{$val}));
+    if(defined($ordinals{$iri}->{ $val }) && $ordinals{$iri}->{ $val } != $order){
+      printf STDERR ("ERROR: LINE $_line: $iri $val ordinal value '%s' does not match previous: %s\n", $order, $ordinals{$iri}->{$val});
+      $score--;
     }
-    $ordinals{$mappedIRI}->{$val} = $order;
-  }
-  
-  if(0 < keys %ordinals){
-    my $out = *STDOUT;
-    if($outfile){ open($out, ">$outfile") or die "Cannot write $outfile: $!\n" }
-    printf $out ("%s\n", join("\t", qw/SOURCE_ID ordinal_values/));
-    foreach my $iri (sort keys %ordinals){
-      my @perm =  sort { $ordinals{$iri}->{$a} <=> $ordinals{$iri}->{$b} } keys %{$ordinals{$iri}};
-      my $json = to_json(\@perm);
-      printf $out ("%s\t%s\n", $iri, $json);
+    if ( looks_like_number($val) ){
+      printf STDERR ("WARNING: LINE $_line: $iri $val looks like a number, this variable will be loaded as ORDINAL\n");
+      # no decrement of $score
     }
-    if($outfile){ close($out) }
+    if ( $val =~ /UNDEF/i ){
+      printf STDERR ("ERROR: LINE $_line: $iri $val cannot have an ordinal ($order)\n");
+      $score--;
+    }
+    if($score > 0){
+      $ordinals{$iri}->{$val} = $order;
+    }
+    else{
+      printf STDERR ("ERROR: LINE $_line: $iri $val FAILED VALIDATION\n");
+    }
   }
-}
+    
+    if(0 < keys %ordinals){
+      my $out = *STDOUT;
+      if($outfile){ open($out, ">$outfile") or die "Cannot write $outfile: $!\n" }
+      printf $out ("%s\n", join("\t", qw/SOURCE_ID ordinal_values/));
+      foreach my $iri (sort keys %ordinals){
+        my @perm =  sort { $ordinals{$iri}->{$a} <=> $ordinals{$iri}->{$b} } keys %{$ordinals{$iri}};
+        next unless @perm;
+        my $json = to_json(\@perm);
+        printf $out ("%s\t%s\n", $iri, $json);
+      }
+      if($outfile){ close($out) }
+    }
+  }
 
 sub getIRImap {
   if( $config->{_irimap} ){ return $config->{_irimap} }

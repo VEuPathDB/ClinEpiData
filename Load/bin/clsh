@@ -64,6 +64,7 @@ $usage{'excol [cat]'} = "make a column exclude file for [cat]";
 $usage{'check'} = "scan for missing and duplicated variables in merged files";
 $usage{'run [cat]'} = "make the [cat] merged file";
 $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
+$usage{'stata13'} = "args: inputfile [outputfile] : extract from a Stata .dta file to .txt (if outputfile omitted, uses the same file basename + .txt)";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -162,6 +163,9 @@ sub run {
     }
     when('whereis'){
       printsystemcall("grep '$args[0]' out/*.tree.txt",)
+    }
+    when('stata13'){
+      stata13(@args);
     }
     default {
       err("Command '$cmd' not implemented")
@@ -418,6 +422,32 @@ sub mdfiles {
     elsif ( -f $x ){ push( @files, $x ) }
   }
   return \@files;
+}
+
+sub stata13 {
+  my ($infile,$outfile) = @_;
+  my $basename = fileparse($infile, qw/\.[^.]*$/);
+  my $outfile ||= "$basename.txt";
+  if( -e $infile ){
+    if( -e $outfile ){
+      my $r = ask("$outfile exits! Overwrite [y/n] ?",[qw/y n/],'y');
+      return unless $r eq 'y';
+    }
+  }
+  else {
+    err("$infile not found");
+    return;
+  }
+  my $call = "stata2txt '$infile' '$outfile' 1";
+  err($call);
+  printsystemcall($call);
+  if( -e $outfile){
+    err("Done");
+    printsystemcall("ls -l '$outfile'");
+  }
+  else {
+    err("Something went wrong, '$outfile' was not created");
+  }
 }
 
 sub getOwl {

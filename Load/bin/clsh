@@ -64,7 +64,7 @@ $usage{'excol [cat]'} = "make a column exclude file for [cat]";
 $usage{'check'} = "scan for missing and duplicated variables in merged files";
 $usage{'run [cat]'} = "make the [cat] merged file";
 $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
-$usage{'stata13'} = "args: inputfile [outputfile] : extract from a Stata .dta file to .txt (if outputfile omitted, uses the same file basename + .txt)";
+$usage{'stata13'} = "args: input [output] : extract from a Stata .dta file (or all files in a directory) to output/*.txt";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -104,12 +104,12 @@ sub run {
       owlAttributes(@args);
     }
     when('ontomap'){
-      my ($outfile) = @args;
+      my ($ontofile) = @args;
       if(-e 'conf/ontologyMapping.xml'){
-        $outfile ||= 'ontologyMapping.xml';
+        $ontofile ||= 'ontologyMapping.xml';
         printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml > conf/func');
-        printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $outfile");
-        printsystemcall("ls -l $outfile\n");
+        printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $ontofile");
+        printsystemcall("ls -l $ontofile\n");
       }
     }
     when('derive'){
@@ -274,7 +274,7 @@ sub ordinals {
       printf STDERR ("ERROR: LINE $_line: $iri $val cannot have an ordinal ($order)\n");
       $score++;
     }
-    unless($valid{$var}->{$orig} || $valid{lc($iri)}->{$orig}){
+    unless($valid{lc($var)}->{lc($orig)} || $valid{lc($iri)}->{lc($orig)}){
       printf STDERR ("ERROR: LINE $_line: $iri $var raw value is invalid '$orig', cannot map to '$val'\n");
       $score++;
     }
@@ -425,28 +425,42 @@ sub mdfiles {
 }
 
 sub stata13 {
-  my ($infile,$outfile) = @_;
-  my $basename = fileparse($infile, qw/\.[^.]*$/);
-  my $outfile ||= "$basename.txt";
-  if( -e $infile ){
-    if( -e $outfile ){
-      my $r = ask("$outfile exits! Overwrite [y/n] ?",[qw/y n/],'y');
-      return unless $r eq 'y';
-    }
+  my ($in,$out) = @_;
+  my @infiles;
+  if(-d $in){
+    opendir(DH,$in) or die "Cannot read $in: $!\n";
+    @infiles = map { "$in/$_" } grep { !/^\./ } readdir(DH);
+    closedir(DH);
   }
   else {
-    err("$infile not found");
-    return;
+    @infiles = ($in);
   }
-  my $call = "stata2txt '$infile' '$outfile' 1";
-  err($call);
-  printsystemcall($call);
-  if( -e $outfile){
-    err("Done");
-    printsystemcall("ls -l '$outfile'");
-  }
-  else {
-    err("Something went wrong, '$outfile' was not created");
+  $out //= "./";
+  unless( -d $out ){ err("Not a valid output directory: $out"); return }
+  foreach my $infile ( @infiles ){
+     unless($infile && -f $infile){ err("$infile is not a file"); next }
+     my $basename = fileparse($infile, qw/\.[^.]*$/);
+     my $outfile = "$out/$basename.txt";
+     if( -e $infile ){
+       if( -e $outfile ){
+         my $r = ask("$outfile exits! Overwrite [y/n] ?",[qw/y n/],'y');
+         return unless $r eq 'y';
+       }
+     }
+     else {
+       err("$infile not found");
+       return;
+     }
+     my $call = "stata2txt '$infile' '$outfile' 1";
+     err($call);
+     printsystemcall($call);
+     if( -e $outfile){
+       err("Done");
+       printsystemcall("ls -l '$outfile'");
+     }
+     else {
+       err("Something went wrong, '$outfile' was not created");
+     }
   }
 }
 

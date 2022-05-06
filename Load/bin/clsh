@@ -65,6 +65,7 @@ $usage{'check'} = "scan for missing and duplicated variables in merged files";
 $usage{'run [cat]'} = "make the [cat] merged file";
 $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
 $usage{'stata13'} = "args: input [output] : extract from a Stata .dta file (or all files in a directory) to output/*.txt";
+$usage{'mdfiles'} = "list metadata files";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -147,7 +148,7 @@ sub run {
       my $cat = shift @args;
       my $propfile = $config->{$cat}->{propfile};
       if(-T $propfile){
-        my $overrides;
+        my $overrides = "";
         if(@args){ $overrides = join(" ", @args) }
         printsystemcall("preprocessMetadata.pl -p $propfile $overrides");
       }
@@ -156,7 +157,7 @@ sub run {
       my $cat = shift @args;
       my $propfile = $config->{$cat}->{propfile};
       if(-T $propfile){
-        my $overrides;
+        my $overrides = "";
         if(@args){ $overrides = join(" ", @args) }
         printsystemcall("preprocessMetadata.pl -m -p $propfile $overrides");
       }
@@ -166,6 +167,13 @@ sub run {
     }
     when('stata13'){
       stata13(@args);
+    }
+    when('mdfiles'){
+      while( my ($cat,$prop) = each %$config ){
+        next unless $prop->{metadataFile};
+        my $mdfiles = mdfiles($cat);
+        printf("%s:\n%s\n", $prop->{category} || $cat, join("\n",@$mdfiles));
+      }
     }
     default {
       err("Command '$cmd' not implemented")
@@ -274,8 +282,8 @@ sub ordinals {
       printf STDERR ("ERROR: LINE $_line: $iri $val cannot have an ordinal ($order)\n");
       $score++;
     }
-    unless($valid{lc($var)}->{lc($orig)} || $valid{lc($iri)}->{lc($orig)}){
-      printf STDERR ("ERROR: LINE $_line: $iri $var raw value is invalid '$orig', cannot map to '$val'\n");
+    unless($valid{lc($var)}->{lc($orig)} || $valid{lc($iri)}->{lc($orig) || $valid{lc($val)} } ){
+      printf STDERR ("WARNING: LINE $_line: $iri $var raw value is invalid '$orig', cannot map to '$val'\n");
       $score++;
     }
       
@@ -410,6 +418,7 @@ sub mdfiles {
   my $md = [];
   my @files;
   my $mdconf = $config->{$cat}->{metadataFile};
+  return unless $mdconf;
   if( ref($mdconf) eq 'ARRAY' ){ $md = $mdconf }
   else{ push(@$md, $mdconf) }
   foreach my $x ( @$md ){

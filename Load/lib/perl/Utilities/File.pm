@@ -61,7 +61,7 @@ sub getValidValues {
   while( my $row = $csv->getline_hr($fh)){
     while( my ($col,$val) = each %$row ){
       next if $val eq '';
-      $valid{$col}->{$val}++;
+      $valid{lc($col)}->{lc($val)}++;
     }
   }
   close($fh);

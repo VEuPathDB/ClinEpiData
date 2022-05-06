@@ -91,6 +91,7 @@ if($autoMode){
    #}
     foreach my $k ( 0 .. $#studyParams){
       my ($mergedFile,$entity,$primaryKey,$protocol,$parent,$parentKey) = preprocessStudy($studyParams[$k],$dir);
+      $primaryKey ||= ':::';
       $inv->addStudy($mergedFile,$entity,$primaryKey,$protocol,$parent,$parentKey);
       push(@mergedFiles,join("/", $dir, $mergedFile));
       push(@protocols,$protocol) if $protocol;
@@ -106,11 +107,12 @@ if($autoMode){
     die "no merged files" unless @mergedFiles;
     my @entities = map { lc(fileparse($_, qr/\.[^.]+$/)) } @mergedFiles;
 #  # first mdfile assumed to be top
-    $inv->addStudy(basename($mergedFiles[0]),$entities[0],$idCols[0]);
+#  if primary key (idColumn) not provided, default to the first column by using ':::'
+    $inv->addStudy(basename($mergedFiles[0]),$entities[0],$idCols[0] || ':::');
 #  # each addditional file assumed to be child nodes
     if(1 < @mergedFiles){
       foreach my $i (1 .. $#mergedFiles){
-        $inv->addStudy(basename($mergedFiles[$i]),$entities[$i],$idCols[$i],
+        $inv->addStudy(basename($mergedFiles[$i]),$entities[$i],$idCols[$i] || ':::',
             $protocols[$i-1],
             $entities[$i-1],$idCols[$i-1]
             );

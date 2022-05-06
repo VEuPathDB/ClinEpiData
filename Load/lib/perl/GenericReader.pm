@@ -204,7 +204,7 @@ sub rowMultiplier {
       map { $newrow{$_} = $hash->{$_} }  @matches;
       ## include ID cols
       map { $newrow{$_} = $hash->{$_} }  @idcols;
-      $newrow{"__ROWMULTIPLIER${rmrulenum}__"} = $rmrulenum;
+      $newrow{"__rowmultiplier${rmrulenum}__"} = $rmrulenum;
       push( @rows, \%newrow );
 # printf Dumper \%newrow;
     }

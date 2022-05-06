@@ -181,8 +181,6 @@ sub rowMultiplier {
   my $idMap = $self->getConfig('idMap'); # must keep id cols
   my $category = $self->getConfig('category'); # must keep id cols
   my $mdfile = $self->getMetadataFileLCB();
-  $idMap->{$mdfile}->{$category};
-#print "DEBUG: category = $category," .  Dumper $idcols; exit;
   my $rules = $self->getConfig('rowMultiplier');
   unless( $rules->{$mdfile} ){ return [$hash] }
   unless( $idMap->{$mdfile}->{$category} ){

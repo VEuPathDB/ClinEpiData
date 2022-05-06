@@ -191,6 +191,7 @@ sub rowMultiplier {
   # strip file prefix 
   my @idcols = grep { !/^{{/ } map { my $a = $_; $a =~ s/${mdfile}:://; $a } @{$idMap->{$mdfile}->{$category}};
   my @rows;
+  my $rmrulenum = 1;
   foreach my $rule ( @{$rules->{$mdfile}} ){
 # printf("DEBUG: processing rule $rule\n");
     ## format:  regex pattern /[regex]/
@@ -203,10 +204,11 @@ sub rowMultiplier {
       map { $newrow{$_} = $hash->{$_} }  @matches;
       ## include ID cols
       map { $newrow{$_} = $hash->{$_} }  @idcols;
+      $newrow{"__ROWMULTIPLIER${rmrulenum}__"} = $rmrulenum;
       push( @rows, \%newrow );
 # printf Dumper \%newrow;
     }
-    ## subtract from original?
+    $rmrulenum++;
   }
   return \@rows;
 }

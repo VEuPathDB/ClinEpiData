@@ -36,7 +36,7 @@ my $IS_MERGED =  "isMerged";
 my $READER_CONFIG =  "readerConfig";
 my $FILTER_OWL_ATTRIBUTES = "filterOwlAttribute";
 
-my @readerConfigProps = qw/category parentCategory type parentType idMappingFile cleanFirst noFilePrefix applyMappedIRI applyMappedValues placeholder ontologyOwlFile/;
+my @readerConfigProps = qw/category parentCategory type parentType idMappingFile cleanFirst noFilePrefix applyMappedIRI applyMappedValues placeholder ontologyOwlFile rowMultiplier/;
 
 &GetOptions(
 	'help|h' => \$help,

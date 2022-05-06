@@ -40,6 +40,19 @@ sub updateConfig {
     ($type) = map { lc($_) } (ref($self) =~ m/::([^:]*)Reader$/);
     $self->setConfig('type', $type);
   }
+  my $rowMultipliers = $self->getConfig('rowMultiplier');
+  if($rowMultipliers){
+    unless(ref($rowMultipliers) eq 'ARRAY'){ $rowMultipliers = [ $rowMultipliers ] }
+    my $rules = {};
+    foreach my $rmrule ( @$rowMultipliers ){
+      my ($mdfile, $rule) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
+      $mdfile = lc($mdfile);
+      $rules->{$mdfile} //= [];
+      print STDERR "Add rule: $mdfile : $rule\n";
+      push(@{$rules->{$mdfile}}, $rule);
+    }
+    $self->setConfig('rowMultiplier', $rules);
+  }
 } 
 
 sub _parse_id_formula {
@@ -161,6 +174,43 @@ use base qw(ClinEpiData::Load::GenericReader);
 use strict;
 use warnings;
 use Data::Dumper;
+
+sub rowMultiplier {
+  my ($self, $hash) = @_;
+  # parse the config in format mdfile:pattern
+  my $idMap = $self->getConfig('idMap'); # must keep id cols
+  my $category = $self->getConfig('category'); # must keep id cols
+  my $mdfile = $self->getMetadataFileLCB();
+  $idMap->{$mdfile}->{$category};
+#print "DEBUG: category = $category," .  Dumper $idcols; exit;
+  my $rules = $self->getConfig('rowMultiplier');
+  unless( $rules->{$mdfile} ){ return [$hash] }
+  unless( $idMap->{$mdfile}->{$category} ){
+    die ("ERROR: rowMultiplier rules defined, but no ID mapping found for category $category\n");
+  }
+  # strip file prefix 
+  my @idcols = grep { !/^{{/ } map { my $a = $_; $a =~ s/${mdfile}:://; $a } @{$idMap->{$mdfile}->{$category}};
+  my @rows;
+  foreach my $rule ( @{$rules->{$mdfile}} ){
+# printf("DEBUG: processing rule $rule\n");
+    ## format:  regex pattern /[regex]/
+    if($rule =~ /^\/.+\/$/){
+      my ($regex) =  ($rule =~ /^\/(.+)\/$/);
+# printf("DEBUG: RULE is regex: $regex\n");
+      my @matches = grep { /$regex/ } keys %$hash;
+# printf("DEBUG: matches from %s:\n\n=\t%s\n", join(",", keys %$hash), join(",", @matches));
+      my %newrow;
+      map { $newrow{$_} = $hash->{$_} }  @matches;
+      ## include ID cols
+      map { $newrow{$_} = $hash->{$_} }  @idcols;
+      push( @rows, \%newrow );
+# printf Dumper \%newrow;
+    }
+    ## subtract from original?
+  }
+  return \@rows;
+}
+
 
 sub makeParent {
   my ($self, $hash) = @_;

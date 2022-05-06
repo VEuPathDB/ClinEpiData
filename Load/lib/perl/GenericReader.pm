@@ -9,6 +9,7 @@ sub updateConfig {
   my ($self) = @_;
   my $idMappingFile = $self->getConfig('idMappingFile');
   my $noFilePrefix = $self->getConfig('noFilePrefix');
+  my $realMdFile = $self->getMetadataFileLCB();
   if($idMappingFile){
     open(FH, "<", $idMappingFile) or die "Cannot open $idMappingFile:$!\n";
     my $idMap = {};
@@ -18,6 +19,8 @@ sub updateConfig {
       my($mdfile,$type,$col) = map { lc($_) } split(/\t/, $row);
       next unless $col;
       $mdfile = lc($mdfile);
+      $mdfile =~ s/^\s*|\s*$//;
+      next unless ($mdfile eq $realMdFile);
       my @idCols;
       if($noFilePrefix){
         @idCols = $self->_parse_id_formula($col);
@@ -47,6 +50,8 @@ sub updateConfig {
     foreach my $rmrule ( @$rowMultipliers ){
       my ($mdfile, $rule) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
       $mdfile = lc($mdfile);
+      $mdfile =~ s/^\s*|\s*$//;
+      next unless ($mdfile eq $realMdFile);
       $rules->{$mdfile} //= [];
       print STDERR "Add rule: $mdfile : $rule\n";
       push(@{$rules->{$mdfile}}, $rule);

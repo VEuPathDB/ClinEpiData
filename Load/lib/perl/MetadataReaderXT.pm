@@ -56,7 +56,7 @@ sub applyMappedValues {
     my $origKey = $col;
     $col = lc($col);
     if($col !~ /^$origKey$/){ $hash->{$col} = $v0; $hash->{$origKey} = undef }
-    #next unless(defined($v0));
+    next unless(defined($v0));
     $v0 = lc($v0);
     $v0 =~ s/^\s*|\s*$//g;
     ## do basic value mapping

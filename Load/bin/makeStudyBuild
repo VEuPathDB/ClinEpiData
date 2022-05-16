@@ -6,13 +6,24 @@ use warnings;
 use Cwd qw/abs_path/;
 use Getopt::Long;
 use File::Basename qw/dirname/;
+use File::Find;
+use Data::Dumper;
 
 
 my ($studydir,$name,$owl);
+my @matches;
+sub wanted {
+  return if $File::Find::dir =~ /release\/production/;
+  if($_ eq $owl . ".owl"){ push(@matches, $File::Find::dir) }
+}
 
 my %options = ( 'd|studyDir=s' => \$studydir, 'n|name=s' => \$name, 'o|owl=s' => \$owl);
 unless(@ARGV){ printf("\t%s\n", join("\n\t", keys %options)); exit }
 GetOptions(%options);
+if($owl){
+  my @matches;
+  find(\&wanted, $ENV{PROJECT_HOME} . "/ApiCommonData/Load/ontology");
+}
 
 # /eupath/data/EuPathDB/manualDelivery/ClinEpiDB/Gates/SCORE/five_country/2020-05-27
 
@@ -43,6 +54,14 @@ mkdir "$studydir/workspace/build/out";
 
 if($owl){
   system("makeOntologyMappingFile.pl -o $owl > $studydir/workspace/build/conf/ontologyMapping.xml");
+  if(my $dir =  shift @matches){
+    if( -e "$dir/valueMap.txt" ){
+      system("ln -s $dir/valueMap.txt $studydir/workspace/build/");
+    }
+    if( -e "$dir/idMap.txt" ){
+      system("ln -s $dir/idMap.txt $studydir/workspace/build/");
+    }
+  }
 }
 
 
@@ -139,7 +158,7 @@ packageName = ClinEpiData::Load::GenericReader
 cleanFirst = 1
 PPPP
   
-  $propfile =~ s/^([\w :]UNDEF(\.txt)?)$//gms;
+  $propfile =~ s/^([\w :=]UNDEF(\.txt)?)$//gms;
   open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
   printf FH ($propfile);
   close FH;
@@ -152,4 +171,5 @@ PPPP
 close(TASKLIST);
 
 #end
+#
 ;

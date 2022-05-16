@@ -16,12 +16,16 @@ use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues/;
 use XML::Simple;
 use Config::Std; # read_config()
+use Getopt::Long qw/:config no_ignore_case/;
+
+my ($cfgfile);
+GetOptions('C=s' => \$cfgfile);
 
 my $this = basename $0;
 my ($cmd, @args) = @ARGV;
 
 my $config = {};
-my $CFGFILE = '.buildconfig';
+my $CFGFILE = $cfgfile || $ENV{'BUILDCONFIG'} || '.buildconfig';
 my $CFGDIR = 'conf';
 
 my $msg = {
@@ -325,7 +329,7 @@ sub getIRImap {
 		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
     $col =~ s/"//g;
     $sid =~ s/"//g;
-    $config->{_irimap}->{$col} = $sid;
+    $config->{_irimap}->{lc($col)} = $sid;
     $config->{_irimap}->{$sid} = $sid; # also a valid key
 	}
   return $config->{_irimap};

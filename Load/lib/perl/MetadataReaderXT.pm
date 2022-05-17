@@ -18,7 +18,7 @@ sub readAncillaryInputFile {
       next unless $row;
       next if ($row =~ /^\s*#/);
       $row =~ s/(\r|\l)$//g;
-      my($col, $iri, $val, $mapVal) = split(/\t/,$row);
+      my($col, $iri, $val, $mapVal) = map { s/^\s*|\s*$//g; defined($_) ? $_ : ''} split(/\t/,$row);
       if(defined($val) && defined($mapVal)){
         if($val eq ':::append:::'){ # add a static value to every row in a metadatafile
           # where $col is the metadatafile, $iri is the variable
@@ -56,7 +56,7 @@ sub applyMappedValues {
     my $origKey = $col;
     $col = lc($col);
     if($col !~ /^$origKey$/){ $hash->{$col} = $v0; $hash->{$origKey} = undef }
-    #next unless(defined($v0));
+    next unless(defined($v0));
     $v0 = lc($v0);
     $v0 =~ s/^\s*|\s*$//g;
     ## do basic value mapping

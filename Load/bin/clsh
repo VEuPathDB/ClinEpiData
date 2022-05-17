@@ -16,12 +16,16 @@ use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues/;
 use XML::Simple;
 use Config::Std; # read_config()
+use Getopt::Long qw/:config no_ignore_case/;
+
+my ($cfgfile);
+GetOptions('C=s' => \$cfgfile);
 
 my $this = basename $0;
 my ($cmd, @args) = @ARGV;
 
 my $config = {};
-my $CFGFILE = '.buildconfig';
+my $CFGFILE = $cfgfile || $ENV{'BUILDCONFIG'} || '.buildconfig';
 my $CFGDIR = 'conf';
 
 my $msg = {
@@ -255,15 +259,22 @@ sub ordinals {
   my %warnings; # per IRI
   foreach my $row( @$valueMap ){
     $_line++;
+    next if ($_line =~ /^\s*#|^\s*$/);
     my ($var, $iri, $orig, $val, $order) = @$row;
-    next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
-    my $mappedIRI = $irimap->{$iri};
-    unless($mappedIRI){
+    if(4 > scalar @$row){
+      printf STDERR ("ERROR: LINE $_line: bad format\n");
+      next;
+    }
+    if($val && ($orig eq '')){
+      printf STDERR ("WARNING: LINE $_line: $var value (third column) is empty, cannot map to '$val'\n");
+    }
+    my $mappedIRI = $iri ? $irimap->{$iri} : '';
+    unless($iri && $mappedIRI){
       printf STDERR ("ERROR: LINE $_line: no valid IRI mapped in owl for [$iri]\n");
       next;
     }
     $iri = $mappedIRI;
-    
+    next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
     my $score = 0;
     unless(looks_like_number($order)){
       printf STDERR ("ERROR: LINE $_line: '$order' is not a number\n");
@@ -318,7 +329,7 @@ sub getIRImap {
 		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
     $col =~ s/"//g;
     $sid =~ s/"//g;
-    $config->{_irimap}->{$col} = $sid;
+    $config->{_irimap}->{lc($col)} = $sid;
     $config->{_irimap}->{$sid} = $sid; # also a valid key
 	}
   return $config->{_irimap};

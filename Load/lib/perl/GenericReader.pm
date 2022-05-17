@@ -9,6 +9,7 @@ sub updateConfig {
   my ($self) = @_;
   my $idMappingFile = $self->getConfig('idMappingFile');
   my $noFilePrefix = $self->getConfig('noFilePrefix');
+  my $realMdFile = $self->getMetadataFileLCB();
   if($idMappingFile){
     open(FH, "<", $idMappingFile) or die "Cannot open $idMappingFile:$!\n";
     my $idMap = {};
@@ -18,6 +19,8 @@ sub updateConfig {
       my($mdfile,$type,$col) = map { lc($_) } split(/\t/, $row);
       next unless $col;
       $mdfile = lc($mdfile);
+      $mdfile =~ s/^\s*|\s*$//g;
+      # next unless ($mdfile eq $realMdFile);
       my @idCols;
       if($noFilePrefix){
         @idCols = $self->_parse_id_formula($col);
@@ -44,14 +47,20 @@ sub updateConfig {
   if($rowMultipliers){
     unless(ref($rowMultipliers) eq 'ARRAY'){ $rowMultipliers = [ $rowMultipliers ] }
     my $rules = {};
+    my %idnum;
     foreach my $rmrule ( @$rowMultipliers ){
-      my ($mdfile, $rule) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
+      my ($mdfile, $rule, $identifier) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
+      next unless $mdfile;
       $mdfile = lc($mdfile);
-      $rules->{$mdfile} //= [];
-      print STDERR "Add rule: $mdfile : $rule\n";
+      $mdfile =~ s/^\s*|\s*$//g;
+      #next unless ($mdfile eq $realMdFile);
+      next unless $rule;
+      $idnum{$mdfile}++;
+      $rules->{$mdfile} ||= [];
       push(@{$rules->{$mdfile}}, $rule);
+      printf STDERR ("Add rule: $mdfile : $rule : __rowmultiplier%d__\n", $idnum{$mdfile});
     }
-    $self->setConfig('rowMultiplier', $rules);
+    $self->setConfig('rowMultiplier', $rules) if(keys %$rules);
   }
 } 
 
@@ -181,10 +190,12 @@ sub rowMultiplier {
   my $idMap = $self->getConfig('idMap'); # must keep id cols
   my $category = $self->getConfig('category'); # must keep id cols
   my $mdfile = $self->getMetadataFileLCB();
-  $idMap->{$mdfile}->{$category};
-#print "DEBUG: category = $category," .  Dumper $idcols; exit;
+  unless( $mdfile ){ print "empty mdfile [$mdfile]"; return [$hash] }
   my $rules = $self->getConfig('rowMultiplier');
-  unless( $rules->{$mdfile} ){ return [$hash] }
+  unless( $rules->{$mdfile} ){
+    #printf STDERR ("No rules for %s : %s",Dumper($mdfile,$rules));
+    return [$hash];
+  }
   unless( $idMap->{$mdfile}->{$category} ){
     die ("ERROR: rowMultiplier rules defined, but no ID mapping found for category $category\n");
   }
@@ -209,6 +220,10 @@ sub rowMultiplier {
 # printf Dumper \%newrow;
     }
     $rmrulenum++;
+  }
+  unless ( @rows ) {
+    print STDERR "DEBUG: $mdfile: no RM rows\n";
+    @rows = ( $hash );
   }
   return \@rows;
 }

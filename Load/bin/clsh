@@ -18,8 +18,8 @@ use XML::Simple;
 use Config::Std; # read_config()
 use Getopt::Long qw/:config no_ignore_case/;
 
-my ($cfgfile);
-GetOptions('C=s' => \$cfgfile);
+my ($cfgfile, $help);
+GetOptions('C=s' => \$cfgfile, 'h!' => \$help);
 
 my $this = basename $0;
 my ($cmd, @args) = @ARGV;
@@ -62,7 +62,7 @@ my @usages = (
 );
 my %usage = map { $_->[0] => $_->[1] } @usages;
 ## more
-$usage{'clean'} = "remake .buildconfig";
+$usage{'clean'} = "remake $CFGFILE";
 $usage{'var2iri [iri]'} = "lookup the IRI for a variable/pattern";
 $usage{'excol [cat]'} = "make a column exclude file for [cat]";
 $usage{'check'} = "scan for missing and duplicated variables in merged files";
@@ -77,7 +77,10 @@ $usage{'mdfiles'} = "list metadata files";
 my ($command, @params) = @ARGV;
 
 init($command);
-if($command){
+if($command eq 'help'){ # for autocomplete
+  printf("%s\n", join("\n", map { s/\s+.*//; $_ } keys %usage));
+}
+elsif($command){
   run($command, @params);
 }
 else{
@@ -191,7 +194,7 @@ sub init {
   $config = {};
   my $path = abs_path();
   my $build = basename($path); 
-  if($build ne 'build' && $cmd ne 'init' ){ err('nobuild', $path); return  }
+  if($build ne 'build' && $cmd ne 'clean' ){ err('nobuild', $path); return  }
   my $workspace = basename(dirname($path)); 
   if($workspace ne 'workspace' && $cmd ne 'init' ){ err('noworkspace',$path); return  }
   unless( -e $CFGFILE){

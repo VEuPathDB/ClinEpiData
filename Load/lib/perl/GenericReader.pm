@@ -49,7 +49,9 @@ sub updateConfig {
     my $rules = {};
     my %idnum;
     foreach my $rmrule ( @$rowMultipliers ){
-      my ($mdfile, $rule, $identifier) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
+      # rule syntax: mdfile:/regex rule/:idvalue
+      # generates a new variable __rowmultiplier1__ (2,3,...) or __rowmultiplier${idvalue}__
+      my ($mdfile, $rule, $idvalue) = map { s/^\s*|\s*$//g; $_ } split(/:/, $rmrule);
       next unless $mdfile;
       $mdfile = lc($mdfile);
       $mdfile =~ s/^\s*|\s*$//g;
@@ -57,8 +59,9 @@ sub updateConfig {
       next unless $rule;
       $idnum{$mdfile}++;
       $rules->{$mdfile} ||= [];
-      push(@{$rules->{$mdfile}}, $rule);
-      printf STDERR ("Add rule: $mdfile : $rule : __rowmultiplier%d__\n", $idnum{$mdfile});
+      $idvalue //= $idnum{$mdfile}++;
+      printf STDERR ("Add rule: $mdfile : $rule : __rowmultiplier%d__\n", $idvalue);
+      push(@{$rules->{$mdfile}}, [$rule,$idvalue]);
     }
     $self->setConfig('rowMultiplier', $rules) if(keys %$rules);
   }
@@ -202,8 +205,9 @@ sub rowMultiplier {
   # strip file prefix 
   my @idcols = grep { !/^{{/ } map { my $a = $_; $a =~ s/${mdfile}:://; $a } @{$idMap->{$mdfile}->{$category}};
   my @rows;
-  my $rmrulenum = 1;
-  foreach my $rule ( @{$rules->{$mdfile}} ){
+  #my $rmrulenum = 1;
+  foreach my $tuple ( @{$rules->{$mdfile}} ){
+    my($rule, $idvalue) = @$tuple;
 # printf("DEBUG: processing rule $rule\n");
     ## format:  regex pattern /[regex]/
     if($rule =~ /^\/.+\/$/){
@@ -215,11 +219,12 @@ sub rowMultiplier {
       map { $newrow{$_} = $hash->{$_} }  @matches;
       ## include ID cols
       map { $newrow{$_} = $hash->{$_} }  @idcols;
-      $newrow{"__rowmultiplier${rmrulenum}__"} = $rmrulenum;
+     #$newrow{"__rowmultiplier${rmrulenum}__"} = $rmrulenum;
+      $newrow{"__rowmultiplier${idvalue}__"} = $idvalue;
       push( @rows, \%newrow );
 # printf Dumper \%newrow;
     }
-    $rmrulenum++;
+    #$rmrulenum++;
   }
   unless ( @rows ) {
     print STDERR "DEBUG: $mdfile: no RM rows\n";

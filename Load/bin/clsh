@@ -17,6 +17,9 @@ use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders
 use XML::Simple;
 use Config::Std; # read_config()
 use Getopt::Long qw/:config no_ignore_case/;
+use YAML qw/DumpFile LoadFile/; # potential replacement for Config::Std (.ini)
+use Archive::Tar;
+use Compress::Zlib;
 
 my ($cfgfile, $help);
 GetOptions('C=s' => \$cfgfile, 'h!' => \$help);
@@ -45,7 +48,7 @@ my @usages = (
   ],
   [
     "ordinals [valueMap.txt] ([output-file])",
-    "Extract ordinals from specified valueMap.txt, prints output to terminal or [output-file]",
+    "Extract ordinals from specified valueMap.txt, prints output to ordinals.txt or [output-file]",
   ],
   [
  "owl",
@@ -182,6 +185,19 @@ sub run {
         printf("%s:\n%s\n", $prop->{category} || $cat, join("\n",@$mdfiles));
       }
     }
+    when('export'){
+      _export(@args);
+    }
+    when('import'){
+      _import(@args);
+    }
+    when('store'){
+      my ($in, $out) = @args;
+      my $test = file2hex($in);
+      printf("string length %d: %s ...\n", length($test), substr($test,0,48));
+      hex2file($out, $test);
+    }
+      
     default {
       err("Command '$cmd' not implemented")
     }
@@ -253,7 +269,9 @@ sub ordinals {
       my $values = getValidValues($prop->{outputFile}, "\t");
       %valid = (%valid, %$values);
     }
+    if($prop->{valueMappingFile}){$infile ||= $prop->{valueMappingFile}}
   }
+  $outfile ||= 'ordinals.txt';
   my $valueMap = csv2array($infile, "\t");
   my $irimap = getIRImap();
   my %ordinals;
@@ -263,7 +281,7 @@ sub ordinals {
   foreach my $row( @$valueMap ){
     $_line++;
     next if ($_line =~ /^\s*#|^\s*$/);
-    my ($var, $iri, $orig, $val, $order) = @$row;
+    my ($var, $iri, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
     if(4 > scalar @$row){
       printf STDERR ("ERROR: LINE $_line: bad format\n");
       next;
@@ -533,7 +551,66 @@ sub check {
   }
   else { err("No output files found") }
 }
+
+sub _export {
+  my ($outfile) = @_;
+  my @files;
+  my %exclude = (
+    qw/valueMappingFile 1 outputFile 1 mergedFile 1 parentMergedFile 1 dateObfuscationFile 1 idMappingFile 1/
+  );
+  while( my ($section, $params) = each %$config ){
+    next if $section eq 'global';
+    while( my ($param, $val) = each %$params ){
+      next if $exclude{$param};
+      if( -e -f $val ){
+        print "Archiving $val\n";
+        push(@files, $val);
+      }
+    }
+  }
+# if(@files){
+#   my $tar = Archive::Tar->new();
+#   $tar->add_files(@files);
+#   $tar->write("$outfile.tgz", COMPRESS_GZIP);
+# }
+  foreach my $file (@files){
+    $config->{__FILE__}->{$file} = file2array($file);
+  }
+  DumpFile($outfile, $config);
+}
+sub _import {
+  my ($infile) = @_;
+  LoadFile($infile, $config);
+  while( my ($file,$content) = each %{ $config->{__FILE__} } ){
+    hex2file($file,$content);
+  }
+}
+
+#######################################
+# general purpose functions
+#
+sub file2array {
+  my ($file) = @_;
+  my @content;
+  open(FH, "<$file") or die "Cannot read $file:$!";
+  while(<FH>) { chomp; push(@content, $_) }
+  close(FH);
+  return \@content;
+}
     
+sub file2hex {
+  my ($file) = @_;
+  my $arr = file2array($file);
+  my $content = join("\n", @$arr);
+  return sprintf("%s\n", unpack("H*", compress($content)));
+}
+
+sub hex2file {
+  my ($file, $content) = @_;
+  open(FH, ">$file") or die "Cannot write $file:$!";
+  print FH uncompress( pack("H*", $content) );
+  close(FH);
+}
 
 sub systemcall {
   my $call = join(" ", @_);
@@ -561,3 +638,5 @@ sub err {
     printf STDERR ("%s\n", join("\n", @other));
   }
 }
+
+1;

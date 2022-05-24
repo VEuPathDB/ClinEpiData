@@ -149,6 +149,7 @@ sub getId {
     push(@idValues,$val);
   }
   my $id = join("_", @idValues);
+  $id =~ s/ /./g; # spaces not allowed
   # printf STDERR ("QA CHECK: %s => %s\n", join("+", @qaCheck), $id);
   return $id;
 }

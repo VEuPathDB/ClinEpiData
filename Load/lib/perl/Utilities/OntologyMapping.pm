@@ -2,6 +2,9 @@ package ClinEpiData::Load::Utilities::OntologyMapping;
 
 use strict;
 use warnings;
+require Exporter;
+our @ISA = qw/Exporter/;
+our @EXPORT_OK = qw/getEntityOrdering/;
 
 use open ':std', ':encoding(UTF-8)';
 # use ApiCommonData::Load::OwlReader;
@@ -15,9 +18,12 @@ sub setTerms { $_[0]->{_terms} = $_[1] }
 sub getTerms { return $_[0]->{_terms} }
 
 sub new {
-  my ($class) = @_;
+  my ($class, $file) = @_;
   my $self = {};
   bless ($self, $class);
+  if($file){
+    $self->{_from_xml} = XMLin($file);
+  }
   return $self;
 }
 
@@ -53,6 +59,28 @@ sub run {
   push(@terms, $_) for @$vars;
   $self->setTerms(\@terms);
   $self->printXml();
+}
+
+sub getEntityOrdering {
+  my ($file) = @_;
+  my $xml = XMLin($file);
+  my $map = {};
+  my %forcedOrder = (
+    EUPATH_0035127 => 1, # com
+    EUPATH_0043226 => 2, # crm
+    PCO_0000024    => 3, # house
+    EUPATH_0000776 => 4, # hrm
+    EUPATH_0000096 => 5, # part
+    EUPATH_0000738 => 6, # prm
+    EUPATH_0000609 => 7, # sam
+  );
+  foreach my $term ( @{ $xml->{ontologyTerm} } ){
+    if( $term->{type} eq 'materialType' ){
+      next unless $forcedOrder{$term->{source_id}};
+      $map->{ $term->{name} } = $forcedOrder{$term->{source_id}};
+    }
+  }
+  return $map;
 }
 
 sub getOntologyHash {
@@ -192,26 +220,26 @@ sub getMaterialTypesFromOwl {
   my @sorted = ( 
       { source_id => 'INTERNAL_X',     type => 'materialType', name => [ 'INTERNAL' ] },
       { source_id => 'PCO_0000024',    type => 'materialType', name => ['household'] },
-      { source_id => 'EUPATH_0000776', type => 'materialType', name => [ 'hhobservation' ] },
-      { source_id => 'EUPATH_0000327', type => 'materialType', name => ['entomology'] },
+      { source_id => 'EUPATH_0000776', type => 'materialType', name => [ 'household_repeated_measures' ] },
+    # { source_id => 'EUPATH_0000327', type => 'materialType', name => ['entomology'] },
       { source_id => 'EUPATH_0000096', type => 'materialType', name => ['participant'] },
-      { source_id => 'EUPATH_0000738', type => 'materialType', name => [ 'observation' ] },
+      { source_id => 'EUPATH_0000738', type => 'materialType', name => [ 'participant_repeated_measures' ] },
       { source_id => 'EUPATH_0000609', type => 'materialType', name => ['sample'] },
       { source_id => 'EUPATH_0035127', type => 'materialType', name => ['community'] },
-      { source_id => 'EUPATH_0043226', type => 'materialType', name => ['communityobs'] },
+      { source_id => 'EUPATH_0043226', type => 'materialType', name => ['community_repeated_measures'] },
   ); 
   return \@sorted;
 }
 
 sub getProtocols {
   my %protocols = (
-      communityObservation => 'EUPATH_0035127', # community-community observation
-      communityHousehold => 'OBI_0600004', # community-household
-      hhobservationprotocol => 'EUPATH_0015467', # household-household observation
-      entomology => 'EUPATH_0000055', # household-entomology
-      enrollment => 'OBI_0600004', # household-participant edge
-      observationprotocol => 'BFO_0000015', # participant-observation edge
-      'specimen collection' => 'OBI_0000659', # observation-sample edge
+      'parent of community_repeated_measures' => 'EUPATH_0035127', # community-community observation
+      'parent of household' => 'PCO_0000027', # community-household
+      'parent of household_repeated_measures' => 'EUPATH_0015467', # household-household observation
+    # entomology => 'EUPATH_0000055', # household-entomology
+      'parent of participant' => 'OBI_0600004', # household-participant edge
+      'parent of participant_repeated_measures' => 'BFO_0000015', # participant-observation edge
+      'parent of sample' => 'OBI_0000659', # observation-sample edge
       );
   my @sorted;
   foreach my $prot ( sort keys %protocols ){

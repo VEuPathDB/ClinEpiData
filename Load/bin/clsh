@@ -10,10 +10,13 @@ use Config::Std; # read_config()
 use Data::Dumper;
 use File::Basename;
 use File::Copy;
+use Digest::SHA qw/sha1_hex/;
 use Scalar::Util qw/looks_like_number/;
 use JSON qw/to_json/;
 use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues/;
+use ClinEpiData::Load::Utilities::Investigation;
+use ClinEpiData::Load::Utilities::OntologyMapping qw/getEntityOrdering/;
 use XML::Simple;
 use Config::Std; # read_config()
 use Getopt::Long qw/:config no_ignore_case/;
@@ -35,6 +38,7 @@ my $msg = {
   nobuild => 'Not in build dir',
   noworkspace => 'Not in a workspace',
   info => 'INFO: ',
+  warn => 'WARNING: ',
 };
 
 my $systemcommands = {
@@ -73,6 +77,8 @@ $usage{'run [cat]'} = "make the [cat] merged file";
 $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
 $usage{'stata13'} = "args: input [output] : extract from a Stata .dta file (or all files in a directory) to output/*.txt";
 $usage{'mdfiles'} = "list metadata files";
+$usage{'id'} = "Show dataset identifiers";
+$usage{'inv'} = "create investigation.xml";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -196,6 +202,14 @@ sub run {
       my $test = file2hex($in);
       printf("string length %d: %s ...\n", length($test), substr($test,0,48));
       hex2file($out, $test);
+    }
+    when('inv'){
+      my ($out) = @args;
+      my $file = investigationfile($out);
+      printsystemcall("echo Done; ls -lh $file");
+    }
+    when('id'){
+      printf("%s\n", join("\n", getDatasetIds(@args)));
     }
       
     default {
@@ -584,6 +598,88 @@ sub _import {
   while( my ($file,$content) = each %{ $config->{__FILE__} } ){
     hex2file($file,$content);
   }
+}
+
+sub investigationfile {
+  my ($invFile) = @_;
+  $invFile ||= 'investigation.xml';
+  # Run after all output files have been made
+  my %catkey;
+  my %study;
+  my %order;
+  my %lowerbranch;
+# (community => 1, community_repeated_measures => 2, household => 3, household_repeated_measures => 4, participant => 5, participant_repeated_measures => 6, sample => 7 );
+  my ($datasetName,$abbrev,$dsId) = getDatasetIds();
+  printf STDERR ("Creating $invFile for dataset $datasetName with ID = $abbrev\n");
+  # 
+  while(my ($cat, $prop) = each %$config ){
+    next unless($prop->{outputFile} && -e $prop->{outputFile});
+    $catkey{$cat} = $prop->{category};
+  }
+  while(my ($cat, $prop) = each %$config ){
+    next unless($prop->{outputFile} && -e $prop->{outputFile});
+    if( $prop->{parentCategory} ){
+      $study{$cat} =  
+        [ basename($prop->{outputFile}), $prop->{category}, 'PRIMARY_KEY',"parent of " . $prop->{category}, $prop->{parentCategory},'PARENT', $datasetName ];
+    }
+    else {
+      $study{$cat} = [basename($prop->{outputFile}), $prop->{category}, 'PRIMARY_KEY' ,"","","", $datasetName];
+    }
+  }
+  my $order = getEntityOrdering($config->{global}->{ontologyMappingXmlFile});
+  foreach my $cat ( keys %study ){
+    my $score = $order->{$catkey{$cat}};
+    if(defined($score)){
+      $order->{$cat} = $score;
+    }
+    else { # guess by long category name
+      my $pat = $catkey{$cat};
+      my ($key) = grep { /^$pat/ } keys %$order;
+      if($key){
+          $order->{$cat} = $order->{$key};
+      }
+      else { # guess by short name
+        ($key) = grep { /^$cat/ } keys %$order;
+        if($key){
+          $order->{$cat} = $order->{$key};
+          err("warn", "best guess: $cat = $key, order $order->{$key}");
+        }
+        else {
+          err("warn", "Cannot determine ordering for $cat, make manual corrections in $invFile");
+          $order->{$cat} = 99;
+        }
+      }
+    }
+  }
+    
+  my $inv = ClinEpiData::Load::Utilities::Investigation->new($abbrev);
+  foreach my $cat ( sort { $order->{$a} <=> $order->{$b} } keys %study ){
+    next unless $study{$cat};
+    $inv->addStudy(@{$study{$cat}});
+  }
+  # print Dumper $inv->{xml};
+  open(IF, ">$invFile") or die "Cannot write $invFile: $!";
+  print IF $inv->getXml;
+  close(IF);
+  return $invFile;
+  
+}
+
+sub getDatasetIds{
+  my ($path) = @_;
+  $path ||= abs_path('final');
+  return unless (-e $path);
+  my @dirs = split(/\//, $path);
+  pop @dirs; # final
+  my $release = pop @dirs; # release
+  my $studyName = pop @dirs;
+  my $groupName = pop @dirs;
+  my $subProject = pop @dirs;
+  my $abbrev = join("", map {uc(substr($_, 0,5)) } ($subProject,$groupName, $studyName));
+  my $datasetName = sprintf("ISASimple_%s_%s_%s_RSRC", $subProject, $groupName, $studyName);
+  my $dsId = substr(sha1_hex($datasetName),0,10);
+  # printf("$datasetName\n$dsId\n");
+  return $datasetName, $abbrev, $dsId;
 }
 
 #######################################

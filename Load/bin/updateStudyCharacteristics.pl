@@ -74,12 +74,14 @@ if(-f $cache){
   ($prev) = readConfig($cache); 
 }
 
+$iniFile ||= $ENV{GUS_HOME} . '/ontology/General/study_classifications/ini';
 my ($curr,$config) = readConfig($iniFile);
+my $owlFile = $ENV{GUS_HOME} . '/ontology/release/production/classifications.owl';
 
 while(my ($study,$md5) = each %$curr){
   if(!defined($prev->{$study}) || $prev->{$study} ne $md5){
     printf STDERR "Update needed: $study\n";
-    my $cmd = sprintf("ga ApiCommonData::Load::Plugin::InsertStudyCharacteristics  --datasetName %s --file /home/jaycolin/workspace/clinepi/gus_home/ontology/General/study_classifications/ini --owlFile /home/jaycolin/workspace/clinepi/gus_home/ontology/release/production/classifications.owl --commit > logs/%s 2>&1", $study, $study);
+    my $cmd = sprintf("ga ApiCommonData::Load::Plugin::InsertStudyCharacteristics --schema EDA  --datasetName %s --file $iniFile --owlFile $owlFile --commit > logs/%s 2>&1", $study, $study);
     `$cmd`;
   }
   else{

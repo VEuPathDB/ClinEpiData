@@ -23,6 +23,7 @@ use Getopt::Long qw/:config no_ignore_case/;
 use YAML qw/DumpFile LoadFile/; # potential replacement for Config::Std (.ini)
 use Archive::Tar;
 use Compress::Zlib;
+use POSIX qw/strftime/;
 
 my ($cfgfile, $help);
 GetOptions('C=s' => \$cfgfile, 'h!' => \$help);
@@ -78,6 +79,7 @@ $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tr
 $usage{'stata13'} = "args: input [output] : extract from a Stata .dta file (or all files in a directory) to output/*.txt";
 $usage{'mdfiles'} = "list metadata files";
 $usage{'id'} = "Show dataset identifiers";
+$usage{'final'} = "copy output files to final/ (or [dir])";
 $usage{'inv'} = "create investigation.xml";
 
 #-----------------------------------
@@ -210,6 +212,9 @@ sub run {
     }
     when('id'){
       printf("%s\n", join("\n", getDatasetIds(@args)));
+    }
+    when('final'){
+      final(@args);
     }
       
     default {
@@ -682,9 +687,57 @@ sub getDatasetIds{
   return $datasetName, $abbrev, $dsId;
 }
 
+sub final {
+  my ($dir) = @_;
+  $dir ||= 'final';
+  my %files;
+  while( my ($cat, $prop) = each %$config ){
+#   if( $prop->{valueMappingFile} && -e $prop->{valueMappingFile} ){ $files{$prop->{valueMappingFile}} = 1 }
+#   if( $prop->{ontologyMappingXmlFile} && -e  $prop->{ontologyMappingXmlFile} ){ $files{$prop->{ontologyMappingXmlFile}} = 1 }
+    if( $prop->{outputFile} ){
+      my ($name, $outdir) = fileparse($prop->{outputFile});
+      opendir(DH, $outdir);
+      my @outfiles = map { join("", $outdir, $_) } grep { /^$name/ } readdir(DH);
+      close(DH);
+      foreach my $of ( @outfiles ){
+        my ($bn, $dir) = fileparse($of);
+        my $dest = "$dir/$bn";
+        my $ock = cksum($of);
+        if(-e $dest) {
+          my $destck = cksum($dest);
+          if( $destck eq $ock ){ err("\t$of: no change") }
+          else { 
+            $files{$of} = filetime($of);
+          }
+        }
+        else {
+          $files{$of} = filetime($of);
+        }
+      }
+    }
+  }
+  my @tofinal = sort keys %files;
+  return unless(@tofinal);
+  my $r = ask(sprintf("Files to be copied into $dir/:\n%s\nFILES IN $dir will be overwritten!\nProceed", join("\n", map { sprintf("%s\t%s", $_, $files{$_}) } @tofinal)), ["y","n"]);
+  if($r eq "y"){
+    foreach my $file (@tofinal){
+      system("cp -v $file $dir/");
+    }
+  }
+}
+
 #######################################
 # general purpose functions
 #
+#
+sub filetime {
+  my ($file) = @_;
+  my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+    $atime,$mtime,$ctime,$blksize,$blocks)
+       = stat($file);
+  return  strftime("%c", localtime($mtime));
+}
+
 sub file2array {
   my ($file) = @_;
   my @content;
@@ -700,6 +753,16 @@ sub file2hex {
   my $content = join("\n", @$arr);
   return sprintf("%s\n", unpack("H*", compress($content)));
 }
+
+sub cksum {
+  my ($file) = @_;
+	my $ctx = Digest::SHA->new;
+	open(my $fh, $file);
+	$ctx->addfile($fh);
+	my $checksum = $ctx->hexdigest();
+  close($fh);
+  return $checksum;
+}  
 
 sub hex2file {
   my ($file, $content) = @_;

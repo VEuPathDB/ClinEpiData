@@ -216,7 +216,16 @@ sub run {
     when('final'){
       final(@args);
     }
-      
+    when('eval'){
+      eval(join(" ", @args));
+        if($@){ die "$@" }
+    }
+    when('cfg2yml'){
+      cfg2yml(@args);
+    } 
+    when('yml2cfg'){
+      yml2cfg(@args);
+    } 
     default {
       err("Command '$cmd' not implemented")
     }
@@ -605,6 +614,29 @@ sub _import {
   }
 }
 
+sub cfg2yml {
+  my ($in, $out, $pattern) = @_;
+  my $cin = {};
+  read_config($in, %$cin);
+  if($pattern){
+    while(my ($id, $prop) = each %$cin){
+      delete($cin->{$id}) unless( $id =~ /$pattern/ );
+    }
+  }
+  DumpFile($out, $cin);
+}
+sub yml2cfg {
+  my ($in, $out, $pattern) = @_;
+  my $cin = {};
+  $cin = LoadFile($in);
+  if($pattern){
+    while(my ($id, $prop) = each %$cin){
+      delete($cin->{$id}) unless( $id =~ /$pattern/ );
+    }
+  }
+  write_config($cin, $out);
+}
+
 sub investigationfile {
   my ($invFile) = @_;
   $invFile ||= 'investigation.xml';
@@ -700,7 +732,7 @@ sub final {
       my @outfiles = map { join("", $outdir, $_) } grep { /^$name/ } readdir(DH);
       close(DH);
       foreach my $of ( @outfiles ){
-        my ($bn, $dir) = fileparse($of);
+        my ($bn, $path) = fileparse($of);
         my $dest = "$dir/$bn";
         my $ock = cksum($of);
         if(-e $dest) {

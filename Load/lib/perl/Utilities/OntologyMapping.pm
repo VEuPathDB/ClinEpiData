@@ -22,7 +22,7 @@ sub new {
   my $self = {};
   bless ($self, $class);
   if($file){
-    $self->{_from_xml} = XMLin($file);
+    $self->{_from_xml} = XMLin($file, ForceArray => 1);
   }
   return $self;
 }
@@ -63,7 +63,7 @@ sub run {
 
 sub getEntityOrdering {
   my ($file) = @_;
-  my $xml = XMLin($file);
+  my $xml = XMLin($file, ForceArray => 1);
   my $map = {};
   my %forcedOrder = (
     EUPATH_0035127 => 1, # com

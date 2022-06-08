@@ -63,6 +63,9 @@ if($owl){
     }
   }
 }
+else {
+  $owl = "OWL_NOT_SET";
+}
 
 
 mkdir $dateobdir;
@@ -161,7 +164,7 @@ PPPP
   
   #$propfile =~ s/^([\w :=]UNDEF(\.txt)?)$//gms;
   open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
-  foreach my $line ( split(/\n/, $propfile ) {
+  foreach my $line ( split(/\n/, $propfile )) {
     if($line =~ /UNDEF/){ $line = "# $line" }
     printf FH ("$line\n");
   }

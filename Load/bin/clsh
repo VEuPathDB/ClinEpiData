@@ -81,6 +81,8 @@ $usage{'mdfiles'} = "list metadata files";
 $usage{'id'} = "Show dataset identifiers";
 $usage{'final'} = "copy output files to final/ (or [dir])";
 $usage{'inv'} = "create investigation.xml";
+$usage{'noprefix'} = "file prefixes are not used";
+$usage{'dlsync'} = "sync download files";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -226,6 +228,18 @@ sub run {
     when('yml2cfg'){
       yml2cfg(@args);
     } 
+    when('noprefix'){
+      noprefix();
+    }
+    when('dlsync'){
+      my ($rel) = @args;
+      unless($rel){ err("Release number is required"); return; }
+      my ($datasetName) = getDatasetIds();
+      my $script = systemcall("syncDownloadFiles.pl $datasetName $rel");
+      foreach my $line (@$script){
+        printsystemcall($line);
+      }
+    }
     default {
       err("Command '$cmd' not implemented")
     }
@@ -471,6 +485,12 @@ sub allPrefixedHeaders {
 sub fileprefix {
   my ($file) = @_;
   return lc(basename($file, /\.[^.]*$/))
+}
+
+sub noprefix {
+  printsystemcall("sed -i 's/noFilePrefix\\s*[=:]\\s*0/noFilePrefix = 1/' conf/*/prop.conf");
+  unlink($CFGFILE);
+  init();
 }
 
 sub mdfiles {

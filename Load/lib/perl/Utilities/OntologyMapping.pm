@@ -14,6 +14,14 @@ use Env qw/PROJECT_HOME GUS_HOME/;
 use XML::Simple;
 use Data::Dumper;
 
+my @GEOHASHTERMS = (
+    { source_id => 'EUPATH_0043203', name => ['geohash1'], type => 'characteristicQualifier', parent => 'ENTITY' },
+    { source_id => 'EUPATH_0043204', name => ['geohash2'], type => 'characteristicQualifier', parent => 'ENTITY' },
+    { source_id => 'EUPATH_0043205', name => ['geohash3'], type => 'characteristicQualifier', parent => 'ENTITY' },
+    { source_id => 'EUPATH_0043206', name => ['geohash4'], type => 'characteristicQualifier', parent => 'ENTITY' },
+    { source_id => 'EUPATH_0043207', name => ['geohash5'], type => 'characteristicQualifier', parent => 'ENTITY' },
+    { source_id => 'EUPATH_0043208', name => ['geohash6'], type => 'characteristicQualifier', parent => 'ENTITY' }
+  );
 sub setTerms { $_[0]->{_terms} = $_[1] }
 sub getTerms { return $_[0]->{_terms} }
 
@@ -204,6 +212,13 @@ sub getTermsFromOwl{
       @funcs = sort { $funcHash{$a} <=> $funcHash{$b} } keys %funcHash;
     }
     $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'category' => lc($category), 'function' => \@funcs };
+  }
+  if($terms{OBI_0001620}){
+    foreach my $term (@GEOHASHTERMS){
+      $term->{category} = $terms{OBI_0001620}->{category};
+      my ($sid) = $term->{source_id};
+      $terms{$sid} ||= $term;
+    }
   }
   my @sorted;
   if($sortByIRI){

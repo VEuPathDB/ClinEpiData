@@ -810,7 +810,7 @@ sub validateDateObfuscation {
   foreach my $iri ( keys %$entities ){
     my $plural = $entities->{$iri}->{plural};
     $plural =~ s/ /_/g;
-    loggy("Looking for $plural in $dir\n");
+    # loggy("Looking for $plural in $dir\n");
     # my $file = sprintf("%s/%s_*_%s.txt", $dir, $datasetName, $plural);
     my ($file) = map { join("/", $dir, $_) } grep { /$plural/ } @dlfiles;
     unless( $file ){
@@ -818,7 +818,12 @@ sub validateDateObfuscation {
       next;
     }
     my @idcols;
-    my $content = csv2array($file, "\t");
+    my $content = tab2array($file);
+    my $filesize = scalar(@$content) - 1;
+    unless($filesize > 0){
+      loggy("error", basename($file) . "is empty! something is wrong, validation not possible.");
+      next;
+    }
     my $headers = shift @$content;
     my $index = 0;
     foreach my $col (@{ $headers }){
@@ -827,26 +832,29 @@ sub validateDateObfuscation {
       push(@idcols, $index);
       $index++;
     }
-    loggy("Checking $file: $index ancestors\n");
-    next unless ($index);
+    #next unless ($index);
+    loggy("Checking ". basename($file) . ", $filesize lines:\n\t" . join(",", map { $headers->[$_] } @idcols));
     my $warnParentMissing = 0;
     my $line = 1;
+    my $debug = 0;
     foreach my $row ( @$content ){
+      $debug++;
       my $delta = '';
-      my $rowId = '';
+      my $rowId = ''; # the first ID column that has a delta
       foreach $index (@idcols){
         my $stable_id = $row->[$index];
         unless($stable_id){ printf("LINE %d column %d empty\n", $line, $index) }
         ### Primary ID
-        if($index == 0){
+        if( $index == 0 ){
           $rowId = $stable_id;
-          next unless ( $deltas->{$stable_id} );
+          unless ( $deltas->{$stable_id} ) { goto NEXT_ID_COL ; }
           $delta = $deltas->{$stable_id}->{delta};
           if($deltas->{$stable_id} && ($iri ne $deltas->{$stable_id}->{iri})){
             loggy("error", "$stable_id mismatched IRI $iri = $deltas->{$stable_id}->{iri}");
           }
-          $total++;
-          next;
+          $total++; # counting number of deltas checked
+          ## next;
+          goto NEXT_ID_COL ;
         }
         ### Ancestors
         if($delta && $deltas->{$stable_id}){
@@ -862,9 +870,11 @@ sub validateDateObfuscation {
         elsif( $deltas->{$stable_id} ) { 
           $delta = $deltas->{$stable_id}->{delta}
         }
+        NEXT_ID_COL :
       }
       $line++;
     }
+    # loggy("DEBUG = $debug. $line lines read from " . basename($file));
     if($warnParentMissing){
       loggy("warn", "$warnParentMissing x $plural date obfuscation inconsistent; force entities without date variables to generate an offset");
     }
@@ -882,6 +892,7 @@ sub getDeltas {
   my %deltas;
   foreach my $dr ( @{ csv2array($deltasFile, "\t") } ){
     my ($iri, $id, $delta) = @$dr;
+    $id = lc($id);
     if($deltas{$id} && ($deltas{$id}->{delta} ne $delta)){
       loggy("error", "$id is not unique");
     }
@@ -932,6 +943,17 @@ sub file2array {
   return \@content;
 }
     
+sub tab2array {
+  my ($file) = @_;
+  my $lines = file2array($file);
+  my @content;
+  foreach my $line (@$lines){
+    my @row = split("\t", $line);
+    push(@content, \@row); 
+  }
+  return \@content;
+}
+
 sub file2hex {
   my ($file) = @_;
   my $arr = file2array($file);

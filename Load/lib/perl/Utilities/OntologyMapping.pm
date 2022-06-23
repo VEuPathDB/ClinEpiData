@@ -4,7 +4,7 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/getEntityOrdering/;
+our @EXPORT_OK = qw/getEntityOrdering getIRImap/;
 
 use open ':std', ':encoding(UTF-8)';
 # use ApiCommonData::Load::OwlReader;
@@ -67,6 +67,21 @@ sub run {
   push(@terms, $_) for @$vars;
   $self->setTerms(\@terms);
   $self->printXml();
+}
+
+sub getIRImap {
+  my ($file) = @_;
+  my $xml = XMLin($file, ForceArray => 1);
+  my $map = {};
+  foreach my $term ( @{ $xml->{ontologyTerm} } ){
+    next unless( $term->{type} eq 'characteristicQualifier' );
+    foreach my $name (@{$term->{name}}){
+      $map->{ $name } = $term->{source_id};
+      $map->{ $term->{source_id} } = $term->{source_id};
+      $map->{ lc($term->{source_id}) } = $term->{source_id};
+    }
+  }
+  return $map;
 }
 
 sub getEntityOrdering {

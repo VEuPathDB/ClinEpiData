@@ -16,7 +16,7 @@ use JSON qw/to_json/;
 use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues getHeaders/;
 use ClinEpiData::Load::Utilities::Investigation;
-use ClinEpiData::Load::Utilities::OntologyMapping qw/getEntityOrdering/;
+use ClinEpiData::Load::Utilities::OntologyMapping qw/getEntityOrdering getIRImap/;
 use XML::Simple;
 use Getopt::Long qw/:config no_ignore_case/;
 use YAML qw/DumpFile LoadFile/; # potential replacement for Config::Std (.ini)
@@ -129,7 +129,7 @@ sub run {
       my ($ontofile) = @args;
       if(-e 'conf/ontologyMapping.xml'){
         $ontofile ||= 'ontologyMapping.xml';
-        printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml > conf/func');
+        printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml >> conf/func');
         printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $ontofile");
         printsystemcall("ls -l $ontofile\n");
       }
@@ -319,7 +319,7 @@ sub ordinals {
   }
   $outfile ||= 'ordinals.txt';
   my $valueMap = csv2array($infile, "\t");
-  my $irimap = getIRImap();
+  my $irimap = getIRImap($config->{global}->{ontologyMappingXmlFile});
   my %ordinals;
   my $_line = 0;
   my %errors; # per IRI
@@ -387,20 +387,20 @@ sub ordinals {
     }
   }
 
-sub getIRImap {
-  if( $config->{_irimap} ){ return $config->{_irimap} }
-  my $owl = getOwl();
-	my $it = $owl->execute('column2iri');
-	while (my $row = $it->next) {
-		my $col = $row->{col} ? $row->{col}->as_hash()->{literal} : "";
-		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
-    $col =~ s/"//g;
-    $sid =~ s/"//g;
-    $config->{_irimap}->{lc($col)} = $sid;
-    $config->{_irimap}->{$sid} = $sid; # also a valid key
-	}
-  return $config->{_irimap};
-}
+# sub getIRImap {
+#   if( $config->{_irimap} ){ return $config->{_irimap} }
+#   my $owl = getOwl();
+# 	my $it = $owl->execute('column2iri');
+# 	while (my $row = $it->next) {
+# 		my $col = $row->{col} ? $row->{col}->as_hash()->{literal} : "";
+# 		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
+#     $col =~ s/"//g;
+#     $sid =~ s/"//g;
+#     $config->{_irimap}->{lc($col)} = $sid;
+#     $config->{_irimap}->{$sid} = $sid; # also a valid key
+# 	}
+#   return $config->{_irimap};
+# }
 
 sub derive {
   my ($cat, $var, $suffix) = @_;

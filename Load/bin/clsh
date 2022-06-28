@@ -313,7 +313,12 @@ sub ordinals {
     if( $prop->{outputFile} && -e $prop->{outputFile}){
       loggy("Reading values from $prop->{outputFile} ...");
       my $values = getValidValues($prop->{outputFile}, "\t");
-      %valid = (%valid, %$values);
+      while(my ($col,$dvals) = each %$values){
+        while(my ($val,$count) = each %$dvals){
+          $valid{$col}->{$val} += $count;
+        }
+      }
+      #%valid = (%valid, %$values);
     }
     if($prop->{valueMappingFile}){$infile ||= $prop->{valueMappingFile}}
   }
@@ -337,7 +342,7 @@ sub ordinals {
     }
     my $mappedIRI = $iri ? $irimap->{$iri} : '';
     unless($iri && $mappedIRI){
-      printf STDERR ("ERROR: LINE $_line: no valid IRI mapped in owl for [$iri]\n");
+      printf STDERR ("ERROR: LINE $_line: no IRI mapped to $iri\n");
       next;
     }
     $iri = $mappedIRI;

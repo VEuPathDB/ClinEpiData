@@ -32,7 +32,7 @@ sub addStudy{
   $self->{xml}->{investigation}->{study} //= [];
   $self->{xml}->{investigation}->{identifier} //= "IDENT001";
   $self->{xml}->{investigation}->{identifierIsDirectoryName} //= "false";
-  push( @{$self->{xml}->{investigation}->{study}}, { fileName => $filename, identifierSuffix => "-1", dataset => [$datasetName], node => \@nodes, edge => \@edges } );
+  push( @{$self->{xml}->{investigation}->{study}}, { fileName => $filename, allNodesGetDeltas => "1", identifierSuffix => "-1", dataset => [$datasetName], node => \@nodes, edge => \@edges } );
 }
 1;
 

@@ -81,7 +81,7 @@ my $owlFile = $ENV{GUS_HOME} . '/ontology/release/production/classifications.owl
 while(my ($study,$md5) = each %$curr){
   if(!defined($prev->{$study}) || $prev->{$study} ne $md5){
     printf STDERR "Update needed: $study\n";
-    my $cmd = sprintf("ga ApiCommonData::Load::Plugin::InsertStudyCharacteristics --schema EDA  --datasetName %s --file $iniFile --owlFile $owlFile --commit > logs/%s 2>&1", $study, $study);
+    my $cmd = sprintf("ga ApiCommonData::Load::Plugin::InsertStudyCharacteristics --schema EDA --workflowContext  --datasetName %s --file $iniFile --owlFile $owlFile --commit > logs/%s 2>&1", $study, $study);
     `$cmd`;
   }
   else{

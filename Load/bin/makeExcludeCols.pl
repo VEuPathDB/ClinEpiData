@@ -23,7 +23,6 @@ GetOptions(
   'n|noPrefix!' => \$noPrefix
 );
 # defaults
-unless($noPrefix){ $varDelim ||= '::' } # always use file prefix w/ '::', unless explicitly disabled
 if(defined($propFile) && -e $propFile) {
   read_config($propFile, my %config);
   my $p = $config{''};
@@ -46,7 +45,9 @@ if(defined($propFile) && -e $propFile) {
   if($p->{filter}){ push(@filters, $p->{filter}) }
   if($p->{otherAttr}){ push(@filterOwlAttributes, $p->{otherAttr}) }
   push(@filters, lc($type)) unless @filters;
+  if($p->{noFilePrefix}){ $noPrefix = 1 }
 }
+unless($noPrefix){ $varDelim ||= '::' } # always use file prefix w/ '::', unless explicitly disabled
 my $filterOwlAttrHash = {};
 foreach my $attr (@filterOwlAttributes){
   my($k,$v) = split(/\s*[=:]\s*/, $attr);

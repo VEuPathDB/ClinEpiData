@@ -63,6 +63,9 @@ if($owl){
     }
   }
 }
+else {
+  $owl = "OWL_NOT_SET";
+}
 
 
 mkdir $dateobdir;
@@ -114,8 +117,9 @@ my $set = {
   },
 };
 
-open(TASKLIST, "> $studydir/workspace/build/tasks.sh");
+#open(TASKLIST, "> $studydir/workspace/build/tasks.sh");
 foreach my $type (keys %$set){
+  next if $type eq 'UNDEF';
   mkdir "$studydir/workspace/build/conf/$type";
   my $excludeParam = 'repeated:no';
   if( $set->{$type}->{repeated_of} ne 'UNDEF'){
@@ -158,17 +162,20 @@ packageName = ClinEpiData::Load::GenericReader
 cleanFirst = 1
 PPPP
   
-  $propfile =~ s/^([\w :=]UNDEF(\.txt)?)$//gms;
+  #$propfile =~ s/^([\w :=]UNDEF(\.txt)?)$//gms;
   open(FH, ">$name/conf/$type/prop.conf") or die "Cannot write $name/conf/$type/prop.conf:$!\n";
-  printf FH ($propfile);
+  foreach my $line ( split(/\n/, $propfile )) {
+    if($line =~ /UNDEF/){ $line = "# $line" }
+    printf FH ("$line\n");
+  }
   close FH;
   # try to make exclude cols
   my @args = ("-p $name/conf/$type/prop.conf");
   if($set->{$type}->{repeated_of} ne 'UNDEF'){push(@args, "-f $set->{$type}->{repeated_of}", "-a repeated:yes")}
   else{push(@args, "-a repeated:no")}
-  printf TASKLIST ("makeExcludeCols.pl %s > $name/conf/$type/colexclude.txt\n", join(" ", @args));
+# printf TASKLIST ("makeExcludeCols.pl %s > $name/conf/$type/colexclude.txt\n", join(" ", @args));
 }  
-close(TASKLIST);
+# close(TASKLIST);
 
 #end
 #

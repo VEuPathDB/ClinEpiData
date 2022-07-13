@@ -4,6 +4,9 @@ if(length(args) < 2) {
   stop("usage:  convertStataToText inputFile outputFile [isStata13]", call.=FALSE)
 } 
 
+# This script relies on read.dta
+# For reference: https://www.rdocumentation.org/packages/foreign/versions/0.8-82/topics/read.dta
+
 inputFile = args[1];
 outputFile = args[2];
 isStata13 = args[3];
@@ -11,10 +14,10 @@ del = "\t";
 data = NULL;
 if(isStata13 == 1){
   library(readstata13);
-  data = read.dta13(inputFile);
+  data = read.dta13(inputFile,convert.dates = TRUE, convert.factors = FALSE);
 } else {
   library(foreign);
-  data = read.dta(inputFile);
+  data = read.dta(inputFile, convert.dates = TRUE, convert.factors = FALSE);
 }
 output=NULL;
 outputColumnNames = vector();

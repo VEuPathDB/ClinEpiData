@@ -8,7 +8,7 @@ use File::Basename;
 use Data::Dumper;
 use Getopt::Long;
 
-my ($type, $file, $primary, $parent, $deltaFile, $delim);
+my ($type, $file, $primary, $parent, $deltaFile, $delim, $append);
 
 unless(@ARGV){
   printf("args:\n\t%s\n",join("\n\t",
@@ -18,6 +18,7 @@ unless(@ARGV){
   'p|parent=s' ,
   'd|dateObfuscationFile=s' ,
   'c|delimiter=s' ,
+  'a|append!',
   ));
   exit;
 }
@@ -28,7 +29,8 @@ GetOptions(
   'k|primary=s' => \$primary,
   'p|parent=s' => \$parent,
   'd|dateObfuscationFile=s' => \$deltaFile,
-  'c|delimiter=s' => \$delim
+  'c|delimiter=s' => \$delim,
+  'a|append!' => \$append
 );
 
 $delim ||= "\t";
@@ -36,15 +38,17 @@ $primary ||= 'PRIMARY_KEY';
 $parent ||= 'PARENT';
 
 my %type2iri = (
-community => 'EUPATH_0035127',
-household => 'PCO_0000024',
-entomology => 'EUPATH_0000327',
-participant => 'EUPATH_0000096',
-observation => 'EUPATH_0000738',
-sample => 'EUPATH_0000609'
+com => 'EUPATH_0035127',
+crm => 'EUPATH_0043226',
+house => 'PCO_0000024',
+hrm => 'EUPATH_0000776',
+ento => 'EUPATH_0000327',
+part => 'EUPATH_0000096',
+prm => 'EUPATH_0000738',
+sam => 'EUPATH_0000609'
 );
 
-die "$type not recognized" unless $type2iri{$type};
+die("$type not recognized, must be one of: " . join(", ", keys %type2iri) . "\n") unless $type2iri{$type};
 
 my %deltas;
 
@@ -57,15 +61,27 @@ if(defined($deltaFile) && -e $deltaFile){
   }
   close(FH);
 }
+printf STDERR ("Done reading $deltaFile\n");
 
-my $pids = getColumnFromFile($file,$parent);
-my $ids = getColumnFromFile($file,$primary);
-my %parentOf;
-@parentOf{@$ids} = @$pids; 
+#printf STDERR ("Getting $parent from $file\n");
+#my $pids = getColumnFromFile($file,$parent);
+#printf STDERR ("Getting $primary from $file\n");
+#my $ids = getColumnFromFile($file,$primary);
+#my %parentOf;
+#@parentOf{@$ids} = @$pids; 
+#printf STDERR ("Mapped %d %s to %d %s\n", scalar @$ids, $primary, @$pids, $parent);
+
+my %parentOf = %{ getIdMap($file) };
 
 my $count = 0;
-foreach my $id (@$ids){
-  unless($id){ die sprintf("Invisible id preceded by %s, followed by %s\n", $ids->[$count-1], $ids->[$count+1]) }
+my $outfh = \*STDOUT;
+if($append){
+  printf STDERR ("Appending $deltaFile\n");
+  open($outfh, ">>$deltaFile");
+}
+foreach my $id (keys %parentOf){
+#foreach my $id (@$ids){
+  # unless($id){ die sprintf("Invisible id preceded by %s, followed by %s\n", $ids->[$count-1], $ids->[$count+1]) }
   $count++;
   my $pid = $parentOf{$id};
   if(defined($pid) && defined($deltas{$pid}) ){
@@ -77,9 +93,22 @@ foreach my $id (@$ids){
   else {
     $deltas{$id} ||= calculateDelta();
   }
-  printf("%s\n", join($delim, $type2iri{$type}, $id, $deltas{$id}));
+  printf $outfh ("%s\n", join($delim, $type2iri{$type}, $id, $deltas{$id}));
 }
 
+sub getIdMap {
+  my ($mdfile) = @_;
+  my %map;
+  open(FH, "<$mdfile") or die "$mdfile: $!\n";
+  my $row = <FH>;
+  while($row = <FH>){
+    chomp $row;
+    my ($a, $b) = split(/\t/, $row);
+    $map{$a} = $b;
+  }
+  close(FH);
+  return \%map;
+}
 
 sub getColumnFromFile {
   my ($mdfile,$col) = @_;

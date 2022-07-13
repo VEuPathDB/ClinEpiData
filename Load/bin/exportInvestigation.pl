@@ -46,6 +46,7 @@ if(-d $isaSimpleDirectory){
   $invFile ||= join("/", $isaDir, "investigation.xml");
   $dateObfuscationFile ||= join("/", $isaDir, "dateObfuscation.txt");
   $valueMapFile ||= join("/", $isaDir, "valueMap.txt");
+  unless(-e $valueMapFile){ $valueMapFile = undef }
   $ontologyMappingFile ||= join("/", $isaDir, "ontologyMapping.xml");
 }
 
@@ -106,6 +107,7 @@ if($autoMode){
     die "no merged files" unless @mergedFiles;
     my @entities = map { lc(fileparse($_, qr/\.[^.]+$/)) } @mergedFiles;
 #  # first mdfile assumed to be top
+#  if primary key (idColumn) not provided, default to the first column
     $inv->addStudy(basename($mergedFiles[0]),$entities[0],$idCols[0]);
 #  # each addditional file assumed to be child nodes
     if(1 < @mergedFiles){

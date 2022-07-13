@@ -10,16 +10,22 @@ use Config::Std; # read_config()
 use Data::Dumper;
 use File::Basename;
 use File::Copy;
+use Digest::SHA qw/sha1_hex/;
 use Scalar::Util qw/looks_like_number/;
 use JSON qw/to_json/;
 use ApiCommonData::Load::OwlReader;
-use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues/;
+use ClinEpiData::Load::Utilities::File qw/csv2array tabWriter getPrefixedHeaders getValidValues getHeaders/;
+use ClinEpiData::Load::Utilities::Investigation;
+use ClinEpiData::Load::Utilities::OntologyMapping qw/getEntityOrdering getIRImap/;
 use XML::Simple;
-use Config::Std; # read_config()
 use Getopt::Long qw/:config no_ignore_case/;
+use YAML qw/DumpFile LoadFile/; # potential replacement for Config::Std (.ini)
+use Archive::Tar;
+use Compress::Zlib;
+use POSIX qw/strftime/;
 
-my ($cfgfile);
-GetOptions('C=s' => \$cfgfile);
+my ($cfgfile, $help);
+GetOptions('C=s' => \$cfgfile, 'h!' => \$help);
 
 my $this = basename $0;
 my ($cmd, @args) = @ARGV;
@@ -28,10 +34,13 @@ my $config = {};
 my $CFGFILE = $cfgfile || $ENV{'BUILDCONFIG'} || '.buildconfig';
 my $CFGDIR = 'conf';
 
-my $msg = {
+my $MTYPE = {
   nobuild => 'Not in build dir',
   noworkspace => 'Not in a workspace',
   info => 'INFO: ',
+  warn => 'WARNING: ',
+  error => 'ERROR: ',
+  noconfig => 'Initializing. '
 };
 
 my $systemcommands = {
@@ -45,7 +54,7 @@ my @usages = (
   ],
   [
     "ordinals [valueMap.txt] ([output-file])",
-    "Extract ordinals from specified valueMap.txt, prints output to terminal or [output-file]",
+    "Extract ordinals from specified valueMap.txt, prints output to ordinals.txt or [output-file]",
   ],
   [
  "owl",
@@ -62,7 +71,7 @@ my @usages = (
 );
 my %usage = map { $_->[0] => $_->[1] } @usages;
 ## more
-$usage{'clean'} = "remake .buildconfig";
+$usage{'clean'} = "remake $CFGFILE";
 $usage{'var2iri [iri]'} = "lookup the IRI for a variable/pattern";
 $usage{'excol [cat]'} = "make a column exclude file for [cat]";
 $usage{'check'} = "scan for missing and duplicated variables in merged files";
@@ -70,6 +79,11 @@ $usage{'run [cat]'} = "make the [cat] merged file";
 $usage{'update [cat]'} = "update the [cat] merged file summaries (.tree.txt, .tree.json, .summary.txt)";
 $usage{'stata13'} = "args: input [output] : extract from a Stata .dta file (or all files in a directory) to output/*.txt";
 $usage{'mdfiles'} = "list metadata files";
+$usage{'id'} = "Show dataset identifiers";
+$usage{'final'} = "copy output files to final/ (or [dir])";
+$usage{'inv'} = "create investigation.xml";
+$usage{'noprefix'} = "file prefixes are not used";
+$usage{'dlsync'} = "sync download files";
 
 #-----------------------------------
 #-------------- RUN ----------------
@@ -77,7 +91,10 @@ $usage{'mdfiles'} = "list metadata files";
 my ($command, @params) = @ARGV;
 
 init($command);
-if($command){
+if($command eq 'help'){ # for autocomplete
+  printf("%s\n", join("\n", map { s/\s+.*//; $_ } keys %usage));
+}
+elsif($command){
   run($command, @params);
 }
 else{
@@ -103,7 +120,7 @@ sub run {
       ordinals(@args);
     }
     when('owl') {
-      err($config->{global}->{owl});
+      loggy($config->{global}->{owl});
     }
     when('attrs') {
       owlAttributes(@args);
@@ -112,7 +129,7 @@ sub run {
       my ($ontofile) = @args;
       if(-e 'conf/ontologyMapping.xml'){
         $ontofile ||= 'ontologyMapping.xml';
-        printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml > conf/func');
+        printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml >> conf/func');
         printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $ontofile");
         printsystemcall("ls -l $ontofile\n");
       }
@@ -135,7 +152,7 @@ sub run {
         if( -f $config->{$cat}->{colExcludeFile}){
           $bak = $config->{$cat}->{colExcludeFile} . ".bak";
           copy($config->{$cat}->{colExcludeFile},$bak);
-          err("created backup $bak");
+          loggy("created backup $bak");
         }
         printsystemcall( sprintf("makeExcludeCols.pl -p %s %s > %s",
           $config->{$cat}->{propfile}, join(" ", @flags), $config->{$cat}->{colExcludeFile}));
@@ -143,7 +160,7 @@ sub run {
           printsystemcall("diff -q $config->{$cat}->{colExcludeFile}*");
         }
       }
-      else { err("Problem: propfile missing for $cat, or colExcludeFile setting not found") }
+      else { loggy("Problem: propfile missing for $cat, or colExcludeFile setting not found") }
     }
     when('check'){
       check(@args);
@@ -179,8 +196,56 @@ sub run {
         printf("%s:\n%s\n", $prop->{category} || $cat, join("\n",@$mdfiles));
       }
     }
+    when('export'){
+      _export(@args);
+    }
+    when('import'){
+      _import(@args);
+    }
+    when('store'){
+      my ($in, $out) = @args;
+      my $test = file2hex($in);
+      printf("string length %d: %s ...\n", length($test), substr($test,0,48));
+      hex2file($out, $test);
+    }
+    when('inv'){
+      my ($out) = @args;
+      my $file = investigationfile($out);
+      printsystemcall("echo Done; ls -lh $file");
+    }
+    when('id'){
+      printf("%s\n", join("\n", getDatasetIds(@args)));
+    }
+    when('final'){
+      final(@args);
+    }
+    when('eval'){
+      eval(join(" ", @args));
+        if($@){ die "$@" }
+    }
+    when('cfg2yml'){
+      cfg2yml(@args);
+    } 
+    when('yml2cfg'){
+      yml2cfg(@args);
+    } 
+    when('noprefix'){
+      noprefix();
+    }
+    when('dlsync'){
+      my ($rel) = @args;
+      unless($rel){ loggy("Release number is required"); return; }
+      my ($datasetName) = getDatasetIds();
+      my $script = systemcall("syncDownloadFiles.pl $datasetName $rel");
+      foreach my $line (@$script){
+        printsystemcall($line);
+      }
+    }
+    when('obfcheck'){
+      validateDateObfuscation(@args);
+    }
     default {
-      err("Command '$cmd' not implemented")
+      loggy("Command '$cmd' not implemented")
     }
   }
 }
@@ -191,14 +256,14 @@ sub init {
   $config = {};
   my $path = abs_path();
   my $build = basename($path); 
-  if($build ne 'build' && $cmd ne 'init' ){ err('nobuild', $path); return  }
+  if($build ne 'build' && $cmd ne 'clean' ){ loggy('nobuild', $path); return  }
   my $workspace = basename(dirname($path)); 
-  if($workspace ne 'workspace' && $cmd ne 'init' ){ err('noworkspace',$path); return  }
+  if($workspace ne 'workspace' && $cmd ne 'init' ){ loggy('noworkspace',$path); return  }
   unless( -e $CFGFILE){
-    err('noconfig',"Initializing $CFGFILE");
+    loggy("Initializing $CFGFILE");
     my $owl = systemcall($systemcommands->{owl});
     my $owlpath = sprintf("%s/ontology/release/production/%s.owl", $ENV{GUS_HOME}, $owl->[0]);
-    if(@$owl > 1){ err('info','Problem: multiple owl files found in config files; using the first one found:' . join("\n",@$owl)) }
+    if(@$owl > 1){ loggy('info','Problem: multiple owl files found in config files; using the first one found:' . join("\n",@$owl)) }
     $config->{global}->{owl} = $owl->[0];
     $config->{global}->{owlpath} = $owlpath;
     $config->{global}->{cfgdir} = $CFGDIR;
@@ -226,7 +291,7 @@ sub init {
 sub owlAttributes {
   my ($outfile) = @_;
   $outfile //= "owlAttributes.txt";
-  err('info', "Writing $outfile");
+  loggy('info', "Writing $outfile");
   my $owlname = $config->{global}->{owl};
   my $lines = systemcall("getEntityAttributesFromOwl.pl $owlname");
   if(ref($lines) eq 'ARRAY'){
@@ -236,7 +301,7 @@ sub owlAttributes {
     if($outfile){ close($out) }
   }
   else {
-    err("No output, something went wrong")
+    loggy("No output, something went wrong")
   }
 }
 
@@ -246,13 +311,20 @@ sub ordinals {
   my %valid;
   while( my ($cat,$prop) = each %$config ){
     if( $prop->{outputFile} && -e $prop->{outputFile}){
-      err("Reading values from $prop->{outputFile} ...");
+      loggy("Reading values from $prop->{outputFile} ...");
       my $values = getValidValues($prop->{outputFile}, "\t");
-      %valid = (%valid, %$values);
+      while(my ($col,$dvals) = each %$values){
+        while(my ($val,$count) = each %$dvals){
+          $valid{$col}->{$val} += $count;
+        }
+      }
+      #%valid = (%valid, %$values);
     }
+    if($prop->{valueMappingFile}){$infile ||= $prop->{valueMappingFile}}
   }
+  $outfile ||= 'ordinals.txt';
   my $valueMap = csv2array($infile, "\t");
-  my $irimap = getIRImap();
+  my $irimap = getIRImap($config->{global}->{ontologyMappingXmlFile});
   my %ordinals;
   my $_line = 0;
   my %errors; # per IRI
@@ -260,7 +332,7 @@ sub ordinals {
   foreach my $row( @$valueMap ){
     $_line++;
     next if ($_line =~ /^\s*#|^\s*$/);
-    my ($var, $iri, $orig, $val, $order) = @$row;
+    my ($var, $iri, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
     if(4 > scalar @$row){
       printf STDERR ("ERROR: LINE $_line: bad format\n");
       next;
@@ -270,7 +342,7 @@ sub ordinals {
     }
     my $mappedIRI = $iri ? $irimap->{$iri} : '';
     unless($iri && $mappedIRI){
-      printf STDERR ("ERROR: LINE $_line: no valid IRI mapped in owl for [$iri]\n");
+      printf STDERR ("ERROR: LINE $_line: no IRI mapped to $iri\n");
       next;
     }
     $iri = $mappedIRI;
@@ -320,20 +392,20 @@ sub ordinals {
     }
   }
 
-sub getIRImap {
-  if( $config->{_irimap} ){ return $config->{_irimap} }
-  my $owl = getOwl();
-	my $it = $owl->execute('column2iri');
-	while (my $row = $it->next) {
-		my $col = $row->{col} ? $row->{col}->as_hash()->{literal} : "";
-		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
-    $col =~ s/"//g;
-    $sid =~ s/"//g;
-    $config->{_irimap}->{lc($col)} = $sid;
-    $config->{_irimap}->{$sid} = $sid; # also a valid key
-	}
-  return $config->{_irimap};
-}
+# sub getIRImap {
+#   if( $config->{_irimap} ){ return $config->{_irimap} }
+#   my $owl = getOwl();
+# 	my $it = $owl->execute('column2iri');
+# 	while (my $row = $it->next) {
+# 		my $col = $row->{col} ? $row->{col}->as_hash()->{literal} : "";
+# 		my $sid = $row->{sid} ? $row->{sid}->as_hash()->{literal} : "";
+#     $col =~ s/"//g;
+#     $sid =~ s/"//g;
+#     $config->{_irimap}->{lc($col)} = $sid;
+#     $config->{_irimap}->{$sid} = $sid; # also a valid key
+# 	}
+#   return $config->{_irimap};
+# }
 
 sub derive {
   my ($cat, $var, $suffix) = @_;
@@ -352,36 +424,36 @@ sub derive {
   
   my $ancfile = $config->{ $cat }->{ ancillaryInputFile };
   if(-f $ancfile){
-    err("Scanning $ancfile for $var...");
+    loggy("Scanning $ancfile for $var...");
     printsystemcall("grep '$var' $ancfile");
-    err("Done.");
+    loggy("Done.");
   }
-  err("Rules to add:");
+  loggy("Rules to add:");
   printf("%s\n", join("\n", @addrows));
   my $ans = ask("Continue y/n ?", [ 'y', 'n' ], 'y');
   if($ans eq 'y'){
     open(FH, ">>$ancfile");
     printf FH ("%s\n", join("\n", @addrows));
     close(FH);
-    err("Done writing rules to $ancfile");
+    loggy("Done writing rules to $ancfile");
     my $propfile = $config->{ $cat }->{ propfile };
     printsystemcall("sed -i 's/applyMappedIRI\\s*=\\s*0/applyMappedIRI = 1/' $propfile");
   }
-  else { err("No rules added.") }
+  else { loggy("No rules added.") }
   my $colexfile = $config->{ $cat }->{colExcludeFile};
   if(-f $colexfile){
-    err("Scanning $colexfile for $var...");
+    loggy("Scanning $colexfile for $var...");
     printsystemcall("grep '$var' $colexfile");
-    err("Done.");
+    loggy("Done.");
   }
   $ans = ask("Exclude these? \n\t" . join("\n\t", @matches) . "\n\t [y/n] ?", [ 'y', 'n' ], 'y');
   if($ans eq 'y'){
     open(FH, ">>$colexfile");
     printf FH ("%s\n", join("\n", @matches));
     close(FH);
-    err("Done adding columns to $colexfile.");
+    loggy("Done adding columns to $colexfile.");
   }
-  else { err("Original columns will not be excluded.") }
+  else { loggy("Original columns will not be excluded.") }
 }
 
 sub var2iri {
@@ -424,6 +496,12 @@ sub fileprefix {
   return lc(basename($file, /\.[^.]*$/))
 }
 
+sub noprefix {
+  printsystemcall("sed -i 's/noFilePrefix\\s*[=:]\\s*0/noFilePrefix = 1/' conf/*/prop.conf");
+  unlink($CFGFILE);
+  init();
+}
+
 sub mdfiles {
   my($cat) = @_;
   my $md = [];
@@ -456,9 +534,9 @@ sub stata13 {
     @infiles = ($in);
   }
   $out //= "./";
-  unless( -d $out ){ err("Not a valid output directory: $out"); return }
+  unless( -d $out ){ loggy("Not a valid output directory: $out"); return }
   foreach my $infile ( @infiles ){
-     unless($infile && -f $infile){ err("$infile is not a file"); next }
+     unless($infile && -f $infile){ loggy("$infile is not a file"); next }
      my $basename = fileparse($infile, qw/\.[^.]*$/);
      my $outfile = "$out/$basename.txt";
      if( -e $infile ){
@@ -468,24 +546,24 @@ sub stata13 {
        }
      }
      else {
-       err("$infile not found");
+       loggy("$infile not found");
        return;
      }
      my $call = "stata2txt '$infile' '$outfile' 1";
-     err($call);
+     loggy($call);
      printsystemcall($call);
      if( -e $outfile){
-       err("Done");
+       loggy("Done");
        printsystemcall("ls -l '$outfile'");
      }
      else {
-       err("Something went wrong, '$outfile' was not created");
+       loggy("Something went wrong, '$outfile' was not created");
      }
   }
 }
 
 sub getOwl {
-  err('info', "owl file = " . $config->{global}->{owlpath});
+  loggy('info', "owl file = " . $config->{global}->{owlpath});
   unless( $config->{_owlpath} ){ $config->{_owl} = ApiCommonData::Load::OwlReader->new($config->{global}->{owlpath}) }
   return $config->{_owl} 
 }
@@ -528,13 +606,386 @@ sub check {
     unshift(@files, $config->{global}->{ontologyMappingXmlFile});
     printsystemcall(join(" ", "checkMergedFiles.pl", @files));
   }
-  else { err("No output files found") }
+  else { loggy("No output files found") }
+}
+
+sub _export {
+  my ($outfile) = @_;
+  my @files;
+  my %exclude = (
+    qw/valueMappingFile 1 outputFile 1 mergedFile 1 parentMergedFile 1 dateObfuscationFile 1 idMappingFile 1/
+  );
+  while( my ($section, $params) = each %$config ){
+    next if $section eq 'global';
+    while( my ($param, $val) = each %$params ){
+      next if $exclude{$param};
+      if( -e -f $val ){
+        print "Archiving $val\n";
+        push(@files, $val);
+      }
+    }
+  }
+# if(@files){
+#   my $tar = Archive::Tar->new();
+#   $tar->add_files(@files);
+#   $tar->write("$outfile.tgz", COMPRESS_GZIP);
+# }
+  foreach my $file (@files){
+    $config->{__FILE__}->{$file} = file2array($file);
+  }
+  DumpFile($outfile, $config);
+}
+sub _import {
+  my ($infile) = @_;
+  LoadFile($infile, $config);
+  while( my ($file,$content) = each %{ $config->{__FILE__} } ){
+    hex2file($file,$content);
+  }
+}
+
+sub cfg2yml {
+  my ($in, $out, $pattern) = @_;
+  my $cin = {};
+  read_config($in, %$cin);
+  if($pattern){
+    while(my ($id, $prop) = each %$cin){
+      delete($cin->{$id}) unless( $id =~ /$pattern/ );
+    }
+  }
+  DumpFile($out, $cin);
+}
+sub yml2cfg {
+  my ($in, $out, $pattern) = @_;
+  my $cin = {};
+  $cin = LoadFile($in);
+  if($pattern){
+    while(my ($id, $prop) = each %$cin){
+      delete($cin->{$id}) unless( $id =~ /$pattern/ );
+    }
+  }
+  write_config($cin, $out);
+}
+
+sub investigationfile {
+  my ($invFile) = @_;
+  $invFile ||= 'investigation.xml';
+  # Run after all output files have been made
+  my %catkey;
+  my %study;
+  my %order;
+  my %lowerbranch;
+# (community => 1, community_repeated_measures => 2, household => 3, household_repeated_measures => 4, participant => 5, participant_repeated_measures => 6, sample => 7 );
+  my ($datasetName,$abbrev,$dsId) = getDatasetIds();
+  printf STDERR ("Creating $invFile for dataset $datasetName with ID = $abbrev\n");
+  # 
+  while(my ($cat, $prop) = each %$config ){
+    next unless($prop->{outputFile} && -e $prop->{outputFile});
+    $catkey{$cat} = $prop->{category};
+  }
+  while(my ($cat, $prop) = each %$config ){
+    next unless($prop->{outputFile} && -e $prop->{outputFile});
+    if( $prop->{parentCategory} ){
+      $study{$cat} =  
+        [ basename($prop->{outputFile}), $prop->{category}, 'PRIMARY_KEY',"parent of " . $prop->{category}, $prop->{parentCategory},'PARENT', $datasetName ];
+    }
+    else {
+      $study{$cat} = [basename($prop->{outputFile}), $prop->{category}, 'PRIMARY_KEY' ,"","","", $datasetName];
+    }
+  }
+  my $order = getEntityOrdering($config->{global}->{ontologyMappingXmlFile});
+  foreach my $cat ( keys %study ){
+    my $score = $order->{$catkey{$cat}};
+    if(defined($score)){
+      $order->{$cat} = $score;
+    }
+    else { # guess by long category name
+      my $pat = $catkey{$cat};
+      my ($key) = grep { /^$pat/ } keys %$order;
+      if($key){
+          $order->{$cat} = $order->{$key};
+      }
+      else { # guess by short name
+        ($key) = grep { /^$cat/ } keys %$order;
+        if($key){
+          $order->{$cat} = $order->{$key};
+          loggy("warn", "best guess: $cat = $key, order $order->{$key}");
+        }
+        else {
+          loggy("warn", "Cannot determine ordering for $cat, make manual corrections in $invFile");
+          $order->{$cat} = 99;
+        }
+      }
+    }
+  }
+    
+  my $inv = ClinEpiData::Load::Utilities::Investigation->new($abbrev);
+  foreach my $cat ( sort { $order->{$a} <=> $order->{$b} } keys %study ){
+    next unless $study{$cat};
+    $inv->addStudy(@{$study{$cat}});
+  }
+  # print Dumper $inv->{xml};
+  open(IF, ">$invFile") or die "Cannot write $invFile: $!";
+  print IF $inv->getXml;
+  close(IF);
+  return $invFile;
+  
+}
+
+sub getDatasetIds{
+  my ($path) = @_;
+  $path ||= abs_path('final');
+  return unless (-e $path);
+  my @dirs = split(/\//, $path);
+  pop @dirs; # final
+  my $release = pop @dirs; # release
+  my $studyName = pop @dirs;
+  my $groupName = pop @dirs;
+  my $subProject = pop @dirs;
+  my $abbrev = join("", map {uc(substr($_, 0,5)) } ($subProject,$groupName, $studyName));
+  my $datasetName = sprintf("ISASimple_%s_%s_%s_RSRC", $subProject, $groupName, $studyName);
+  my $hash = sha1_hex($datasetName);
+  my $dsId = substr($hash,0,10);
+  # printf("$datasetName\n$dsId\n");
+  return $datasetName, $abbrev, $dsId, $hash;
+}
+
+sub final {
+  my ($dir) = @_;
+  $dir ||= 'final';
+  my %files;
+  while( my ($cat, $prop) = each %$config ){
+#   if( $prop->{valueMappingFile} && -e $prop->{valueMappingFile} ){ $files{$prop->{valueMappingFile}} = 1 }
+#   if( $prop->{ontologyMappingXmlFile} && -e  $prop->{ontologyMappingXmlFile} ){ $files{$prop->{ontologyMappingXmlFile}} = 1 }
+    if( $prop->{outputFile} ){
+      my ($name, $outdir) = fileparse($prop->{outputFile});
+      opendir(DH, $outdir);
+      my @outfiles = map { join("", $outdir, $_) } grep { /^$name/ } readdir(DH);
+      close(DH);
+      foreach my $of ( @outfiles ){
+        my ($bn, $path) = fileparse($of);
+        my $dest = "$dir/$bn";
+        my $ock = cksum($of);
+        if(-e $dest) {
+          my $destck = cksum($dest);
+          if( $destck eq $ock ){ loggy("\t$of: no change") }
+          else { 
+            $files{$of} = filetime($of);
+          }
+        }
+        else {
+          $files{$of} = filetime($of);
+        }
+      }
+    }
+  }
+  my @tofinal = sort keys %files;
+  return unless(@tofinal);
+  my $r = ask(sprintf("Files to be copied into $dir/:\n%s\nFILES IN $dir will be overwritten!\nProceed", join("\n", map { sprintf("%s\t%s", $_, $files{$_}) } @tofinal)), ["y","n"]);
+  if($r eq "y"){
+    foreach my $file (@tofinal){
+      system("cp -v $file $dir/");
+    }
+  }
+}
+
+sub stagingDir {
+  my ($datasetName, $abbrev, $dsId, $hash) = getDatasetIds();
+  read_config( $ENV{WORKFLOW_DIR} . "/config/workflow.prop", my %wkf);
+  read_config( $ENV{WORKFLOW_DIR} . "/config/rootParams.prop", my %root);
+  read_config( $ENV{WORKFLOW_DIR} . "/config/stepsShared.prop", my %step);
+  my $relativePath = 'downloadSite/ClinEpiDB/release-CURRENT/'; # common for ClinEpiDB
+  my $dir = join("/", $step{''}->{websiteFilesDir}, $wkf{''}->{name}, $wkf{''}->{version}, 'real',
+      $relativePath, $hash);
+  print "$dir\n";
+}
+
+sub validateDateObfuscation {
+  my ($dofile) = @_;
+  my $deltas = getDeltas($dofile);
+  my $entities = getEntities();
+  my ($datasetName) = getDatasetIds();
+  my $dir = join("/", $ENV{WORKFLOW_DIR}, 'data', $datasetName);
+  -d $dir or die "$dir: $!\n";
+  opendir(DH, "$dir");
+  my @dlfiles = grep { /^$datasetName/ } readdir(DH);
+  close(DH);
+  my $total = 0;
+  my $fail = 0;
+  my %failByType;
+  foreach my $iri ( keys %$entities ){
+    my $plural = $entities->{$iri}->{plural};
+    $plural =~ s/ /_/g;
+    # loggy("Looking for $plural in $dir\n");
+    # my $file = sprintf("%s/%s_*_%s.txt", $dir, $datasetName, $plural);
+    my ($file) = map { join("/", $dir, $_) } grep { /$plural/ } @dlfiles;
+    unless( $file ){
+      # loggy("NOT FOUND: $plural\n");
+      next;
+    }
+    my @idcols;
+    my $content = tab2array($file);
+    my $filesize = scalar(@$content) - 1;
+    unless($filesize > 0){
+      loggy("error", basename($file) . "is empty! something is wrong, validation not possible.");
+      next;
+    }
+    my $headers = shift @$content;
+    my $index = 0;
+    foreach my $col (@{ $headers }){
+      last unless $col =~ /Id$/;
+      #loggy("Check: $index = $col\n");
+      push(@idcols, $index);
+      $index++;
+    }
+    #next unless ($index);
+    loggy("Checking ". basename($file) . ", $filesize lines:\n\t" . join(",", map { $headers->[$_] } @idcols));
+    my $warnParentMissing = 0;
+    my $line = 1;
+    my $debug = 0;
+    foreach my $row ( @$content ){
+      $debug++;
+      my $delta = '';
+      my $rowId = ''; # the first ID column that has a delta
+      foreach $index (@idcols){
+        my $stable_id = $row->[$index];
+        unless($stable_id){ printf("LINE %d column %d empty\n", $line, $index) }
+        ### Primary ID
+        if( $index == 0 ){
+          $rowId = $stable_id;
+          unless ( $deltas->{$stable_id} ) { goto NEXT_ID_COL ; }
+          $delta = $deltas->{$stable_id}->{delta};
+          if($deltas->{$stable_id} && ($iri ne $deltas->{$stable_id}->{iri})){
+            loggy("error", "$stable_id mismatched IRI $iri = $deltas->{$stable_id}->{iri}");
+          }
+          $total++; # counting number of deltas checked
+          ## next;
+          goto NEXT_ID_COL ;
+        }
+        ### Ancestors
+        if($delta && $deltas->{$stable_id}){
+          if( $delta ne $deltas->{$stable_id}->{delta} ){
+            loggy(sprintf("%s: %s mismatched %s : %s = %s",$plural, $rowId, $stable_id, $delta, $deltas->{$stable_id}->{delta}));
+            $fail++;
+            $failByType{$plural}++;
+          }
+        }
+        elsif($delta && $index > 0){ # Ancestor ID missing delta 
+          $warnParentMissing++;
+        }
+        elsif( $deltas->{$stable_id} ) { 
+          $delta = $deltas->{$stable_id}->{delta}
+        }
+        NEXT_ID_COL :
+      }
+      $line++;
+    }
+    # loggy("DEBUG = $debug. $line lines read from " . basename($file));
+    if($warnParentMissing){
+      loggy("warn", "$warnParentMissing x $plural date obfuscation inconsistent; force entities without date variables to generate an offset");
+    }
+  }
+  loggy("Checked $total IDs/deltas, $fail failed validation\n");
+  while(my ($type, $c) = each %failByType){
+    next unless $c;
+    loggy("$type: $c failed");
+  }
+}
+
+sub getDeltas {
+  my ($deltasFile) = @_;
+  $deltasFile ||= 'final/dateObfuscation.txt';
+  my %deltas;
+  foreach my $dr ( @{ csv2array($deltasFile, "\t") } ){
+    my ($iri, $id, $delta) = @$dr;
+    $id = lc($id);
+    if($deltas{$id} && ($deltas{$id}->{delta} ne $delta)){
+      loggy("error", "$id is not unique");
+    }
+    else{
+      $deltas{$id} = {'iri' => $iri, 'delta' => $delta};
+    }
+  }
+  return \%deltas;
+}
+
+sub getEntities {
+  my ($entfile, $key) = @_;
+  $entfile ||= 'final/entities.txt';
+  my %entities;
+  foreach my $row( @{ csv2array($entfile, "\t") } ) {
+    $entities{ $row->[0] } = { label => $row->[1], plural => $row->[2] };
+  }
+  if($key){
+    my @values;
+    while( my ($iri, $v) = each %entities){
+      push(@values, $v->{$key});
+    }
+    return \@values;
+  }
+  return \%entities;
+}
+  
+  
+
+#######################################
+# general purpose functions
+#
+#
+sub filetime {
+  my ($file) = @_;
+  my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+    $atime,$mtime,$ctime,$blksize,$blocks)
+       = stat($file);
+  return  strftime("%c", localtime($mtime));
+}
+
+sub file2array {
+  my ($file) = @_;
+  my @content;
+  open(FH, "<$file") or die "Cannot read $file:$!";
+  while(<FH>) { chomp; push(@content, $_) }
+  close(FH);
+  return \@content;
 }
     
+sub tab2array {
+  my ($file) = @_;
+  my $lines = file2array($file);
+  my @content;
+  foreach my $line (@$lines){
+    my @row = split("\t", $line);
+    push(@content, \@row); 
+  }
+  return \@content;
+}
+
+sub file2hex {
+  my ($file) = @_;
+  my $arr = file2array($file);
+  my $content = join("\n", @$arr);
+  return sprintf("%s\n", unpack("H*", compress($content)));
+}
+
+sub cksum {
+  my ($file) = @_;
+	my $ctx = Digest::SHA->new;
+	open(my $fh, $file);
+	$ctx->addfile($fh);
+	my $checksum = $ctx->hexdigest();
+  close($fh);
+  return $checksum;
+}  
+
+sub hex2file {
+  my ($file, $content) = @_;
+  open(FH, ">$file") or die "Cannot write $file:$!";
+  print FH uncompress( pack("H*", $content) );
+  close(FH);
+}
 
 sub systemcall {
   my $call = join(" ", @_);
-  #err('info', "Execute: $call");
+  #loggy('info', "Execute: $call");
   open(COM, "$call |") or die "Cannot run system call '$call'\nError:$!\n";
   my @result;
   while(<COM>){
@@ -551,10 +1002,13 @@ sub printsystemcall {
   printf ("%s\n", join("\n", @$result));
 }
 
-sub err {
+sub loggy {
   my ($key,@other) = @_;
-  printf STDERR ("%s\n", $msg->{$key} || $key);
+  printf STDERR ("%s", $MTYPE->{$key} || $key);
   if(@other){
-    printf STDERR ("%s\n", join("\n", @other));
+    printf STDERR ("%s", join("\n", @other));
   }
+  print STDERR "\n";
 }
+
+1;

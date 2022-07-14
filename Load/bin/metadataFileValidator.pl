@@ -87,6 +87,13 @@ foreach my $filepath (@files){
     close($ifh);
     next;
   }
+
+  # Validate file headers
+  foreach my $header (@$headers){
+    unless($header =~ m{^(.[A-za-z][A-za-z_.0-9]*|[A-za-z][A-za-z_.0-9]*)$}){
+      $results->{FAIL}->{"$filename:$header"} = "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.)";
+    }
+  }
   my $lines = 0;
   eval {
     while($csv->getline( $ifh )) { $lines++ }

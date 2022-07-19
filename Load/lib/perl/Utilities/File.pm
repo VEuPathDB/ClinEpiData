@@ -101,25 +101,23 @@ sub csv2tab {
   my ($file, $out, $delim, $quote_char, $autoclean) = @_;
 #  use open ':std', ':encoding(UTF-8)';
   $delim ||= detectDelimiter($file);
-  my $csv = getCsvObject({ sep_char => $delim, quote_char => $quote_char });  
+  my $csv = getCsvObject({ sep_char => $delim });  
   open(my $ifh, "<$file") or die "$@\n";
   open(my $ofh, ">$out") or die "$@\n";
- #if(0){ # try to parse header containing BOM
- #  my $header = <$ifh>;
- #  chomp $header;
- #  $header =~ s/^\xEF|^\xBB^\xBF//;
- #  $header =~ s/[\n\r\l]//;
- #  $csv->parse($header);
- #  my @cols = $csv->fields;
- # 	printf $ofh ("%s\n", join("\t", @cols));
- #}
+  my $count = 0;
   if($autoclean){
     my $row = $csv->getline( $ifh );
   	my @data;
   	foreach my $val (@$row){
-      $val =~ tr/[^A-za-z_.0-9]/_/;
+      my $orig = $val;
+      $val =~ s/[^A-Za-z0-9_.]/_/g;
   		push(@data, $val);
+      if($val ne $orig){
+        printf STDERR ("Column converted from $orig to $val\n");
+      }
   	}
+  	printf $ofh ("%s\n", join("\t", @data));
+    $count++;
   } 
   while (my $row = $csv->getline( $ifh )) {
   	#die if grep { /\t/ } @$row;
@@ -128,7 +126,7 @@ sub csv2tab {
       $val =~ s/\x{FEFF}//;
     	$val =~ s/[\n\r\l]/ /g;
     	$val =~ s/\t/ /g;
-      if($autoclean && $quote_char != '"'){
+      if($autoclean){
         $val =~ s/"//g;
       }
   		push(@data, $val);

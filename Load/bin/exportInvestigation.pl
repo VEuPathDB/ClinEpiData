@@ -101,7 +101,7 @@ if($autoMode){
     ## use raw files
     foreach my $file (@mdFiles){
       my $dest = join("/", $dir, basename($file));
-      csv2tab($file, $dest);
+      csv2tab($file, $dest, undef, 1);
       push(@mergedFiles, $dest);
     }
     die "no merged files" unless @mergedFiles;

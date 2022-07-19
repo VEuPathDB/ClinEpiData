@@ -60,7 +60,7 @@ sub updateConfig {
       $idnum{$mdfile}++;
       $rules->{$mdfile} ||= [];
       $idvalue //= $idnum{$mdfile}++;
-      printf STDERR ("Add rule: $mdfile : $rule : __rowmultiplier%d__\n", $idvalue);
+      printf STDERR ("Add rule: $mdfile : $rule : __rowmultiplier%s__\n", $idvalue);
       push(@{$rules->{$mdfile}}, [$rule,$idvalue]);
     }
     $self->setConfig('rowMultiplier', $rules) if(keys %$rules);
@@ -214,7 +214,14 @@ sub rowMultiplier {
     if($rule =~ /^\/.+\/$/){
       my ($regex) =  ($rule =~ /^\/(.+)\/$/);
 # printf("DEBUG: RULE is regex: $regex\n");
-      my @matches = grep { /$regex/ } keys %$hash;
+      my @matches;
+      if( $regex =~ /^!/ ){ # negative lookahead is too hard
+        $regex =~ s/^!//;
+        @matches = grep { !/$regex/ } keys %$hash;
+      }
+      else {
+        @matches = grep { /$regex/ } keys %$hash;
+      }
 # printf("DEBUG: matches from %s:\n\n=\t%s\n", join(",", keys %$hash), join(",", @matches));
       my %newrow;
       map { $newrow{$_} = $hash->{$_} }  @matches;
@@ -240,11 +247,16 @@ sub makeParent {
   if($hash->{parent}) {
     return $hash->{parent};
   }
-  my $parentType = $self->getConfig('parentCategory') || $self->getConfig('parentType');
-  if(defined($parentType)){
-    return $self->getId($hash,lc($parentType));
+  my $parentTypes = $self->getConfig('parentCategory') || $self->getConfig('parentType');
+  unless(ref( $parentTypes ) eq 'ARRAY' ){
+    $parentTypes = [ $parentTypes ];
   }
-  #else{ print STDERR Dumper $self->{_CONFIG}; exit }
+  foreach my $parentType (@$parentTypes){
+    if(defined($parentType)){
+      return $self->getId($hash,lc($parentType));
+    }
+    #else{ print STDERR Dumper $self->{_CONFIG}; exit }
+  }
 }
 
 sub getParentPrefix {

@@ -91,7 +91,7 @@ foreach my $filepath (@files){
   # Validate file headers
   foreach my $header (@$headers){
     unless($header =~ m{^(.[A-za-z][A-za-z_.0-9]*|[A-za-z][A-za-z_.0-9]*)$}){
-      $results->{FAIL}->{"$filename:$header"} = "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.)";
+      $results->{WARN}->{"$filename:$header"} = "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.) - illegal characters will be automatically converted to underscore '_'";
     }
   }
   my $lines = 0;
@@ -113,6 +113,9 @@ while( my ($filename, $message) = each %{$results->{FAIL}}){
 }
 while( my ($filename, $message) = each %{$results->{PASS}}){
   printf STDERR ("%s\t%s\tPASS\n", $filename, $message)
+}
+while( my ($filename, $message) = each %{$results->{WARN}}){
+  printf STDERR ("%s\t%s\tWARN\n", $filename, $message)
 }
 
 exit ($exitcode > 0);

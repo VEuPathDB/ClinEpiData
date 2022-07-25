@@ -103,7 +103,7 @@ sub csv2tab {
   $delim ||= detectDelimiter($file);
   my $csv = getCsvObject({ sep_char => $delim });  
   open(my $ifh, "<$file") or die "$@\n";
-  open(my $ofh, ">$out") or die "$@\n";
+  open(my $ofh, ">:encoding(utf-8)", "$out") or die "$@\n";
   my $count = 0;
   if($autoclean){
     my $row = $csv->getline( $ifh );

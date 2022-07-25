@@ -112,10 +112,10 @@ while( my ($filename, $message) = each %{$results->{FAIL}}){
   $exitcode++;
 }
 while( my ($filename, $message) = each %{$results->{PASS}}){
-  printf STDERR ("%s\t%s\tPASS\n", $filename, $message)
+  printf STDOUT ("%s\t%s\tPASS\n", $filename, $message)
 }
 while( my ($filename, $message) = each %{$results->{WARN}}){
-  printf STDERR ("%s\t%s\tWARN\n", $filename, $message)
+  printf STDOUT ("%s\t%s\tWARN\n", $filename, $message)
 }
 
 exit ($exitcode > 0);

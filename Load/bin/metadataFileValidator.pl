@@ -102,20 +102,20 @@ foreach my $filepath (@files){
     $results->{FAIL}->{$filename} = "Empty (no data rows)";
   }
   else {
-    $results->{PASS}->{$filename} = "OK";
+    #$results->{PASS}->{$filename} = "OK";
   }
   close($ifh);
 }
 
 while( my ($filename, $message) = each %{$results->{FAIL}}){
-  printf STDERR ("%s\t%s\tFAIL\n", $filename, $message);
+  printf STDERR ("FAIL: %s\t%s\n", $filename, $message);
   $exitcode++;
 }
-while( my ($filename, $message) = each %{$results->{PASS}}){
-  printf STDOUT ("%s\t%s\tPASS\n", $filename, $message)
-}
+# while( my ($filename, $message) = each %{$results->{PASS}}){
+#   printf STDOUT ("%s\t%s\tPASS\n", $filename, $message)
+# }
 while( my ($filename, $message) = each %{$results->{WARN}}){
-  printf STDOUT ("%s\t%s\tWARN\n", $filename, $message)
+  printf STDOUT ("WARNING: %s\t%s\n", $filename, $message)
 }
 
 exit ($exitcode > 0);

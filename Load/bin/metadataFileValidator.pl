@@ -21,6 +21,10 @@ use warnings;
 use File::Basename;
 use Text::CSV;
 use Data::Dumper;
+use open ':std', ':encoding(UTF-8)';
+
+my $MAXCOLS = 999;
+my $MAXLENGTH = 1000;
 
 my %FORMAT = (
   '.TXT' => "\t",
@@ -52,38 +56,48 @@ foreach my $filepath (@files){
   my ($path, $name, $ext) = fileparse($filepath, qr/\.[^\.]*$/);
   my $filename = basename($filepath);
   unless( $ext && $FORMAT{ uc($ext) } ){
-    $results->{FAIL}->{$filename} = "Unsupported file extension $ext";
+    #testResult('FAIL', $filename, "Unsupported file extension $ext";
+    testResult('FAIL', $filename, "Unsupported file extension $ext");
     next;
   }
   my $delim = $FORMAT{uc($ext)};
   unless( -e $filepath ){
-    $results->{FAIL}->{$filename} = "File not found";
+    #testResult('FAIL', $filename, "File not found";
+    testResult('FAIL', $filename, "File not found");
     next;
   }
   unless( -f $filepath ){
-    $results->{FAIL}->{$filename} = "File not a plain file (may be link, pipe, directory, etc.)";
+    #testResult('FAIL', $filename, "File not a plain file (may be link, pipe, directory, etc.)";
+    testResult('FAIL', $filename, "File not a plain file (may be link, pipe, directory, etc.)");
     next;
   }
 
   if(-B $filepath){
-    $results->{FAIL}->{$filename} = "Binary file; only text is supported";
+    testResult('FAIL', $filename, "Binary file; only text is supported");
     next;
   }
   my $ifh;
   unless( open($ifh, "<$filepath")){
-    $results->{FAIL}->{$filename} = "Cannot read file: $@";
+    testResult('FAIL', $filename, "Cannot read file: $@");
     next;
   }
+  
   my $csv = Text::CSV->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
   my $headers = $csv->getline( $ifh );
   unless($headers) {
-    $results->{FAIL}->{$filename} = "unreadable, possibly not a plain text file";
+    testResult('FAIL', $filename, "unreadable, possibly not a plain text file");
     close($ifh);
     next;
   }
 
   if(@$headers < 2 ){ ## check headers
-    $results->{FAIL}->{$filename} = "Only one column header found; check file format and delimiter";
+    testResult('FAIL', $filename, "Only one column header found; check file format and delimiter");
+    close($ifh);
+    next;
+  }
+  if(@$headers > $MAXCOLS ){ ## check headers
+    my $numcols = scalar @$headers;
+    testResult('FAIL', $filename, "Too many columns ($numcols), limit is $MAXCOLS columns");
     close($ifh);
     next;
   }
@@ -91,31 +105,56 @@ foreach my $filepath (@files){
   # Validate file headers
   foreach my $header (@$headers){
     unless($header =~ m{^(.[A-za-z][A-za-z_.0-9]*|[A-za-z][A-za-z_.0-9]*)$}){
-      $results->{WARN}->{"$filename:$header"} = "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.) - illegal characters will be automatically converted to underscore '_'";
+      testResult('WARN', $filename, "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.) - illegal characters will be automatically converted to underscore '_'");
     }
   }
   my $lines = 0;
+  my %maxlen;
   eval {
-    while($csv->getline( $ifh )) { $lines++ }
+    while(my $row = $csv->getline( $ifh )) {
+      $lines++;
+      foreach my $col (@$headers){
+        my $len = length( shift(@$row) );
+        $maxlen{$col} ||= $len;
+        if($len > $MAXLENGTH){ 
+          $maxlen{$col} = $len;
+        }
+      }
+    }
   };
+  close($ifh);
   unless($lines){ ## Text::CSV threw an error
-    $results->{FAIL}->{$filename} = "Empty (no data rows)";
+    testResult('FAIL', $filename, "Empty (no data rows)");
   }
   else {
-    #$results->{PASS}->{$filename} = "OK";
+    foreach my $col (@$headers){
+      if($maxlen{$col} > $MAXLENGTH){
+        testResult('FAIL', $filename, "Column \"$col\" values have a maximum length of $maxlen{$col} characters, limit is $MAXLENGTH");
+      }
+    }
   }
-  close($ifh);
 }
 
-while( my ($filename, $message) = each %{$results->{FAIL}}){
-  printf STDERR ("FAIL: %s\t%s\n", $filename, $message);
-  $exitcode++;
+while( my ($filename, $failures) = each %{$results->{FAIL}}){
+  foreach my $message (@$failures){
+    printf STDERR ("FAIL: %s\t%s\n", $filename, $message);
+    $exitcode++;
+  }
 }
 # while( my ($filename, $message) = each %{$results->{PASS}}){
 #   printf STDOUT ("%s\t%s\tPASS\n", $filename, $message)
 # }
-while( my ($filename, $message) = each %{$results->{WARN}}){
-  printf STDOUT ("WARNING: %s\t%s\n", $filename, $message)
+while( my ($filename, $warnings) = each %{$results->{WARN}}){
+  foreach my $message (@$warnings){
+    printf STDOUT ("WARNING: %s\t%s\n", $filename, $message)
+  }
 }
 
 exit ($exitcode > 0);
+
+
+sub testResult {
+  my ($type, $filename, $message) = @_;
+  $results->{$type}->{$filename} //= [];
+  push( @{ $results->{$type}->{$filename} }, $message ); 
+}

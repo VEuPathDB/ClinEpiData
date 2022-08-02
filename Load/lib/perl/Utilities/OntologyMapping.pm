@@ -133,6 +133,8 @@ sub getOntologyXmlFromFiles {
     push(@allterms, @$terms);
   }
   foreach my $protocol (@$protocols){
+    # remove special characters
+    $protocol =~ s/[^A-Za-z0-9_.]/_/g;
     push(@allterms, { source_id => "TEMP_" . $protocol, type => 'protocol', name => [ $protocol ] }); 
   }
   $self->setTerms(\@allterms);

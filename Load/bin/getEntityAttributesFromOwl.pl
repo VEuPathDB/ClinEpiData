@@ -50,6 +50,7 @@ unitLabel => 1,
 variable => 1,
 displayType => 1, ## derived annotation property
 forceStringType => 1,
+scale => 1,
 );
 
 my $forcedDisplayType = {

@@ -11,9 +11,16 @@ use open ':std', ':encoding(UTF-8)';
 use Data::Dumper;
 use File::Basename;
 
-sub tabWriter{
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => "\t", quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();
+sub getCsvObject {
+  my ($options) = @_;
+  $options ||= {};
+  $options->{sep_char} ||= "\t";
+  my $csv = Text::CSV_XS->new($options) or die "Cannot use CSV: " . Text::CSV->error_diag ();
   return $csv;
+}
+
+sub tabWriter{
+  return getCsvObject();
 }
 
 sub nonumvalues {
@@ -35,7 +42,7 @@ sub nonumvalues {
 sub getHeaders {
   my ($file, $delim) = @_;
   $delim ||= ",";
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  my $csv = getCsvObject({ sep_char => $delim});  
   open(my $ifh, "<$file") or die "$@\n";
   my $row = $csv->getline( $ifh );
   close($ifh);
@@ -54,7 +61,7 @@ sub getPrefixedHeaders {
 sub getValidValues {
   my ($file, $delim) = @_;
   $delim ||= detectDelimiter($file);
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  my $csv = getCsvObject({ sep_char => $delim});  
   open(my $fh, "<$file") or die "$@\n";
   my %valid;
   $csv->column_names($csv->getline($fh));
@@ -71,7 +78,7 @@ sub getValidValues {
 sub csv2array {
   my ($file, $delim) = @_;
   $delim ||= ",";
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  my $csv = getCsvObject({ sep_char => $delim});  
   open(my $ifh, "<$file") or die "$@\n";
   my @rows;
   while (my $row = $csv->getline( $ifh )) {
@@ -86,25 +93,32 @@ sub csv2array {
   	push(@rows, \@data);
   }
   close($ifh);
+  $csv = undef;
   return \@rows;
 }
 
 sub csv2tab {
-  my ($file, $out, $delim) = @_;
+  my ($file, $out, $delim, $quote_char, $autoclean) = @_;
 #  use open ':std', ':encoding(UTF-8)';
   $delim ||= detectDelimiter($file);
-  my $csv = Text::CSV_XS->new({binary => 1, sep_char => $delim, quote_char => '"' }) or die "Cannot use CSV: " . Text::CSV->error_diag ();  
+  my $csv = getCsvObject({ sep_char => $delim });  
   open(my $ifh, "<$file") or die "$@\n";
-  open(my $ofh, ">$out") or die "$@\n";
- #if(0){ # try to parse header containing BOM
- #  my $header = <$ifh>;
- #  chomp $header;
- #  $header =~ s/^\xEF|^\xBB^\xBF//;
- #  $header =~ s/[\n\r\l]//;
- #  $csv->parse($header);
- #  my @cols = $csv->fields;
- # 	printf $ofh ("%s\n", join("\t", @cols));
- #}
+  open(my $ofh, ">:encoding(utf-8)", "$out") or die "$@\n";
+  my $count = 0;
+  if($autoclean){
+    my $row = $csv->getline( $ifh );
+  	my @data;
+  	foreach my $val (@$row){
+      my $orig = $val;
+      $val =~ s/[^A-Za-z0-9_.]/_/g;
+  		push(@data, $val);
+      if($val ne $orig){
+        printf STDERR ("Column converted from $orig to $val\n");
+      }
+  	}
+  	printf $ofh ("%s\n", join("\t", @data));
+    $count++;
+  } 
   while (my $row = $csv->getline( $ifh )) {
   	#die if grep { /\t/ } @$row;
   	my @data;
@@ -112,6 +126,9 @@ sub csv2tab {
       $val =~ s/\x{FEFF}//;
     	$val =~ s/[\n\r\l]/ /g;
     	$val =~ s/\t/ /g;
+      if($autoclean){
+        $val =~ s/"//g;
+      }
   		push(@data, $val);
   	}
   	printf $ofh ("%s\n", join("\t", @data));

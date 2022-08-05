@@ -100,8 +100,10 @@ if($autoMode){
   else {
     ## use raw files
     foreach my $file (@mdFiles){
-      my $dest = join("/", $dir, basename($file));
-      csv2tab($file, $dest);
+      my $cleanFilename = basename($file);
+      $cleanFilename =~ s/[^A-Za-z0-9_.]/_/g;
+      my $dest = join("/", $dir, $cleanFilename);
+      csv2tab($file, $dest, undef, undef, 1);
       push(@mergedFiles, $dest);
     }
     die "no merged files" unless @mergedFiles;

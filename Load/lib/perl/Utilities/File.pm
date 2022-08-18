@@ -105,12 +105,20 @@ sub csv2tab {
   open(my $ifh, "<$file") or die "$@\n";
   open(my $ofh, ">:encoding(utf-8)", "$out") or die "$@\n";
   my $count = 0;
+  # Column headers
+  my %skipEmptyIndex; # Could use this to skip columns with empty headers
   if($autoclean){
     my $row = $csv->getline( $ifh );
   	my @data;
-  	foreach my $val (@$row){
+    for(my $i = 0; $i < @$row; $i++){
+      my $val = $row->[$i];
       my $orig = $val;
       $val =~ s/[^A-Za-z0-9_.]/_/g;
+      if($val eq ''){
+        $skipEmptyIndex{$i} = 1;
+        printf STDERR ("Column %d (%s) has no header, using number\n", $i+1, $orig);
+        $val = sprintf("____col_%d___", $i+1);
+      }
   		push(@data, $val);
       if($val ne $orig){
         printf STDERR ("Column converted from $orig to $val\n");
@@ -122,7 +130,9 @@ sub csv2tab {
   while (my $row = $csv->getline( $ifh )) {
   	#die if grep { /\t/ } @$row;
   	my @data;
-  	foreach my $val (@$row){
+    for(my $i = 0; $i < @$row; $i++){
+      #next if $skipEmptyIndex{$i};
+      my $val = $row->[$i];
       $val =~ s/\x{FEFF}//;
     	$val =~ s/[\n\r\l]/ /g;
     	$val =~ s/\t/ /g;

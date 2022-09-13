@@ -183,6 +183,13 @@ sub read {
   $self->updateConfig();
   my $metadataFile = $self->getMetadataFile();
   my ($fileBasename) = $self->getMetadataFileLCB();
+  if($self->getConfig('idMap') && $self->getConfig('category')){
+    unless($self->getConfig('idMap')->{$fileBasename}->{$self->getConfig('category')}){
+      printf STDERR ("Skipping $metadataFile: $fileBasename not defined for this category\n");
+      return;
+    }
+  }
+  printf STDERR ("Parsing: $metadataFile\n");
   my $colExcludes = $self->getColExcludes();
   my $rowExcludes = $self->getRowExcludes();
   my $forceFilePrefix = $self->getConfig('forceFilePrefix');

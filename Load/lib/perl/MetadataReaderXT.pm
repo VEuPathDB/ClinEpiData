@@ -35,8 +35,8 @@ sub readAncillaryInputFile {
       }
       ## For applyMappedIRI
       unless($col && $iri && (lc($col) eq lc($iri))){
-      # Only map if they are different (avoids overwriting from another line
-        $anc->{iri}->{lc($col)}=lc($iri);
+      # Only map if they are different
+        $anc->{iri}->{lc($col)}->{lc($iri)} = 1;
       }
     }
     close(FH);
@@ -68,10 +68,16 @@ sub applyMappedValues {
           next;
         }
         else {
+          # printf STDERR ("Matched [$col] = [$v0] ... %s => %s\n", $v0, $anc->{$type}->{$col}->{$v0});
           $v0 = $hash->{$col} = $anc->{$type}->{$col}->{$v0};
-          # printf STDERR ("Matched [$col] = [$v0] ... %s => %s\n", $v0, $hash->{$col});
         }
       }
+    }
+    if($anc->{':::regex:::'}->{___GLOBALREGEX___}){
+      my $newVal = $v0;
+      my $oper = sprintf("\$newVal =~ %s", $anc->{':::regex:::'}->{___GLOBALREGEX___});
+      eval $oper;
+      $v0 = $hash->{$col} =$newVal;
     }
     if(defined($anc->{':::regex:::'}->{$col})){
       foreach my $regex (@{$anc->{':::regex:::'}->{$col}}){
@@ -111,11 +117,10 @@ sub applyMappedIRI {
   my ($self,$hash,$keep) = @_;
   my $anc = $self->getAncillaryData();
   while(my ($col, $val) = each %$hash){
-    my $iri = $anc->{iri}->{$col};
-    next unless($iri);
-    next if($iri eq $col);
-    if($iri){
-      $hash->{$iri} = $hash->{$col};
+    my $derived = $anc->{iri}->{$col};
+    next unless(ref($derived));
+    foreach my $newvar (keys %$derived) {
+      $hash->{$newvar} = $hash->{$col};
       delete($hash->{$col}) unless $keep;
       # printf STDERR ("rename %s => %s\n", $col, $iri);
     }

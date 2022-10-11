@@ -472,6 +472,7 @@ sub writeInvestigationTree {
       foreach my $node (@$nodes) {
         if($node->hasAttribute("MaterialType")) {
           my $characteristics = $node->getCharacteristics();
+          my %seen;
           foreach my $characteristic (@$characteristics) {
             my $qualifier = $characteristic->getQualifier();
 
@@ -479,7 +480,9 @@ sub writeInvestigationTree {
 
             
             my $value = $characteristic->getValue();
-            push @{$data{$qualifier}}, $value if(defined $value);
+            push @{$data{$qualifier}}, $value if(defined $value &!
+              ($seen{$qualifier}{$value} || $seen{$qualifier}{$value}));
+             $seen{$qualifier}{$value} = $seen{$qualifier}{$value} = 1;
             $qualifierToHeaderNames{$qualifier}->{$altQualifier} = 1;
           }
         }

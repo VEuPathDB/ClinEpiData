@@ -36,7 +36,7 @@ sub new {
 }
 
 sub run {
-  my ($self,$owlFile,$functionsFile,$sortByIRI,$categoryPrefix) = @_;
+  my ($self,$owlFile,$functionsFile,$sortByIRI,$varPrefix,$noEntities) = @_;
   unless( -f $owlFile ){
     my $owlDir = "$GUS_HOME/ontology/release/production";
     my $tmp = "$owlDir/$owlFile.owl";
@@ -58,12 +58,14 @@ sub run {
     $funcToAdd = $self->readFunctionsFile($functionsFile);
   }
   my $owl = $self->getOwl($owlFile);
-  my $vars = $self->getTermsFromOwl($owl, $funcToAdd);
+  my $vars = $self->getTermsFromOwl($owl, $funcToAdd, $sortByIRI, $varPrefix);
   my $materials = $self->getMaterialTypesFromOwl($owl);
   my $protocols = $self->getProtocols();
   my @terms;
-  push(@terms, $_) for @$materials;
-  push(@terms, $_) for @$protocols;
+  unless($noEntities){
+    push(@terms, $_) for @$materials;
+    push(@terms, $_) for @$protocols;
+  }
   push(@terms, $_) for @$vars;
   $self->setTerms(\@terms);
   $self->printXml();
@@ -175,7 +177,7 @@ sub getTermsFromSourceFile {
 }
 
 sub getTermsFromOwl{
-  my ($self,$owl,$funcToAdd,$sortByIRI,$categoryPrefix) = @_;
+  my ($self,$owl,$funcToAdd,$sortByIRI,$varPrefix) = @_;
   my $it = $owl->execute('column2iri');
   my %terms;
   while (my $row = $it->next) {
@@ -198,6 +200,9 @@ sub getTermsFromOwl{
     }
     my %allnames;
     foreach my $n (@$names){
+      if($varPrefix){
+        next unless ($n =~ /^${varPrefix}::/i)
+      }
 #if( $n =~ /::/ ) {
 #  my ($mdfile,$colName) = split(/::/, $n);
 #  print STDERR ("$colName\t$mdfile\n");
@@ -212,6 +217,7 @@ sub getTermsFromOwl{
       }
     }
     @$names = sort keys %allnames;
+    next unless (@$names);
     my @funcs;
     my $rank = 1;
     $funcToAdd //= {};

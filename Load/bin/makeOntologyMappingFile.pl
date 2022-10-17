@@ -4,9 +4,9 @@ use warnings;
 
 use lib $ENV{GUS_HOME} . "/lib/perl";
 use ClinEpiData::Load::Utilities::OntologyMapping;
-use Getopt::Long;
+use Getopt::Long qw/:config no_ignore_case/;
 
-my (@inputFiles,@protocols,$owlFile,$functionsFile,%funcToAdd,$sortByIRI,$hhobs);
+my (@inputFiles,@protocols,$owlFile,$functionsFile,%funcToAdd,$sortByIRI,$varPrefix,$noEntities);
 unless(0 < @ARGV){
 	my $scr = basename($0);
 	print join(" ", $scr, 
@@ -21,13 +21,14 @@ GetOptions(
   'o|owlFile=s' => \$owlFile,
   'f|functionsFile=s' => \$functionsFile,
   's|sortByIRI!' => \$sortByIRI,
-  'h|householdObservationProtocol!' => \$hhobs
+  'V|varPrefix=s' => \$varPrefix,
+  'N|noEntities!' => \$noEntities,
 );
 
 my $om = ClinEpiData::Load::Utilities::OntologyMapping->new();
 
 if($owlFile) {
-  $om->run($owlFile,$functionsFile,$sortByIRI);
+  $om->run($owlFile,$functionsFile,$sortByIRI,$varPrefix,$noEntities);
 }
 elsif(@inputFiles) {
   #$om->setTerms($om->getTermsFromSourceFile(\@inputFiles,$functionsFile));

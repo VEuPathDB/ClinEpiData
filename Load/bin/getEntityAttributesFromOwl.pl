@@ -8,21 +8,24 @@ use warnings;
 use lib $ENV{GUS_HOME} . "/lib/perl";
 
 use ApiCommonData::Load::OwlReader;
+use ClinEpiData::Load::Utilities::File qw/csv2arrayhash/;
 use File::Basename;
 use Switch;
 use Scalar::Util qw/blessed looks_like_number/;
 use JSON qw/to_json/;
 use Data::Dumper;
+use Getopt::Long qw/:config no_ignore_case/;
 
-my ($owlFile) = @ARGV;
+my $exitState = 0;
+my ($expand, $fromOwl);
+GetOptions( 'x|expandedOutput!' => \$expand );
+my ($inFile) = @ARGV;
 
-unless(-e $owlFile){
-  $owlFile = join("/", $ENV{GUS_HOME}, "ontology/release/production", $owlFile);
-  $owlFile .= ".owl" unless $owlFile =~ /\.owl$/i;
+unless(-e $inFile){
+  $inFile = join("/", $ENV{GUS_HOME}, "ontology/release/production", $inFile);
+  $inFile .= ".owl" unless $inFile =~ /\.owl$/i;
 }
-print STDERR "Reading $owlFile\n";
-
-my $owl = ApiCommonData::Load::OwlReader->new($owlFile);
+if($inFile =~ /\.owl$/){ $fromOwl = 1 }
 
 my %outputHashes;
 
@@ -53,6 +56,16 @@ forceStringType => 1,
 scale => 1,
 );
 
+# things that map to SRes.OntologySynonym columns
+my %expandMap = (
+  label => 'ontology_synonym',
+  codebookDescription => 'definition',
+);
+
+my @expandHeaders = qw/label codebookDescription/;
+
+my %expandVals;
+
 my $forcedDisplayType = {
 'EUPATH_0043203' => 'geoaggregator',
 'EUPATH_0043204' => 'geoaggregator',
@@ -80,17 +93,40 @@ repeated => [qw/"yes" empty/],
 displayType => [qw/"multifilter" "geoaggregator" "latitude" "longitude"/], ## derived from termType
 );
 
-my $it = $owl->execute('get_entity_attributes');
-while (my $row = $it->next) {
-    my $termId = $row->{sid}->as_hash->{literal};
-    my $attribName = $row->{ label }->as_hash->{literal};
-    my $attribValue = $row->{ value }->as_hash->{literal};
-  ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
-  next unless $keep{$attribName};
-  next unless ($attribValue ne "");
-  $outputHashes{$termId} ||= {};
-  $outputHashes{$termId}->{$attribName} ||= [];
-  push(@{$outputHashes{$termId}->{$attribName}},$attribValue);
+print STDERR "Reading $inFile\n";
+if($fromOwl){
+  my $owl = ApiCommonData::Load::OwlReader->new($inFile);
+  my $it = $owl->execute('get_entity_attributes');
+  while (my $row = $it->next) {
+      my $termId = $row->{sid}->as_hash->{literal};
+      my $attribName = $row->{ label }->as_hash->{literal};
+      my $attribValue = $row->{ value }->as_hash->{literal};
+    ##printf("%s\t%s\t%s\n", $termId, $attribName, $attribValue);
+    next unless $keep{$attribName};
+    next unless ($attribValue ne "");
+    $outputHashes{$termId} ||= {};
+    $outputHashes{$termId}->{$attribName} ||= [];
+    push(@{$outputHashes{$termId}->{$attribName}},$attribValue);
+  }
+}
+else { # tabular/conversion file
+  my $csv = csv2arrayhash($inFile);
+  foreach my $row (@$csv) {
+    my $termId = basename($row->{IRI});
+    foreach my $attribName (keys %$row){
+      next unless($keep{$attribName});
+      my @values = map { s/^\s*|\s*$//g; $_ } split(/\|/, $row->{$attribName});
+      next unless (@values);
+      $outputHashes{$termId} ||= {};
+      $outputHashes{$termId}->{$attribName} ||= [];
+      $outputHashes{$termId}->{$attribName} = \@values;
+    }
+    ## expanded cols
+    foreach my $attribName (@expandHeaders){
+      next unless $row->{$attribName};
+      $expandVals{$termId}->{$attribName} = defined($row->{$attribName}) ? $row->{$attribName} : "";
+    }
+  }
 }
 
 ## post-processing in this while loop
@@ -124,6 +160,7 @@ while( my ($termId, $termHash) = each %outputHashes){
         }
       }
       if($score <= 0){
+        $exitState++;
         printf STDERR ("FAIL: %s %s [%s] TESTS:%s\n",
           $termId, $propName, $value, join(", ", @{$validationTest{$propName}}))
       }
@@ -133,14 +170,25 @@ while( my ($termId, $termHash) = each %outputHashes){
 
 my $max = 0;
 
-printf("SOURCE_ID\tannotation_properties\n");
+my @headers = qw/SOURCE_ID annotation_properties/;
+if($expand){ push(@headers, map { $expandMap{$_} } @expandHeaders) }
+
+printf("%s\n", join("\t", @headers));
 foreach my $termId (sort keys %outputHashes){
   my $json = to_json($outputHashes{$termId});
   next if $json eq '{}';
   if(length($json) > $max){ $max = length($json) }
-  printf("%s\t%s\n", $termId, $json);
+  my @row = ($termId, $json);
+  if($expand){
+    foreach my $attribName (@expandHeaders){
+      push(@row, $expandVals{$termId}->{$attribName} || "" );
+    }
+  }
+  
+  printf("%s\n", join("\t", @row));
 }
 
 print STDERR ("Longest string was $max chars\n");
 
+exit $exitState;
 

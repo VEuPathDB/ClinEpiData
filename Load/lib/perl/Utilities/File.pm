@@ -3,7 +3,7 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders getValidValues/;
+our @EXPORT_OK = qw/csv2tab csv2array csv2arrayhash diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders getValidValues/;
 use Text::CSV_XS;
 use Config::Std;
 use Scalar::Util qw/looks_like_number/;
@@ -73,6 +73,31 @@ sub getValidValues {
   }
   close($fh);
   return \%valid
+}
+
+sub csv2arrayhash {
+  my ($file, $delim) = @_;
+  $delim ||= ",";
+  my $csv = getCsvObject({ sep_char => $delim});  
+  open(my $ifh, "<$file") or die "$@\n";
+  my @rows;
+  my @headers = @{ $csv->getline( $ifh ) };
+  while (my $row = $csv->getline( $ifh )) {
+  	#die if grep { /\t/ } @$row;
+  	my %data;
+    my $i = 0;
+  	foreach my $val (@$row){
+      $val =~ s/\x{FEFF}//;
+    	$val =~ s/[\n\r\l]/ /g;
+    	$val =~ s/\t/ /g;
+      $data{ $headers[$i] } = $val;
+      $i++;
+  	}
+  	push(@rows, \%data);
+  }
+  close($ifh);
+  $csv = undef;
+  return \@rows;
 }
 
 sub csv2array {

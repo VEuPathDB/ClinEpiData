@@ -184,6 +184,7 @@ sub getTermsFromOwl{
     my $names = $row->{col}->as_hash()->{literal};
     my $sid = $row->{sid}->as_hash()->{literal};
     my $category = $row->{category}->as_hash()->{literal};
+    my $parent = $row->{parent}->as_hash()->{literal};
 #my $name = "";
     if(ref($names) eq 'ARRAY'){
 #$name = lc($names->[0]);
@@ -232,7 +233,7 @@ sub getTermsFromOwl{
       }
       @funcs = sort { $funcHash{$a} <=> $funcHash{$b} } keys %funcHash;
     }
-    $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', 'category' => lc($category), 'function' => \@funcs };
+    $terms{$sid} = { 'source_id' => $sid, 'name' =>  $names, 'type' => 'characteristicQualifier', 'parent'=> $parent || 'ENTITY', 'category' => lc($category), 'function' => \@funcs };
   }
   if($terms{OBI_0001620}){
     foreach my $term (@GEOHASHTERMS){

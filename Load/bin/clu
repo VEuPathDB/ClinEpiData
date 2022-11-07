@@ -127,12 +127,12 @@ sub run {
     }
     when('ontomap'){
       my ($ontofile) = @args;
+      $ontofile ||= 'ontologyMapping.xml';
       if(-e 'conf/ontologyMapping.xml'){
-        $ontofile ||= 'ontologyMapping.xml';
         printsystemcall('addFunctionToOntologyMapping.pl -d -S -o conf/ontologyMapping.xml >> conf/func');
-        printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $ontofile");
-        printsystemcall("ls -l $ontofile\n");
       }
+      printsystemcall("makeOntologyMappingFile.pl -o $config->{global}->{owl} -f conf/func > $ontofile");
+      printsystemcall("ls -l $ontofile\n");
     }
     when('derive'){
       derive(@args);
@@ -244,6 +244,12 @@ sub run {
     when('obfcheck'){
       validateDateObfuscation(@args);
     }
+    when('hex'){
+      printf("%s\n", sha1_hex($_)) for @args;
+    }
+    when('row2hash'){
+      row2hash(@args);
+    }
     default {
       loggy("Command '$cmd' not implemented")
     }
@@ -324,6 +330,8 @@ sub ordinals {
   }
   $outfile ||= 'ordinals.txt';
   my $valueMap = csv2array($infile, "\t");
+  my $version = 1;
+  my $MINCOLSTEST = 4;
   my $irimap = getIRImap($config->{global}->{ontologyMappingXmlFile});
   my %ordinals;
   my $_line = 0;
@@ -331,9 +339,23 @@ sub ordinals {
   my %warnings; # per IRI
   foreach my $row( @$valueMap ){
     $_line++;
-    next if ($_line =~ /^\s*#|^\s*$/);
     my ($var, $iri, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
-    if(4 > scalar @$row){
+    if($var =~ /^\s*#/){ ## Allow comments, skip
+      if($var =~ /^\s*#\s*version-(\d+)/){ ## reset version
+        $version = $1;
+      }
+      next;
+    }
+    if($version == 1){ }# do nothing, default 
+    elsif($version == 2){
+      ($var, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
+      $iri = $var;
+      $MINCOLSTEST = 3;
+    }
+    else{
+      die("Unknown version: version-$version")
+    }
+    if($MINCOLSTEST > scalar @$row){
       printf STDERR ("ERROR: LINE $_line: bad format\n");
       next;
     }
@@ -981,6 +1003,17 @@ sub hex2file {
   open(FH, ">$file") or die "Cannot write $file:$!";
   print FH uncompress( pack("H*", $content) );
   close(FH);
+}
+
+sub row2hash {
+  my ($linenum, $file, $delim) = @_;
+  $delim ||= "\t";
+  my $hr = getHeaders($file, $delim);
+  my $line = systemcall("sed -n ${linenum}p $file");
+  my @values = split(/\t/, $line->[0]);
+  for(my $i = 0; $i < @$hr; $i++){
+    printf("%s\t%s\n", $hr->[$i], $values[$i]) if(defined($values[$i]) && $values[$i] ne "");
+  }
 }
 
 sub systemcall {

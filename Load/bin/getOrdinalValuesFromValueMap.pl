@@ -16,9 +16,23 @@ my $valueMap = csv2array($infile, "\t");
 my %perms;
 
 my $_line = 0;
+my $version = 1;
+my $MINCOLSTEST = 4;
 foreach my $row( @$valueMap ){
   $_line++;
   my ($var, $iri, $orig, $val, $order) = @$row;
+  if($var =~ /^\s*#/){ ## Allow comments, skip
+    if($var =~ /^\s*#\s*version-(\d+)/){ ## reset version
+      $version = $1;
+    }
+    next;
+  }
+  if($version == 1){ }# do nothing, default 
+  elsif($version == 2){
+    ($var, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
+    $iri = $var;
+    $MINCOLSTEST = 3;
+  }
   next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
   my $score = 1;
   unless(looks_like_number($order)){

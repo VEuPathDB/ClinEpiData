@@ -342,8 +342,8 @@ sub ordinals {
     my ($var, $iri, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
     if($var =~ /^\s*#/){ ## Allow comments, skip
       if($var =~ /^\s*#\s*version-(\d+)/){ ## reset version
-        printf STDERR ("***FORMAT VERSION $version***\n");
         $version = $1;
+        printf STDERR ("***FORMAT VERSION $version***\n");
       }
       next;
     }

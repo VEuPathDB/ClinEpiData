@@ -342,13 +342,13 @@ sub ordinals {
     my ($var, $iri, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
     if($var =~ /^\s*#/){ ## Allow comments, skip
       if($var =~ /^\s*#\s*version-(\d+)/){ ## reset version
+        printf STDERR ("***FORMAT VERSION $version***\n");
         $version = $1;
-        printf STDERR ("Value Map VERSION 2 in effect\n");
       }
       next;
     }
-    if($version == 1){ }# do nothing, default 
-    elsif($version == 2){
+    if($version eq '1'){ }# do nothing, default 
+    elsif($version eq '2'){
       ($var, $orig, $val, $order) = map { s/^\s+|\s+$//; $_ }  @$row;
       $iri = $var;
       $MINCOLSTEST = 3;
@@ -356,9 +356,8 @@ sub ordinals {
     else{
       die("Unknown version: version-$version")
     }
+    $orig = lc($orig); # we always parse/load raw/merged values as lc
     # add mapped value to valid
-    if($valid{$var} && $valid{$var}->{$orig}){ $valid{$var}->{$val}++ }
-    }
     if($MINCOLSTEST > scalar @$row){
       printf STDERR ("ERROR: LINE $_line: bad format\n");
       next;
@@ -374,6 +373,20 @@ sub ordinals {
     $iri = $mappedIRI;
     next unless (defined($iri) && defined($val) && defined($order) && $order ne "");
     my $score = 0;
+    # now that we have confirmed $iri, check if $val is a valid value
+    #printf STDERR ("\t======$var || $iri=======\n%s", Dumper $irimap->{__names__}->{$iri} );
+    if($var eq $iri){ 
+      my @names = map { lc($_) } keys %{ $irimap->{__names__}->{$iri} };
+      foreach my $name (@names){
+        next unless ($valid{$name});
+        # printf STDERR ("\t\t\tCHECKING $iri -> $name orig=$orig [%d], val=$val [%d]\n",
+        # $valid{$name}->{$orig} || 0, $valid{$name}->{$val} || 0);
+        $valid{$iri}->{$orig}++ if $valid{$name}->{$orig};
+        $valid{$iri}->{$val}++ if $valid{$name}->{$val};
+        $valid{$var}->{$orig}++ if $valid{$name}->{$orig};
+        $valid{$var}->{$val}++ if $valid{$name}->{$val};
+      }
+    }
     unless(looks_like_number($order)){
       printf STDERR ("ERROR: LINE $_line: '$order' is not a number\n");
       $score++;
@@ -391,7 +404,8 @@ sub ordinals {
       printf STDERR ("ERROR: LINE $_line: $iri $val cannot have an ordinal ($order)\n");
       $score++;
     }
-    unless($valid{lc($var)}->{lc($orig)} || $valid{lc($iri)}->{lc($orig) || $valid{lc($val)} } ){
+    if($valid{$var} && $valid{$var}->{$orig}){ $valid{$var}->{$val}++ }
+    unless($valid{$var}->{$orig} || $valid{$var}->{$val} ){
       printf STDERR ("WARNING: LINE $_line: $iri $var raw value is invalid '$orig', cannot map to '$val'\n");
       $score++;
     }

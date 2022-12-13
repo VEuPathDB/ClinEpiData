@@ -343,6 +343,7 @@ sub ordinals {
     if($var =~ /^\s*#/){ ## Allow comments, skip
       if($var =~ /^\s*#\s*version-(\d+)/){ ## reset version
         $version = $1;
+        printf STDERR ("Value Map VERSION 2 in effect\n");
       }
       next;
     }
@@ -354,6 +355,9 @@ sub ordinals {
     }
     else{
       die("Unknown version: version-$version")
+    }
+    # add mapped value to valid
+    if($valid{$var} && $valid{$var}->{$orig}){ $valid{$var}->{$val}++ }
     }
     if($MINCOLSTEST > scalar @$row){
       printf STDERR ("ERROR: LINE $_line: bad format\n");

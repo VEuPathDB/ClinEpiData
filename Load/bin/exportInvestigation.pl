@@ -41,7 +41,7 @@ GetOptions(
     %optStruct
     );
 
-if(-d $isaSimpleDirectory){
+if($isaSimpleDirectory && -d $isaSimpleDirectory){
   my $isaDir = abs_path($isaSimpleDirectory);
   $invFile ||= join("/", $isaDir, "investigation.xml");
   $dateObfuscationFile ||= join("/", $isaDir, "dateObfuscation.txt");
@@ -345,8 +345,7 @@ sub getLabelsFromOwl {
 	while( my $row = $it->next ){
 		my $label = $row->{label} ? $row->{label}->as_sparql : ""  ;
     $label =~ s/^"(.*)"$/$1/;
-    my $uri = $row->{entity}->as_hash()->{iri}|| $row->{entity}->as_hash()->{URI};
-    my $sid = $owl->getSourceIdFromIRI($uri);
+    my $sid = $row->{sid}->as_sparql;
     $labels{$sid} = sprintf("%s [%s]", $label, $sid);
 	}
   return \%labels;

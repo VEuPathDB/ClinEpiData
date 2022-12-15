@@ -321,7 +321,7 @@ sub writeMergedFile {
   open(my $fh, ">$outputFile") or die "Cannot open file $outputFile for writing:$!";
   binmode($fh, "encoding(UTF-8)");
 
-  &write($fh, $distinctQualifiers, $mergedOutput);
+  $self->write($fh, $distinctQualifiers, $mergedOutput);
 
   close $fh;
 }
@@ -669,9 +669,10 @@ sub keepNode {
 
 
 sub write {
-  my ($fh, $distinctQualifiers, $mergedOutput, $summarize) = @_;
+  my ($self, $fh, $distinctQualifiers, $mergedOutput, $summarize) = @_;
 
-  my @qualifiers = keys %$distinctQualifiers;
+  my $ontologyMapping = $self->getOntologyMapping();
+  my @qualifiers = sort { $ontologyMapping->{$a}->{characteristicQualifier}->{source_id} cmp $ontologyMapping->{$b}->{characteristicQualifier}->{source_id} } keys %$distinctQualifiers;
 
   print $fh "PRIMARY_KEY\tPARENT\t" . join("\t", @qualifiers) . "\n";
 

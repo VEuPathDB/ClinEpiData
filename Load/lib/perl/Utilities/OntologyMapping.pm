@@ -81,6 +81,8 @@ sub getIRImap {
       $map->{ $name } = $term->{source_id};
       $map->{ $term->{source_id} } = $term->{source_id};
       $map->{ lc($term->{source_id}) } = $term->{source_id};
+      $map->{__names__}->{$term->{source_id}}->{$name} = $term->{source_id};
+      $map->{__names__}->{lc($term->{source_id})}->{$name} = $term->{source_id};
     }
   }
   return $map;

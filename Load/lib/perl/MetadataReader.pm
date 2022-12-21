@@ -183,9 +183,10 @@ sub read {
   $self->updateConfig();
   my $metadataFile = $self->getMetadataFile();
   my ($fileBasename) = $self->getMetadataFileLCB();
-  if($self->getConfig('idMap') && $self->getConfig('category')){
-    unless($self->getConfig('idMap')->{$fileBasename}->{$self->getConfig('category')}){
-      printf STDERR ("Skipping $metadataFile: $fileBasename not defined for this category\n");
+  my $category = $self->getConfig('category');
+  if($self->getConfig('idMap') && $category){
+    unless($self->getConfig('idMap')->{$fileBasename}->{$category}){
+      printf STDERR ("Skipping %s: %s not defined for category %s\n", $metadataFile,$fileBasename,$category);
       return;
     }
   }
@@ -343,6 +344,19 @@ sub countValues {
 	return scalar @vals;
 }
 
+sub formatTime {
+  my ($self, $time, $format) = @_;
+	return unless $time;
+	$time =~ s/^0:/12:/;
+	$time = UnixDate(ParseDate($time), "%H%M");
+  my $formattedTime = UnixDate(ParseDate($time), "%H%M");
+  unless($formattedTime) {
+    warn "Time Format not supported for [$time]\n";
+    return undef;
+  }
+  return $formattedTime;
+}
+
 sub formatDate {
   my ($self, $date, $format) = @_;
 	return unless $date;
@@ -368,6 +382,17 @@ sub dateDiff {
     my $end = ParseDate($var2);
     my @delta = split(/:/, DateCalc($start,$end));
     return int(($delta[4] / 24) + 0.5);
+  }
+  return undef;
+}
+
+sub dateDiffWeek {
+  my($self, $var1, $var2) = @_;
+  if($var1 && $var2){
+    my $start = ParseDate($var1);
+    my $end = ParseDate($var2);
+    my @delta = split(/:/, DateCalc($start,$end));
+    return $delta[3];
   }
   return undef;
 }

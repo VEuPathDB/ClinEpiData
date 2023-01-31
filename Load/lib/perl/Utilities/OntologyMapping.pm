@@ -9,7 +9,8 @@ our @EXPORT_OK = qw/getEntityOrdering getIRImap/;
 use open ':std', ':encoding(UTF-8)';
 # use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::MetadataReader;
-use File::Basename qw/basename dirname/;
+use ClinEpiData::Load::Utilities::File qw/csv2arrayhash/;
+use File::Basename qw/basename dirname fileparse/;
 use Env qw/PROJECT_HOME GUS_HOME/;
 use XML::Simple;
 use Data::Dumper;
@@ -37,6 +38,7 @@ sub new {
 
 sub run {
   my ($self,$owlFile,$functionsFile,$sortByIRI,$varPrefix,$noEntities) = @_;
+#### find a production owl file
   unless( -f $owlFile ){
     my $owlDir = "$GUS_HOME/ontology/release/production";
     my $tmp = "$owlDir/$owlFile.owl";
@@ -57,9 +59,16 @@ sub run {
   if($functionsFile && -e $functionsFile){
     $funcToAdd = $self->readFunctionsFile($functionsFile);
   }
-  my $owl = $self->getOwl($owlFile);
-  my $vars = $self->getTermsFromOwl($owl, $funcToAdd, $sortByIRI, $varPrefix);
-  my $materials = $self->getMaterialTypesFromOwl($owl);
+  my ($owlname, $path, $ext) =  fileparse($owlFile, qr/\.[^\.]+$/);
+  my $materials = $self->getMaterialTypes();
+  my $vars = [];
+  if($ext eq '.owl'){
+    my $owl = $self->getOwl($owlFile);
+    $vars = $self->getTermsFromOwl($owl, $funcToAdd, $sortByIRI, $varPrefix);
+  }
+  elsif($ext eq '.csv'){
+    $vars = $self->getTermsFromConversion($owlFile);
+  }
   my $protocols = $self->getProtocols();
   my @terms;
   unless($noEntities){
@@ -178,6 +187,22 @@ sub getTermsFromSourceFile {
   return \@sorted;
 }
 
+sub getTermsFromConversion {
+# colOrder,IRI,label,variable,displayOrder,dataFile,definition,category,parentIRI,parentLabel,codebookDescription,codebookValues,termType,notesForOnt,repeated,is_temporal,mergeKey,dataSet,unitLabel,unitIRI,is_featured,hidden,scale,defaultDisplayRangeMin,defaultDisplayRangeMax,defaultBinWidth,forceStringType
+  my ($self, $file) = @_;
+  my %terms;
+  my $cvn = csv2arrayhash($file);
+  $_->{IRI} = basename($_->{IRI}) for @$cvn;
+  foreach my $entity  ( sort { $a->{IRI} cmp $b->{IRI} } @$cvn ){
+    my @names = split(/\s*[|]\s*/, $entity->{variable});
+    if($entity->{termType} eq 'variable'){
+      $terms{$entity->{IRI}} = { 'source_id' => $entity->{IRI}, 'name' =>  \@names, 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY', category => $entity->{category} };
+    }
+  }
+  my @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
+  return \@sorted;
+}
+
 sub getTermsFromOwl{
   my ($self,$owl,$funcToAdd,$sortByIRI,$varPrefix) = @_;
   my $it = $owl->execute('column2iri');
@@ -254,7 +279,7 @@ sub getTermsFromOwl{
   return \@sorted;
 }
 
-sub getMaterialTypesFromOwl {
+sub getMaterialTypes {
   my ($self,$owl) = @_;
   my @sorted = ( 
       { source_id => 'INTERNAL_X',     type => 'materialType', name => [ 'INTERNAL' ] },

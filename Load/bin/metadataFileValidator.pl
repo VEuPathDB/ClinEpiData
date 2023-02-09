@@ -104,7 +104,7 @@ foreach my $filepath (@files){
 
   # Validate file headers
   foreach my $header (@$headers){
-    unless($header =~ m{^(.[A-za-z][A-za-z_.0-9]*|[A-za-z][A-za-z_.0-9]*)$}){
+    unless($header =~ m{^(.[A-Za-z][A-Za-z_.0-9]*|[A-Za-z][A-Za-z_.0-9]*)$}){
       testResult('WARN', $filename, "Illegal column header: must start with letter, or dot '.' not followed by a number, and contains only letters, numbers, underscore '_', or period '.' (illegal characters include space, dash, parentheses, etc.) - illegal characters will be automatically converted to underscore '_'");
     }
   }

@@ -32,6 +32,8 @@ my %outputHashes;
 my %keep = (
 category => 0,
 codebookDescription => 0,
+plural => 0,
+ordinal_values =>0,
 codebookValues => 0,
 dataFile => 0,
 dataSet => 0,
@@ -60,9 +62,12 @@ scale => 1,
 my %expandMap = (
   label => 'ontology_synonym',
   codebookDescription => 'definition',
+  definition => 'definition',
+  plural => 'plural',
+  ordinal_values => 'ordinal_values',
 );
 
-my @expandHeaders = qw/label codebookDescription/;
+my @expandHeaders = qw/label codebookDescription definition plural ordinal_values/;
 
 my %expandVals;
 

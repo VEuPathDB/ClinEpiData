@@ -62,12 +62,12 @@ scale => 1,
 my %expandMap = (
   label => 'ontology_synonym',
   codebookDescription => 'definition',
-  definition => 'definition',
   plural => 'plural',
   ordinal_values => 'ordinal_values',
 );
 
-my @expandHeaders = qw/label codebookDescription definition plural ordinal_values/;
+# The column headers from INPUT to retain
+my @expandHeaders = qw/label codebookDescription plural ordinal_values/;
 
 my %expandVals;
 
@@ -128,8 +128,12 @@ else { # tabular/conversion file
     }
     ## expanded cols
     foreach my $attribName (@expandHeaders){
+      my $alias = $expandMap{$attribName};
       next unless $row->{$attribName};
       $expandVals{$termId}->{$attribName} = defined($row->{$attribName}) ? $row->{$attribName} : "";
+      if($alias && !$expandVals{$termId}->{$attribName}){
+        $expandVals{$termId}->{$attribName} ||= defined($row->{$alias}) ? $row->{$alias} : "";
+      }
     }
   }
 }

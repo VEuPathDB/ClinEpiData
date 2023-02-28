@@ -66,8 +66,8 @@ my %expandMap = (
   ordinal_values => 'ordinal_values',
 );
 
-# The column headers from INPUT to retain
-my @expandHeaders = qw/label codebookDescription plural ordinal_values/;
+my @expandFields = qw/label codebookDescription plural ordinal_values/;
+my @expandHeaders = qw/ontology_synonym definition plural ordinal_values/;
 
 my %expandVals;
 
@@ -127,13 +127,9 @@ else { # tabular/conversion file
       $outputHashes{$termId}->{$attribName} = \@values;
     }
     ## expanded cols
-    foreach my $attribName (@expandHeaders){
-      my $alias = $expandMap{$attribName};
+    foreach my $attribName (@expandFields){
       next unless $row->{$attribName};
       $expandVals{$termId}->{$attribName} = defined($row->{$attribName}) ? $row->{$attribName} : "";
-      if($alias && !$expandVals{$termId}->{$attribName}){
-        $expandVals{$termId}->{$attribName} ||= defined($row->{$alias}) ? $row->{$alias} : "";
-      }
     }
   }
 }
@@ -180,7 +176,7 @@ while( my ($termId, $termHash) = each %outputHashes){
 my $max = 0;
 
 my @headers = qw/SOURCE_ID annotation_properties/;
-if($expand){ push(@headers, map { $expandMap{$_} } @expandHeaders) }
+if($expand){ push(@headers, @expandHeaders) }
 
 printf("%s\n", join("\t", @headers));
 foreach my $termId (sort keys %outputHashes){
@@ -189,7 +185,7 @@ foreach my $termId (sort keys %outputHashes){
   if(length($json) > $max){ $max = length($json) }
   my @row = ($termId, $json);
   if($expand){
-    foreach my $attribName (@expandHeaders){
+    foreach my $attribName (@expandFields){
       push(@row, $expandVals{$termId}->{$attribName} || "" );
     }
   }

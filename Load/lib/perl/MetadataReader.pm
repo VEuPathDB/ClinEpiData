@@ -6,7 +6,8 @@ use File::Basename;
 use Date::Manip qw(Date_Init ParseDate UnixDate DateCalc);
 use Text::CSV;
 use Data::Dumper;
-use open ':std', ':encoding(UTF-8)';
+use Encode qw(decode encode);
+#use open ':std', ':encoding(UTF-8)';
 
 sub getParentParsedOutput { $_[0]->{_parent_parsed_output} }
 sub setParentParsedOutput { $_[0]->{_parent_parsed_output} = $_[1] }
@@ -123,6 +124,7 @@ sub readHeaders {
   $header =~ s/\N{U+FEFF}//;
   $header =~ s/\N{ZERO WIDTH NO-BREAK SPACE}//;
   $header =~ s/\N{BOM}//;
+  $header = forceUtf8($header);
   my $delimiter = $self->getDelimiter($header);
   my @headers = $self->splitLine($delimiter, $header);
   return \@headers;
@@ -215,6 +217,7 @@ sub read {
   while(my $row = <$fh>) {
     $LINE++;
     $row =~ s/\n|\r//g;
+    $row = forceUtf8($row);
     my @values = $self->splitLine($delimiter, $row);
     my $valuesAr = $self->clean(\@values);
     my %rowData;
@@ -386,6 +389,14 @@ sub dateDiff {
   return undef;
 }
 
+sub dateAddDelta {
+  my($self, $var1, $var2) = @_;
+  if($var1 && $var2){
+    return DateCalc(ParseDate($var1), $var2);
+  }
+  return undef;
+}
+
 sub dateDiffWeek {
   my($self, $var1, $var2) = @_;
   if($var1 && $var2){
@@ -395,6 +406,14 @@ sub dateDiffWeek {
     return $delta[3];
   }
   return undef;
+}
+
+sub forceUtf8 {
+  my ($line) = @_;
+  chomp $line;
+  my $characters = decode('UTF-8', $line,     Encode::FB_DEFAULT);
+  my $clean = encode('UTF-8', $characters, Encode::FB_CROAK);
+  return $clean;
 }
 
 sub debug { printf STDERR ("DEBUG: %s\n", $_[1]) }

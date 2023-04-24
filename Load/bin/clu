@@ -785,8 +785,9 @@ sub getDatasetIds{
   my $datasetName = sprintf("ISASimple_%s_%s_%s_RSRC", $subProject, $groupName, $studyName);
   my $hash = sha1_hex($datasetName);
   my $dsId = substr($hash,0,10);
+  my $qalink = sprintf("https://qa.restricted.clinepidb.org/ce.restricted.qa/app/workspace/analyses/DS_%s/new/details", $dsId);
   # printf("$datasetName\n$dsId\n");
-  return $datasetName, $abbrev, $dsId, $hash;
+  return $datasetName, $abbrev, $dsId, $hash, $qalink;
 }
 
 sub final {

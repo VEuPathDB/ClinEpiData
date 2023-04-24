@@ -9,12 +9,13 @@ use GUS::Model::Core::UserInfo;
 use GUS::Supported::GusConfig;
 use GUS::ObjRelP::DbiDatabase;
 use Config::Std;
+use YAML qw/DumpFile/;
 use Digest::MD5 qw/md5_hex/;
 use Data::Dumper;
 
-my ($auto,$datasetName, $iniFile, $undo, $workDir, $cache);
+my ($auto,$datasetName, $iniFile, $undo, $workDir, $cache, $toYaml);
 my %options = (
-  'a|autoMode!' => \$auto, 'w|workDir=s' => \$workDir, 'd|datasetName=s' => \$datasetName, 'c|cache=s' => \$cache, 'u|undo!' => \$undo, 'i|ini=s' => \$iniFile);
+  'a|autoMode!' => \$auto, 'w|workDir=s' => \$workDir, 'd|datasetName=s' => \$datasetName, 'c|cache=s' => \$cache, 'u|undo!' => \$undo, 'i|ini=s' => \$iniFile, 'y|toYaml=s' => \$toYaml);
 
 unless(@ARGV){
   printf("\t%s\n", join("\n\t", keys %options));
@@ -76,6 +77,10 @@ if(-f $cache){
 
 $iniFile ||= $ENV{GUS_HOME} . '/ontology/General/study_classifications/ini';
 my ($curr,$config) = readConfig($iniFile);
+if($toYaml){
+  DumpFile($toYaml, $config);
+  exit;
+}
 my $owlFile = $ENV{GUS_HOME} . '/ontology/release/production/classifications.owl';
 
 while(my ($study,$md5) = each %$curr){

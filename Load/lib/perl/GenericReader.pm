@@ -156,7 +156,7 @@ sub getId {
 
 sub cleanAndAddDerivedData {
   my ($self, $hash) = @_;
-  return if defined $hash->{primary_key};
+  # return if defined $hash->{primary_key};
   my $type = lc($self->getConfig('type'));
   my $renameColumns = $self->getConfig('renameColumns');
   $renameColumns ||= $self->getConfig('applyMappedIRI');

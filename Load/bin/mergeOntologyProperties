@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+
+# mergeOntologyProperties [dir] [ output file]
+# For legacy ClinEpiDB studies having files for updating SRes.OntologySynonym
+# entities.txt, owlAttributes.txt, ordinals.txt are merged into annotationProperties.txt
+# which is loaded into EDA.AnnotationProperties
+
+use strict;
+use warnings;
+use lib "$ENV{GUS_HOME}/lib/perl";
+use File::Basename qw/basename/;
+use JSON;
+
+my ($path,$outFile) = @ARGV;
+if ( -l $path ){
+  $path = readlink( $path );
+}
+
+unless( -d $path && basename($path) eq 'final'){ die "$path is not a valid directory" }
+
+my @files = qw/entities.txt owlAttributes.txt ordinals.txt/;
+
+
+my %headers;
+my $merge = {};
+foreach my $file (@files) {
+  $file = join("/", $path, $file);
+  next unless ( -e $file );
+  open(FH, "<$file");
+  my @rows;
+  while(<FH>){
+    chomp;
+    my @row = split /\t/;
+    push(@rows, \@row);
+  } 
+  close(FH);
+  my $count = scalar @rows;
+  my $cols = shift @rows;
+  die "ERROR: invalid format in $file: first column must be SOURCE_ID" unless($cols->[0] eq 'SOURCE_ID');
+  foreach my $col (@$cols){ $headers{$col} = 1 unless $col eq 'SOURCE_ID' }
+  foreach my $row (@rows){
+    my $sid = $row->[0];
+    for (my $i = 0; $i < @$cols; $i++){
+      if($row->[$i] =~ /^\{.*\}$/){ # parse json
+        my $json = from_json($row->[$i]);
+        map { $merge->{$sid}->{$_} = $json->{$_} } keys %$json;
+      }
+      elsif($row->[$i] =~ /^\[.*\]$/){ # array ref (json)
+        my $json = from_json($row->[$i]);
+        $merge->{$sid}->{$cols->[$i]} = $json;
+      }
+      else{
+        $merge->{$sid}->{$cols->[$i]} = $row->[$i];
+      }
+    }
+  }
+}
+my @head = ('SOURCE_ID', 'props');
+
+open(OF, ">$outFile") or die "Cannot write $outFile:$!\n";
+printf(OF  "%s\n", join("\t", @head));
+while(my ($sid, $props) = each %$merge){
+  delete $merge->{$sid}->{SOURCE_ID};
+  if($merge->{$sid}->{ontology_synonym}){
+    $merge->{$sid}->{label} = $merge->{$sid}->{ontology_synonym};
+    delete $merge->{$sid}->{ontology_synonym};
+  }
+  printf(OF "%s\t%s\n", $sid, to_json($props));
+}
+close(OF);
+
+exit 0;

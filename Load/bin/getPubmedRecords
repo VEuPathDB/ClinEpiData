@@ -1,0 +1,56 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+
+use lib $ENV{'GUS_HOME'} . '/lib/perl';
+use ApiCommonData::Load::Entrez;
+use Data::Dumper;
+use utf8;
+binmode(\*STDOUT, "utf8");
+
+my $ez = ApiCommonData::Load::Entrez->new();
+my ($file) = @ARGV;
+open(FH, "<$file") or die "Cannot open $file:$!";
+my @pubmedids = <FH>;
+close(FH);
+chomp @pubmedids;
+my %check = map { $_ => 1 } @pubmedids;
+my $size = 20;
+my $final = $#pubmedids;
+my @batches;
+for(my $n = 0; $n < $final; $n += $size){
+  my $last = $n+$size-1 < $final ? $n+$size-1 : $final;
+  my @batch = @pubmedids[$n .. $last];
+  push(@batches, \@batch);
+}
+my $count = 0;
+if(@pubmedids){
+  printf("%s\n", join("\t", qw/id pubdate title authors/));
+}
+foreach my $batch (@batches){
+  $count++;
+  printf STDERR ("Batch %d: %s\n", $count, join(",", @$batch));
+  my $result = $ez->getPubmedRecords($batch);
+  # printf STDERR  Dumper($result); 
+
+  while(my ($id,$data) = each %{$result->{result}}){
+    next unless $check{$id};
+    if($data->{error}){
+      printf STDERR ("%s: %s\n", $id, $data->{error});
+      next;
+    }
+    $check{$id}++;
+    my $authors = join(", ", map { $_->{name} } @{ $data->{authors}});
+    print STDERR Dumper($data) unless $data->{history};
+    my @history = @{ $data->{history} };
+    my $lastdate = pop @history;
+    my $pubdate = $lastdate->{date};
+    my $title = $data->{title};
+    printf("%s\n", join("\t", $id, $pubdate, $title, $authors));
+  }
+}
+
+my @missing = grep { $check{$_} < 2 } keys %check;
+
+printf STDERR ("No result:\n%s\n", join("\n", @missing));
+

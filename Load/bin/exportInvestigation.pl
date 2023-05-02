@@ -18,7 +18,7 @@ use Getopt::Long qw(:config no_ignore_case);
 use JSON;
 use Data::Dumper;
 
-my ($invFile, $ontologyMappingFile, $ontologyOwlFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @studyParams, @mdFiles, @protocols, @idCols, $cleanUp, @downloadFile, $isaSimpleDirectory);
+my ($invFile, $ontologyMappingFile, $ontologyOwlFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @studyParams, @mdFiles, @protocols, @idCols, $cleanUp, @downloadFile, $isaSimpleDirectory, $targetDir);
 my %optStruct = (
     'i|investigationFile=s' => \$invFile,
     'o|ontologyMappingFile=s' => \$ontologyMappingFile,
@@ -27,7 +27,7 @@ my %optStruct = (
     'I|isaSimpleDirectory=s' => \$isaSimpleDirectory,
     'v|valueMapFile=s' => \$valueMapFile,
     'j|noSqlFile=s' => \$noSqlFile,
-    't|test!' => \$testRun,
+    'n|disableDateObfuscation!' => \$testRun,
     'a|auto!' => \$autoMode,
     'S|studyParams=s' => \@studyParams,
     'm|metadataFile=s' => \@mdFiles,
@@ -35,6 +35,7 @@ my %optStruct = (
     'k|idColumn=s' => \@idCols,
     'c|cleanUp!' => \$cleanUp,
     'f|downloadFile=s' => \@downloadFile, # make downloadFile by name of tree node 
+    't|targetDir=s' => \$targetDir,
     );
 
 GetOptions(
@@ -74,8 +75,15 @@ if($ontologyOwlFile){
 }
 
 if($autoMode){
-  my $timestamp = strftime("%Y%m%d%H%M%S", localtime);
-  my $dir = tempdir("auto_${timestamp}_XXXX", CLEANUP => $cleanUp);
+  my $dir = "";
+  if($targetDir){
+    $dir = $targetDir;
+    mkdir($dir);
+  }
+  else {
+    my $timestamp = strftime("%Y%m%d%H%M%S", localtime);
+    $dir = tempdir("auto_${timestamp}_XXXX", CLEANUP => $cleanUp);
+  }
   $dateObfuscationFile = "$dir/dateObfuscation.txt";
   open(FH, ">$dateObfuscationFile") or die "$!\n";
   close(FH);

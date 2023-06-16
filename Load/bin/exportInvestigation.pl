@@ -75,6 +75,7 @@ if($ontologyOwlFile){
 }
 
 if($autoMode){
+    warn "I am in autoMode\n";
   my $dir = "";
   if($targetDir){
     $dir = $targetDir;
@@ -98,6 +99,7 @@ if($autoMode){
    #  push(@mergedFiles,$mergedFile);
    #  push(@protocols,$protocol) if $protocol;
    #}
+    warn "I am in autoMode studyParams\n";
     foreach my $k ( 0 .. $#studyParams){
       my ($mergedFile,$entity,$primaryKey,$protocol,$parent,$parentKey) = preprocessStudy($studyParams[$k],$dir);
       $inv->addStudy($mergedFile,$entity,$primaryKey,$protocol,$parent,$parentKey);
@@ -107,7 +109,10 @@ if($autoMode){
   }
   else {
     ## use raw files
+    warn "I am in autoMode use raw files\n";
     foreach my $file (@mdFiles){
+      warn "I am in autoMode raw file '$file'\n";
+
       my $cleanFilename = basename($file);
       $cleanFilename =~ s/[^A-Za-z0-9_.]/_/g;
       my $dest = join("/", $dir, $cleanFilename);

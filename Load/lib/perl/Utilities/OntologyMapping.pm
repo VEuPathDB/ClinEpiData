@@ -14,15 +14,27 @@ use File::Basename qw/basename dirname fileparse/;
 use Env qw/PROJECT_HOME GUS_HOME/;
 use XML::Simple;
 use Data::Dumper;
+use ApiCommonData::Load::StudyUtils;
 
-my @GEOHASHTERMS = (
-    { source_id => 'EUPATH_0043203', name => ['geohash1'], type => 'characteristicQualifier', parent => 'ENTITY' },
-    { source_id => 'EUPATH_0043204', name => ['geohash2'], type => 'characteristicQualifier', parent => 'ENTITY' },
-    { source_id => 'EUPATH_0043205', name => ['geohash3'], type => 'characteristicQualifier', parent => 'ENTITY' },
-    { source_id => 'EUPATH_0043206', name => ['geohash4'], type => 'characteristicQualifier', parent => 'ENTITY' },
-    { source_id => 'EUPATH_0043207', name => ['geohash5'], type => 'characteristicQualifier', parent => 'ENTITY' },
-    { source_id => 'EUPATH_0043208', name => ['geohash6'], type => 'characteristicQualifier', parent => 'ENTITY' }
-  );
+my $GEOHASH_PRECISION = ${ApiCommonData::Load::StudyUtils::GEOHASH_PRECISION};
+my @GEOHASHTERMS = map {
+  { source_id => $_,
+    name => [ 'geohash'.$GEOHASH_PRECISION->{$_} ], # e.g. 'geohash1', 'geohash2'
+    type => 'characteristicQualifier',
+    parent => 'ENTITY'
+  }
+} keys %$GEOHASH_PRECISION;
+
+# it was this - remove comments after review and testing
+#  (
+#    { source_id => 'EUPATH_0043203', name => ['geohash1'], type => 'characteristicQualifier', parent => 'ENTITY' },
+#    { source_id => 'EUPATH_0043204', name => ['geohash2'], type => 'characteristicQualifier', parent => 'ENTITY' },
+#    { source_id => 'EUPATH_0043205', name => ['geohash3'], type => 'characteristicQualifier', parent => 'ENTITY' },
+#    { source_id => 'EUPATH_0043206', name => ['geohash4'], type => 'characteristicQualifier', parent => 'ENTITY' },
+#    { source_id => 'EUPATH_0043207', name => ['geohash5'], type => 'characteristicQualifier', parent => 'ENTITY' },
+#    { source_id => 'EUPATH_0043208', name => ['geohash6'], type => 'characteristicQualifier', parent => 'ENTITY' }
+#  );
+
 sub setTerms { $_[0]->{_terms} = $_[1] }
 sub getTerms { return $_[0]->{_terms} }
 
@@ -176,9 +188,22 @@ sub getTermsFromSourceFile {
   my $entity = $reader->getMetadataFileLCB();
   my $fh = $reader->getFH();
   my $headers = $reader->readHeaders();
+  my $latitudeSourceId = ${ApiCommonData::Load::StudyUtils::latitudeSourceId};
+  my $longitudeSourceId = ${ApiCommonData::Load::StudyUtils::longitudeSourceId};
+
   my %terms;
   foreach my $col (@$headers){
-    $terms{$col} = { 'source_id' => "TEMP_$col", 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
+    my $source_id = "TEMP_$col";
+
+    # map appropriately named lat/long columns to the proper source IDs
+    # so that InsertEntityGraph will do the geohash processing
+    if (uc($col) eq 'LATITUDE') {
+      $source_id = $latitudeSourceId;
+    } elsif (uc($col) eq 'LONGITUDE') {
+      $source_id = $longitudeSourceId;
+    }
+
+    $terms{$col} = { 'source_id' => $source_id, 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
   }
   my @sorted;
   @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;

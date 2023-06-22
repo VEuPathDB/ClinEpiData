@@ -25,16 +25,6 @@ my @GEOHASHTERMS = map {
   }
 } keys %$GEOHASH_PRECISION;
 
-# it was this - remove comments after review and testing
-#  (
-#    { source_id => 'EUPATH_0043203', name => ['geohash1'], type => 'characteristicQualifier', parent => 'ENTITY' },
-#    { source_id => 'EUPATH_0043204', name => ['geohash2'], type => 'characteristicQualifier', parent => 'ENTITY' },
-#    { source_id => 'EUPATH_0043205', name => ['geohash3'], type => 'characteristicQualifier', parent => 'ENTITY' },
-#    { source_id => 'EUPATH_0043206', name => ['geohash4'], type => 'characteristicQualifier', parent => 'ENTITY' },
-#    { source_id => 'EUPATH_0043207', name => ['geohash5'], type => 'characteristicQualifier', parent => 'ENTITY' },
-#    { source_id => 'EUPATH_0043208', name => ['geohash6'], type => 'characteristicQualifier', parent => 'ENTITY' }
-#  );
-
 sub setTerms { $_[0]->{_terms} = $_[1] }
 sub getTerms { return $_[0]->{_terms} }
 
@@ -192,6 +182,7 @@ sub getTermsFromSourceFile {
   my $longitudeSourceId = ${ApiCommonData::Load::StudyUtils::longitudeSourceId};
 
   my %terms;
+  my $need_geohash_terms;
   foreach my $col (@$headers){
     my $source_id = "TEMP_$col";
 
@@ -199,16 +190,25 @@ sub getTermsFromSourceFile {
     # so that InsertEntityGraph will do the geohash processing
     if (uc($col) eq 'LATITUDE') {
       $source_id = $latitudeSourceId;
+      $need_geohash_terms = 1;
     } elsif (uc($col) eq 'LONGITUDE') {
       $source_id = $longitudeSourceId;
+      $need_geohash_terms = 1;
     }
 
     $terms{$col} = { 'source_id' => $source_id, 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
   }
+
   my @sorted;
   @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
   unshift(@sorted,{ source_id => "TEMP_$entity", type => 'materialType', name => [ $entity ] });
   unshift(@sorted,{ source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] });
+
+  # add the geohash terms, but note that these and the lat/long terms won't get
+  # the appropriate `hidden` annotation that the UI needs:
+  # geohash terms: 'hidden' = 'everywhere'; lat/long: 'hidden' = 'variableTree'
+  push @sorted, @GEOHASHTERMS if ($need_geohash_terms);
+
   return \@sorted;
 }
 

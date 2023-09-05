@@ -845,7 +845,7 @@ sub validateDateObfuscation {
   my $deltas = getDeltas($dofile);
   my $entities = getEntities();
   my ($datasetName) = getDatasetIds();
-  my $dir = join("/", $ENV{WORKFLOW_DIR}, 'data', $datasetName);
+  my $dir = join("/", $ENV{WORKFLOW_DIR}, 'data', 'edaStudies', $datasetName,'annPropsAndArtifacts','results');
   -d $dir or die "$dir: $!\n";
   opendir(DH, "$dir");
   my @dlfiles = grep { /^$datasetName/ } readdir(DH);

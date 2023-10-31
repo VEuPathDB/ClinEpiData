@@ -229,7 +229,13 @@ sub getTermsFromOwl{
     my %allnames;
     foreach my $n (@$names){
       if($varPrefix){
-        next unless ($n =~ /^${varPrefix}::/i)
+        if($varPrefix eq "_DELETE_" && $n =~ /::/){
+          my ($mdfile,$colName) = split(/::/, $n);
+          $n = $colName;
+        }
+        else {
+          next unless ($n =~ /^${varPrefix}::/i)
+        }
       }
 #if( $n =~ /::/ ) {
 #  my ($mdfile,$colName) = split(/::/, $n);

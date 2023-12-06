@@ -5,6 +5,7 @@ use base qw(ClinEpiData::Load::MetadataReader);
 use Data::Dumper;
 use strict;
 use warnings;
+use feature qw/switch/;
 
 sub readAncillaryInputFile {
 # use for 1. value mapping, and 2. IRI mapping
@@ -142,11 +143,27 @@ sub formatEuroDate {
   if($v =~ /^\d{4}-\d{2}-\d{2}$/){
     return $v;
   }
-  if($v =~ /^\d{2}\W\d{2}\W\d{4}$/){
-    $v =~ s/^(\d{2})\W(\d{2})\W(\d{4})$/$3-$2-$1/;
+  if($v =~ /^\d{2}\W+\d{2}\W+\d{4}$/){
+    $v =~ s/^(\d{2})\W+(\d{2})\W+(\d{4})$/$3-$2-$1/;
     return $v;
   }
-  return $_[0]->formatDate($_[1],"non-US");
+  if( $v =~ /\W+[a-z0]+\w*\W+/i ){
+    $v =~ s/\W+j\w*[r]+\w*\W+/-01-/i ;
+    $v =~ s/\W+jan\W+/-01-/i ;
+    $v =~ s/\W+f\w*\W+/-02-/i ;
+    $v =~ s/\W+m\w*[rch]+\w*\W+/-03-/i ;
+    $v =~ s/\W+a[pril]+\w*\W+/-04-/i ;
+    $v =~ s/\W+may\W+/-05-/i ;
+    $v =~ s/\W+jun\w*\W+/-06-/i ;
+    $v =~ s/\W+jul\w*\W+/-07-/i ;
+    $v =~ s/\W+a\w*[ugst]+\w*\W+/-08-/i ;
+    $v =~ s/\W+s\w*\W+/-09-/i ;
+    $v =~ s/\W+o[oct]+\w*\W+/-10-/i ;
+    $v =~ s/\W+n\w*\W+/-11-/i ;
+    $v =~ s/\W+d\w*\W+/-12-/i ;
+  }
+ 
+  return $_[0]->formatDate($v,"non-US");
 }
 
 1;

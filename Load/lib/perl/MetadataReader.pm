@@ -197,6 +197,8 @@ sub read {
   my $rowExcludes = $self->getRowExcludes();
   my $forceFilePrefix = $self->getConfig('forceFilePrefix');
   my $cleanFirst = $self->getConfig('cleanFirst');
+  my $preserveValues = {};
+  eval sprintf("\$preserveValues = %s;\n", $self->getConfig('preserveValues'));
 # open(FILE, $metadataFile) or die "Cannot open file $metadataFile for reading: $!";
 # my $header = <FILE>;
 # $header =~ s/\n|\r//g;
@@ -226,6 +228,7 @@ sub read {
       next if ($key eq ''); ## empty column header (usually row number, 1st column)
       if($forceFilePrefix){ $key = join("::", $fileBasename, $key) }
       my $value = lc($valuesAr->[$i]);
+      if($preserveValues->{$key}){ $value = $valuesAr->[$i] }
       next if($value eq '[skipped]');
       $rowData{$key} = $value if(defined $value);
       $rowData{$key} =~ s/^\s*|\s*$//g; # trim ALWAYS

@@ -108,8 +108,9 @@ if($autoMode){
   else {
     ## use raw files
     foreach my $file (@mdFiles){
-      my $cleanFilename = basename($file);
-      $cleanFilename =~ s/[^A-Za-z0-9_.]/_/g;
+      my ($cleanFilename, $dontcare, $ext) = fileparse($file, qr/\.\w\w\w$/);
+      $cleanFilename =~ s/[^A-Za-z0-9_]/_/g;
+      $cleanFilename .= "$ext";
       my $dest = join("/", $dir, $cleanFilename);
       csv2tab($file, $dest, undef, undef, 1);
       push(@mergedFiles, $dest);

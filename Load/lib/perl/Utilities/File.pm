@@ -3,7 +3,7 @@ use strict;
 use warnings;
 require Exporter;
 our @ISA = qw/Exporter/;
-our @EXPORT_OK = qw/csv2tab csv2array csv2arrayhash diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders getValidValues/;
+our @EXPORT_OK = qw/csv2tab csv2array csv2arrayhash diff tabWriter nonumvalues csv2cfg getHeaders getPrefixedHeaders getValidValues arr2csv/;
 use Text::CSV_XS;
 use Config::Std;
 use Scalar::Util qw/looks_like_number/;
@@ -75,6 +75,14 @@ sub getValidValues {
   return \%valid
 }
 
+sub arr2csv {
+  my ($arr, $file) = @_;
+  my $csv = getCsvObject({ sep_char => ",", eol => $/});  
+  open(my $fh, '>:encoding(utf8)', $file) or die "Could not open '$file' $!\n";
+  $csv->print($fh, $_) for @$arr;
+  close($fh);
+}
+
 sub csv2arrayhash {
   my ($file, $delim) = @_;
   $delim ||= ",";
@@ -110,9 +118,9 @@ sub csv2array {
   	#die if grep { /\t/ } @$row;
   	my @data;
   	foreach my $val (@$row){
-      $val =~ s/\x{FEFF}//;
-    	$val =~ s/[\n\r\l]/ /g;
-    	$val =~ s/\t/ /g;
+    # $val =~ s/\x{FEFF}//;
+    # $val =~ s/[\n\r\l]/ /g;
+    # $val =~ s/\t/ /g;
   		push(@data, $val);
   	}
   	push(@rows, \@data);
@@ -138,7 +146,7 @@ sub csv2tab {
     for(my $i = 0; $i < @$row; $i++){
       my $val = $row->[$i];
       my $orig = $val;
-      $val =~ s/[^A-Za-z0-9_.]/_/g;
+      $val =~ s/[^A-Za-z0-9_]/_/g;
       if($val eq ''){
         $skipEmptyIndex{$i} = 1;
         printf STDERR ("Column %d (%s) has no header, using number\n", $i+1, $orig);
@@ -240,23 +248,24 @@ sub diff {
   
   #### Report ####
   if($info{removedVar}){
-    printf ("Variable(s) removed: %s\n", join(", ", sort keys %{$info{removedVar}}));
+    printf STDERR ("Variable(s) removed: %s\n", join(", ", sort keys %{$info{removedVar}}));
   }
   if($info{addedVar}){
-    printf ("Variable(s) added: %s\n", join(", ", sort keys %{$info{addedVar}}));
+    printf STDERR ("Variable(s) added: %s\n", join(", ", sort keys %{$info{addedVar}}));
   }
   if($info{removedID}){
-    printf ("%d row(s) deleted\n", $info{removedID});
+    printf STDERR ("%d row(s) deleted\n", $info{removedID});
   }
   if($info{addedID}){
-    printf ("%d row(s) added\n", $info{addedID});
+    printf STDERR ("%d row(s) added\n", $info{addedID});
   }
   if($info{removedValue}){
-    printf ("%d value(s) deleted\n", $info{removedValue});
+    printf STDERR ("%d value(s) deleted\n", $info{removedValue});
   }
   if($info{changedValue}){
-    printf ("%d value(s) changed\n", $info{changedValue});
+    printf STDERR ("%d value(s) changed\n", $info{changedValue});
   }
+  return scalar keys %discrep;
   
 }
 

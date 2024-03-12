@@ -6,6 +6,8 @@ require Exporter;
 our @ISA = qw/Exporter/;
 our @EXPORT_OK = qw/getEntityOrdering getIRImap/;
 
+use Digest::SHA1 qw(sha1_hex);
+
 use open ':std', ':encoding(UTF-8)';
 # use ApiCommonData::Load::OwlReader;
 use ClinEpiData::Load::MetadataReader;
@@ -138,6 +140,17 @@ sub getOntologyXml {
   return XMLout($data, KeepRoot => 1, AttrIndent => 0);
 }
 
+sub digestSourceId {
+  my ($self, $longSourceId) = @_;
+
+  my $ontologyPrefix = "VAR_";
+
+  my $sourceIdLength = 16;
+
+  return $ontologyPrefix . substr(sha1_hex($longSourceId), 0, $sourceIdLength);
+}
+
+
 sub getOntologyXmlFromFiles {
   my ($self, $files, $protocols) = @_;
   my @allterms;
@@ -145,8 +158,11 @@ sub getOntologyXmlFromFiles {
     my $terms = $self->getTermsFromSourceFile($file);
     push(@allterms, @$terms);
   }
+
   foreach my $protocol (@$protocols){
-    push(@allterms, { source_id => "TEMP_" . $protocol, type => 'protocol', name => [ $protocol ] }); 
+    my $protocolDigest = $self->digestSourceId("TEMP" . $protocol);
+
+    push(@allterms, { source_id => $protocolDigest, type => 'protocol', name => [ $protocol ] });
   }
   $self->setTerms(\@allterms);
   return $self->getOntologyXml();
@@ -178,12 +194,18 @@ sub getTermsFromSourceFile {
   my $headers = $reader->readHeaders();
   my %terms;
   foreach my $col (@$headers){
-    $terms{$col} = { 'source_id' => "TEMP_$col", 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
+    my $colDigest = $self->digestSourceId("TEMP_$col");
+
+    $terms{$col} = { 'source_id' => $colDigest, 'name' =>  [$col], 'type' => 'characteristicQualifier', 'parent'=> 'ENTITY'};
   }
   my @sorted;
   @sorted = sort { $a->{name}->[0] cmp $b->{name}->[0] } values %terms;
-  unshift(@sorted,{ source_id => "TEMP_$entity", type => 'materialType', name => [ $entity ] });
-  unshift(@sorted,{ source_id => 'INTERNAL_X', type => 'materialType', name => [ 'INTERNAL' ] });
+
+  my $entityDigest = $self->digestSourceId("TEMP_$entity");
+  my $internalDigest = $self->digestSourceId("INTERNAL_X");
+
+  unshift(@sorted,{ source_id => $entityDigest, type => 'materialType', name => [ $entity ] });
+  unshift(@sorted,{ source_id => $internalDigest, type => 'materialType', name => [ 'INTERNAL' ] });
   return \@sorted;
 }
 

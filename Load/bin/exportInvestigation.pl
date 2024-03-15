@@ -13,10 +13,13 @@ use ClinEpiData::Load::Utilities::OntologyMapping;
 use File::Basename;
 use File::Temp qw/tempfile tempdir/;
 use POSIX qw/strftime/;
+use Time::HiRes;
 use Cwd qw/abs_path/;
 use Getopt::Long qw(:config no_ignore_case);
 use JSON;
 use Data::Dumper;
+
+my $timers = {};
 
 my ($invFile, $ontologyMappingFile, $ontologyOwlFile, $dateObfuscationFile, $valueMapFile, $noSqlFile, $testRun, $autoMode, @studyParams, @mdFiles, @protocols, @idCols, $cleanUp, @downloadFile, $isaSimpleDirectory, $targetDir);
 my %optStruct = (
@@ -139,6 +142,10 @@ printf STDERR "DONE MERGING FILES\n";
   writeOntologyMappingFile($ontologyMappingFile, \@mergedFiles, \@protocols);
 }
 
+if( $autoMode ){
+  exit;
+}
+
 my $inv = CBIL::ISA::InvestigationSimple->new($invFile, $ontologyMappingFile, undef, $valueMapFile, 0, 0, $dateObfuscationFile);
 
 if($testRun){
@@ -186,8 +193,10 @@ my $tree = {
       $root => {}
   }
 };
-foreach my $child ( @{$hasA->{$root}}){
-  $tree->{$invId}->{$root}->{$child} = {};
+unless($autoMode){
+  foreach my $child ( @{$hasA->{$root}}){
+    $tree->{$invId}->{$root}->{$child} = {};
+  }
 }
 
 my %parentOf; # map nodes to parents
@@ -258,15 +267,17 @@ foreach my $study (@$studies){ ## studies are in order: household, participant, 
        }
  ## if( $pids[0][0] ne $root){ die "Orphan: $id\n" . Dumper \@pids; }
  ## insert node
-      my $treeNode = $tree->{$invId};
-      foreach my $pid (@pids){
-        my ($nodeType, $nextId) = @$pid;
-        die "treeNode $nodeType:$nextId does not exist" . Dumper($tree) unless $treeNode->{$nodeType};
-        my $nextNode = $treeNode->{$nodeType}->{$nextId};
-        $treeNode = $nextNode if($nextNode);
-      }
-      $treeNode->{$type}->{$id} ||= $pan;
-    }
+       unless($autoMode){
+         my $treeNode = $tree->{$invId};
+         foreach my $pid (@pids){
+           my ($nodeType, $nextId) = @$pid;
+           die "treeNode $nodeType:$nextId does not exist" . Dumper($tree) unless $treeNode->{$nodeType};
+           my $nextNode = $treeNode->{$nodeType}->{$nextId};
+           $treeNode = $nextNode if($nextNode);
+         }
+         $treeNode->{$type}->{$id} ||= $pan;
+       }
+     }
   }
 }
 
@@ -341,22 +352,22 @@ sub getLabelsFromOwl {
   my %labels;
   my $owlFile;
   if(-e $ont){
-  	$owlFile = $ont;
+    $owlFile = $ont;
   }
   else {
     my $ontdir = $ENV{GUS_HOME} . "/ontology/release/production";
-  	$owlFile = sprintf("%s/%s.owl", $ontdir, $ont);
+    $owlFile = sprintf("%s/%s.owl", $ontdir, $ont);
   }
   my $owl = {};
   eval 'require ApiCommonData::Load::OwlReader';
   eval '$owl = ApiCommonData::Load::OwlReader->new($owlFile)';
-	my $it = $owl->execute('get_terms');
-	while( my $row = $it->next ){
-		my $label = $row->{label} ? $row->{label}->as_sparql : ""  ;
+  my $it = $owl->execute('get_terms');
+  while( my $row = $it->next ){
+    my $label = $row->{label} ? $row->{label}->as_sparql : ""  ;
     $label =~ s/^"(.*)"$/$1/;
     my $sid = $row->{sid}->as_sparql;
     $labels{$sid} = sprintf("%s [%s]", $label, $sid);
-	}
+  }
   return \%labels;
 }
 
@@ -426,14 +437,14 @@ sub preprocessStudy {
   # foreach my $study (@datasets){
     my @args = map { $config{$_} } qw/type metadataFile rowExcludeFile colExcludeFile parentMergedFile parentType ontologyMappingXmlFile ancillaryInputFile packageName readerConfig/;
     my $metadataHelper = ClinEpiData::Load::MetadataHelper->new(@args);
-  	$metadataHelper->merge();
-  	if($metadataHelper->isValid()) {
-  	  $metadataHelper->writeMergedFile($config{outputFile});
-  	}
-  	else {
-  	  $metadataHelper->writeMergedFile($config{outputFile});
-  	  die "ERRORS Found.  Please fix and try again.";
-  	}
+    $metadataHelper->merge();
+    if($metadataHelper->isValid()) {
+      $metadataHelper->writeMergedFile($config{outputFile});
+    }
+    else {
+      $metadataHelper->writeMergedFile($config{outputFile});
+      die "ERRORS Found.  Please fix and try again.";
+    }
     ## Clean up memory before trying to run the next step
     $metadataHelper->setMergedOutput({});
   #}
@@ -451,4 +462,14 @@ sub writeOntologyMappingFile {
   print OF $ont->getOntologyXml;
   close(OF);
 }
+
+sub timey {
+  my ($name, $elapse) = @_;
+  if($timers->{$name}->{start} && $elapse){
+    $timers->{$name}->{total} += time() - $timers->{$name}->{start};
+  } else {
+    $timers->{$name}->{start} = time();
+  }
+}
+
 

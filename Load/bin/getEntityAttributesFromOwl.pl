@@ -32,7 +32,7 @@ my %outputHashes;
 my %keep = (
 category => 0,
 codebookDescription => 0,
-plural => 0,
+plural => 1,
 ordinal_values =>0,
 codebookValues => 0,
 dataFile => 0,
